@@ -2,21 +2,35 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, CheckCircle2, Loader2, Mail, Sparkles, User, Wallet } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2, Mail, Nfc, Sparkles, User, Wallet } from "lucide-react";
 import { useAccount } from "wagmi";
+import { useHaloChip } from "~~/hooks/halochip-arx/useHaloChip";
+import { useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
 import { supabase } from "~~/lib/supabase";
+
+type FlowState = "idle" | "tapping" | "registering" | "saving" | "success" | "error";
+type Step = 1 | 2;
 
 export default function RegisterPage() {
   const { address, isConnected } = useAccount();
   const router = useRouter();
+  const { signMessage } = useHaloChip();
+  const { writeContractAsync } = useScaffoldWriteContract({ contractName: "SplitHubRegistry" });
 
+  // Form data
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
 
-  const handleRegister = async (e: React.FormEvent) => {
+  // Flow state
+  const [currentStep, setCurrentStep] = useState<Step>(1);
+  const [flowState, setFlowState] = useState<FlowState>("idle");
+  const [error, setError] = useState("");
+  const [statusMessage, setStatusMessage] = useState("");
+
+  // Chip data
+  const [chipAddress, setChipAddress] = useState<string | null>(null);
+
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -30,10 +44,47 @@ export default function RegisterPage() {
       return;
     }
 
-    setLoading(true);
+    // Move to step 2
+    setCurrentStep(2);
+  };
+
+  const handleChipRegistration = async () => {
+    if (!isConnected || !address) {
+      setError("Please connect your wallet first");
+      return;
+    }
+
+    setError("");
+    setFlowState("tapping");
+    setStatusMessage("Hold your device near the NFC chip for 2-3 seconds...");
 
     try {
-      // Check if user already exists
+      // Step 1: Tap chip to get its address and signature
+      setStatusMessage("Reading chip...");
+
+      // Chip signs the owner's wallet address
+      const messageToSign = address.toLowerCase();
+      const chipResult = await signMessage({
+        message: messageToSign,
+        format: "text",
+      });
+
+      const detectedChipAddress = chipResult.address;
+      setChipAddress(detectedChipAddress);
+      setStatusMessage(`Chip detected: ${detectedChipAddress.slice(0, 10)}...`);
+
+      // Step 2: Check if chip is already registered
+      const { data: existingChip } = await supabase
+        .from("users")
+        .select("chip_address")
+        .eq("chip_address", detectedChipAddress.toLowerCase())
+        .single();
+
+      if (existingChip) {
+        throw new Error("This chip is already registered to another user");
+      }
+
+      // Step 3: Check if wallet is already registered
       const { data: existingUser } = await supabase
         .from("users")
         .select("wallet_address")
@@ -41,31 +92,51 @@ export default function RegisterPage() {
         .single();
 
       if (existingUser) {
-        setError("This wallet is already registered");
-        setLoading(false);
-        return;
+        throw new Error("This wallet is already registered");
       }
 
-      // Insert new user
+      // Step 4: Register chip on-chain
+      setFlowState("registering");
+      setStatusMessage("Registering chip on blockchain...");
+
+      await writeContractAsync({
+        functionName: "register",
+        args: [detectedChipAddress as `0x${string}`, address, chipResult.signature as `0x${string}`],
+      });
+
+      // Step 5: Save to database
+      setFlowState("saving");
+      setStatusMessage("Saving your profile...");
+
       const { error: insertError } = await supabase.from("users").insert({
         wallet_address: address.toLowerCase(),
+        chip_address: detectedChipAddress.toLowerCase(),
         name: name.trim(),
         email: email.trim(),
-        chip_address: "0xd9623A62F135d3e55D800b80e5e6739315e52Ae6",
       });
 
       if (insertError) {
         throw insertError;
       }
 
-      setSuccess(true);
-      setTimeout(() => router.push("/pay"), 1500);
+      // Success!
+      setFlowState("success");
+      setStatusMessage("Registration complete!");
+      setTimeout(() => router.push("/pay"), 2000);
     } catch (err: any) {
       console.error("Registration error:", err);
-      setError(err.message || "Failed to register. Please try again.");
-    } finally {
-      setLoading(false);
+      setFlowState("error");
+      setError(err.message || "Registration failed. Please try again.");
+      setStatusMessage("");
     }
+  };
+
+  const handleBackToStep1 = () => {
+    setCurrentStep(1);
+    setFlowState("idle");
+    setError("");
+    setStatusMessage("");
+    setChipAddress(null);
   };
 
   return (
@@ -80,10 +151,40 @@ export default function RegisterPage() {
           <p className="text-slate-600 text-base font-light">Create your profile to start splitting expenses</p>
         </div>
 
+        {/* Step Indicator */}
+        <div className="flex items-center justify-center gap-4 mb-6">
+          <div className="flex items-center gap-2">
+            <div
+              className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm ${
+                currentStep === 1 ? "bg-slate-900 text-white" : "bg-emerald-600 text-white"
+              }`}
+            >
+              {currentStep === 1 ? "1" : <CheckCircle2 className="w-5 h-5" />}
+            </div>
+            <span className={`text-sm font-medium ${currentStep === 1 ? "text-slate-900" : "text-slate-600"}`}>
+              Your Info
+            </span>
+          </div>
+          <div className="w-12 h-0.5 bg-slate-300"></div>
+          <div className="flex items-center gap-2">
+            <div
+              className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm ${
+                currentStep === 2 ? "bg-slate-900 text-white" : "bg-slate-300 text-slate-600"
+              }`}
+            >
+              2
+            </div>
+            <span className={`text-sm font-medium ${currentStep === 2 ? "text-slate-900" : "text-slate-600"}`}>
+              Tap Chip
+            </span>
+          </div>
+        </div>
+
         {/* Main Card */}
         <div className="card bg-white shadow-lg border border-slate-200">
           <div className="card-body p-6">
             {!isConnected ? (
+              /* Not Connected State */
               <div className="text-center py-8">
                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-100 mb-4">
                   <Wallet className="w-8 h-8 text-slate-700" />
@@ -93,16 +194,19 @@ export default function RegisterPage() {
                   Please connect your wallet using the button in the header to continue
                 </p>
               </div>
-            ) : success ? (
+            ) : flowState === "success" ? (
+              /* Success State */
               <div className="text-center py-8">
                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-100 mb-4">
                   <CheckCircle2 className="w-8 h-8 text-emerald-600" />
                 </div>
                 <h3 className="text-xl font-semibold mb-2 text-slate-900">Profile Created!</h3>
-                <p className="text-slate-600">Redirecting to your dashboard...</p>
+                <p className="text-slate-600">{statusMessage}</p>
+                <p className="text-sm text-slate-500 mt-2">Redirecting to your dashboard...</p>
               </div>
-            ) : (
-              <form onSubmit={handleRegister} className="space-y-6">
+            ) : currentStep === 1 ? (
+              /* Step 1: Form */
+              <form onSubmit={handleFormSubmit} className="space-y-6">
                 {/* Wallet Address */}
                 <div className="form-control">
                   <label className="label">
@@ -170,24 +274,94 @@ export default function RegisterPage() {
                 <button
                   type="submit"
                   className="w-full py-3.5 px-6 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={loading || !name.trim() || !email.trim()}
+                  disabled={!name.trim() || !email.trim()}
                 >
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      Creating Profile...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-5 h-5" />
-                      Create Profile
-                    </>
-                  )}
+                  <Sparkles className="w-5 h-5" />
+                  Continue to Chip Registration
                 </button>
               </form>
+            ) : (
+              /* Step 2: Chip Tapping */
+              <div className="space-y-6">
+                <div className="text-center">
+                  <div
+                    className={`inline-flex items-center justify-center w-20 h-20 rounded-full mb-4 ${
+                      flowState === "idle" ? "bg-slate-100" : flowState === "error" ? "bg-red-100" : "bg-blue-100"
+                    }`}
+                  >
+                    {flowState === "idle" || flowState === "error" ? (
+                      <Nfc className="w-10 h-10 text-slate-700" />
+                    ) : (
+                      <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+                    )}
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2 text-slate-900">Register Your NFC Chip</h3>
+                  <p className="text-slate-600 mb-4">
+                    {flowState === "idle"
+                      ? "Tap your NFC chip to complete registration"
+                      : statusMessage || "Processing..."}
+                  </p>
+
+                  {chipAddress && (
+                    <div className="bg-slate-50 rounded-lg p-3 mb-4">
+                      <p className="text-xs text-slate-600 mb-1">Chip Address</p>
+                      <p className="font-mono text-sm text-slate-900">{chipAddress}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Error Message */}
+                {error && (
+                  <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                    <span className="text-red-800 text-sm">{error}</span>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="space-y-3">
+                  <button
+                    onClick={handleChipRegistration}
+                    disabled={flowState !== "idle" && flowState !== "error"}
+                    className="w-full py-3.5 px-6 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {flowState === "idle" || flowState === "error" ? (
+                      <>
+                        <Nfc className="w-5 h-5" />
+                        Tap Chip to Register
+                      </>
+                    ) : (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        {flowState === "tapping"
+                          ? "Reading Chip..."
+                          : flowState === "registering"
+                            ? "Registering..."
+                            : "Saving..."}
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={handleBackToStep1}
+                    disabled={flowState !== "idle" && flowState !== "error"}
+                    className="w-full py-3 px-6 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded-lg border border-slate-300 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Back to Edit Info
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         </div>
+
+        {/* Help Text for Step 2 */}
+        {currentStep === 2 && flowState === "idle" && (
+          <div className="mt-4 text-center text-sm text-slate-600">
+            <p>Make sure NFC is enabled on your device</p>
+            <p className="mt-1">Hold your device close to the chip for 2-3 seconds</p>
+          </div>
+        )}
       </div>
     </div>
   );
