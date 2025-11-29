@@ -84,6 +84,7 @@ export default function RegisterPage() {
         domain: {
           name: "SplitHubRegistry",
           version: "1",
+          chainId: 84532,
           verifyingContract: registryContract.address,
         },
         types: {
