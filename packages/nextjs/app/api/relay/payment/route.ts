@@ -1,0 +1,125 @@
+import { NextRequest, NextResponse } from "next/server";
+import { Abi } from "viem";
+import { createPublicClient, createWalletClient, http, isAddress } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { baseSepolia } from "viem/chains";
+import deployedContracts from "~~/contracts/deployedContracts";
+
+const CHAIN_ID = 84532; // Base Sepolia
+
+// PaymentAuth struct matching the Solidity contract
+interface PaymentAuth {
+  payer: `0x${string}`;
+  recipient: `0x${string}`;
+  token: `0x${string}`;
+  amount: bigint | string;
+  nonce: bigint | string;
+  deadline: bigint | string;
+}
+
+// ABI for SplitHubPayments executePayment
+const SPLIT_HUB_PAYMENTS_ABI: Abi = [
+  {
+    type: "function",
+    name: "executePayment",
+    inputs: [
+      {
+        name: "auth",
+        type: "tuple",
+        components: [
+          { name: "payer", type: "address" },
+          { name: "recipient", type: "address" },
+          { name: "token", type: "address" },
+          { name: "amount", type: "uint256" },
+          { name: "nonce", type: "uint256" },
+          { name: "deadline", type: "uint256" },
+        ],
+      },
+      { name: "signature", type: "bytes" },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+];
+
+export async function POST(request: NextRequest) {
+  try {
+    const { auth, signature, contractAddress } = await request.json();
+
+    // Validate inputs
+    if (!auth || !signature) {
+      return NextResponse.json({ error: "Missing required fields: auth, signature" }, { status: 400 });
+    }
+
+    const { payer, recipient, token, amount, nonce, deadline } = auth as PaymentAuth;
+
+    if (!payer || !recipient || !token) {
+      return NextResponse.json({ error: "Invalid auth: missing payer, recipient, or token" }, { status: 400 });
+    }
+
+    if (!isAddress(payer) || !isAddress(recipient) || !isAddress(token)) {
+      return NextResponse.json({ error: "Invalid address format in auth" }, { status: 400 });
+    }
+
+    // Get relayer private key
+    const relayerKey = process.env.RELAYER_PRIVATE_KEY;
+    if (!relayerKey) {
+      return NextResponse.json({ error: "Relayer not configured" }, { status: 500 });
+    }
+
+    // Get contract address - either from deployedContracts or request body
+    const chainContracts = deployedContracts[CHAIN_ID] as Record<string, { address: string }> | undefined;
+    const paymentsAddress = chainContracts?.SplitHubPayments?.address || contractAddress;
+
+    if (!paymentsAddress || !isAddress(paymentsAddress)) {
+      return NextResponse.json(
+        { error: "SplitHubPayments not deployed. Provide contractAddress in request body." },
+        { status: 500 },
+      );
+    }
+
+    // Create wallet client
+    const account = privateKeyToAccount(relayerKey as `0x${string}`);
+    const walletClient = createWalletClient({
+      account,
+      chain: baseSepolia,
+      transport: http(),
+    });
+
+    const publicClient = createPublicClient({
+      chain: baseSepolia,
+      transport: http(),
+    });
+
+    // Prepare auth tuple
+    const authTuple = {
+      payer: payer as `0x${string}`,
+      recipient: recipient as `0x${string}`,
+      token: token as `0x${string}`,
+      amount: BigInt(amount),
+      nonce: BigInt(nonce),
+      deadline: BigInt(deadline),
+    };
+
+    // Submit transaction
+    const hash = await walletClient.writeContract({
+      address: paymentsAddress as `0x${string}`,
+      abi: SPLIT_HUB_PAYMENTS_ABI,
+      functionName: "executePayment",
+      args: [authTuple, signature],
+    });
+
+    // Wait for confirmation
+    const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
+    return NextResponse.json({
+      success: true,
+      txHash: hash,
+      blockNumber: receipt.blockNumber.toString(),
+    });
+  } catch (error) {
+    console.error("Relay payment error:", error);
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}

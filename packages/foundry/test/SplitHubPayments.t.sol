@@ -3,7 +3,9 @@ pragma solidity ^0.8.19;
 
 import { Test, console } from "forge-std/Test.sol";
 import { SplitHubPayments } from "../contracts/SplitHubPayments.sol";
+import { SplitHubRegistry } from "../contracts/SplitHubRegistry.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { MessageHashUtils } from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 /// @dev Mock ERC20 token for testing
 contract MockERC20 is ERC20 {
@@ -17,6 +19,9 @@ contract MockERC20 is ERC20 {
 }
 
 contract SplitHubPaymentsTest is Test {
+    using MessageHashUtils for bytes32;
+
+    SplitHubRegistry public registry;
     SplitHubPayments public payments;
     MockERC20 public token;
 
@@ -44,7 +49,8 @@ contract SplitHubPaymentsTest is Test {
         console.log("Signer (NFC chip):", signer);
 
         // Deploy contracts
-        payments = new SplitHubPayments();
+        registry = new SplitHubRegistry();
+        payments = new SplitHubPayments(address(registry));
         token = new MockERC20();
 
         // Fund payer with tokens
@@ -54,40 +60,26 @@ contract SplitHubPaymentsTest is Test {
         vm.prank(PAYER);
         token.approve(address(payments), type(uint256).max);
 
+        console.log("Registry contract:", address(registry));
         console.log("Payments contract:", address(payments));
         console.log("Token:", address(token));
     }
 
-    function test_AuthorizeSigner() public {
-        console.log("\n=== Test: Authorize Signer ===");
-
-        vm.prank(PAYER);
-        payments.authorize(signer);
-
-        assertTrue(payments.isAuthorizedSigner(PAYER, signer), "Signer should be authorized");
-        console.log("Signer authorized successfully");
-    }
-
-    function test_RevokeSigner() public {
-        console.log("\n=== Test: Revoke Signer ===");
-
-        vm.startPrank(PAYER);
-        payments.authorize(signer);
-        assertTrue(payments.isAuthorizedSigner(PAYER, signer), "Signer should be authorized");
-
-        payments.revoke(signer);
-        assertFalse(payments.isAuthorizedSigner(PAYER, signer), "Signer should be revoked");
-        vm.stopPrank();
-
-        console.log("Signer revoked successfully");
+    /// @dev Helper to register a chip to a payer in the registry
+    function _registerChip(uint256 chipPk, address owner) internal {
+        address chip = vm.addr(chipPk);
+        bytes32 messageHash = keccak256(abi.encodePacked(owner));
+        bytes32 ethSignedHash = messageHash.toEthSignedMessageHash();
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(chipPk, ethSignedHash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+        registry.register(chip, owner, signature);
     }
 
     function test_ExecutePayment() public {
         console.log("\n=== Test: Execute Payment ===");
 
-        // Authorize signer
-        vm.prank(PAYER);
-        payments.authorize(signer);
+        // Register chip to payer via registry
+        _registerChip(signerPk, PAYER);
 
         // Create payment auth
         uint256 amount = 100 * 10 ** 18;
@@ -124,10 +116,10 @@ contract SplitHubPaymentsTest is Test {
         console.log("Payment executed successfully!");
     }
 
-    function test_RevertUnauthorizedSigner() public {
-        console.log("\n=== Test: Reject Unauthorized Signer ===");
+    function test_RevertUnregisteredChip() public {
+        console.log("\n=== Test: Reject Unregistered Chip ===");
 
-        // Do NOT authorize signer
+        // Do NOT register chip in registry
 
         SplitHubPayments.PaymentAuth memory auth = SplitHubPayments.PaymentAuth({
             payer: PAYER,
@@ -145,14 +137,14 @@ contract SplitHubPaymentsTest is Test {
         vm.expectRevert(SplitHubPayments.UnauthorizedSigner.selector);
         payments.executePayment(auth, signature);
 
-        console.log("Unauthorized signer rejected as expected");
+        console.log("Unregistered chip rejected as expected");
     }
 
     function test_RevertExpiredSignature() public {
         console.log("\n=== Test: Reject Expired Signature ===");
 
-        vm.prank(PAYER);
-        payments.authorize(signer);
+        // Register chip to payer via registry
+        _registerChip(signerPk, PAYER);
 
         SplitHubPayments.PaymentAuth memory auth = SplitHubPayments.PaymentAuth({
             payer: PAYER,
@@ -176,8 +168,8 @@ contract SplitHubPaymentsTest is Test {
     function test_RevertInvalidNonce() public {
         console.log("\n=== Test: Reject Invalid Nonce ===");
 
-        vm.prank(PAYER);
-        payments.authorize(signer);
+        // Register chip to payer via registry
+        _registerChip(signerPk, PAYER);
 
         SplitHubPayments.PaymentAuth memory auth = SplitHubPayments.PaymentAuth({
             payer: PAYER,
@@ -201,8 +193,8 @@ contract SplitHubPaymentsTest is Test {
     function test_ReplayProtection() public {
         console.log("\n=== Test: Replay Protection ===");
 
-        vm.prank(PAYER);
-        payments.authorize(signer);
+        // Register chip to payer via registry
+        _registerChip(signerPk, PAYER);
 
         SplitHubPayments.PaymentAuth memory auth = SplitHubPayments.PaymentAuth({
             payer: PAYER,
