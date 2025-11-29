@@ -6,11 +6,12 @@ import { SplitHubRegistry } from "../contracts/SplitHubRegistry.sol";
 import { stdJson } from "forge-std/StdJson.sol";
 
 /**
- * @notice Script to register an NFC chip to an owner on-chain
+ * @notice Script to register an NFC chip to an owner on-chain using EIP-712 signature
  * @dev Requires environment variable:
  *      - BRAVO_KEY_PK: Private key of the NFC chip (signer)
  *
  * Registry address is loaded from deployments/{chainId}.json
+ * Uses EIP-712 ChipRegistration signature (compatible with HaloChips)
  *
  * Example:
  *   export BRAVO_KEY_PK=0x...
@@ -41,14 +42,13 @@ contract RegisterChip is Script {
         // Create the registry instance
         SplitHubRegistry registry = SplitHubRegistry(registryAddress);
 
-        // Create signature: chip signs the owner's address
-        bytes32 messageHash = keccak256(abi.encodePacked(owner));
-        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+        // Create EIP-712 signature: chip signs the ChipRegistration struct
+        bytes32 digest = registry.getDigest(owner, chipAddress);
 
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(chipPrivateKey, ethSignedHash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(chipPrivateKey, digest);
         bytes memory signature = abi.encodePacked(r, s, v);
 
-        console.log("Signature created, calling register...");
+        console.log("EIP-712 signature created, calling register...");
 
         // Register the chip to the owner
         registry.register(chipAddress, owner, signature);
