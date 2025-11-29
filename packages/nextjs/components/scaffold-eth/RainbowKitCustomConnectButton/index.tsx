@@ -8,7 +8,6 @@ import { WrongNetworkDropdown } from "./WrongNetworkDropdown";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { Balance } from "@scaffold-ui/components";
 import { Address } from "viem";
-import { useNetworkColor } from "~~/hooks/scaffold-eth";
 import { useTargetNetwork } from "~~/hooks/scaffold-eth/useTargetNetwork";
 import { getBlockExplorerAddressLink } from "~~/utils/scaffold-eth";
 
@@ -16,7 +15,6 @@ import { getBlockExplorerAddressLink } from "~~/utils/scaffold-eth";
  * Custom Wagmi Connect Button (watch balance + custom design)
  */
 export const RainbowKitCustomConnectButton = () => {
-  const networkColor = useNetworkColor();
   const { targetNetwork } = useTargetNetwork();
 
   return (
@@ -44,18 +42,18 @@ export const RainbowKitCustomConnectButton = () => {
 
               return (
                 <>
-                  <div className="flex flex-col items-center mr-2">
+                  <div className="flex flex-col items-end mr-3 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200">
                     <Balance
                       address={account.address as Address}
                       style={{
                         minHeight: "0",
                         height: "auto",
-                        fontSize: "0.8em",
+                        fontSize: "0.875rem",
+                        fontWeight: "600",
+                        color: "#0f172a",
                       }}
                     />
-                    <span className="text-xs" style={{ color: networkColor }}>
-                      {chain.name}
-                    </span>
+                    <span className="text-xs font-medium text-slate-600">{chain.name}</span>
                   </div>
                   <AddressInfoDropdown
                     address={account.address as Address}
