@@ -28,6 +28,10 @@ export const menuLinks: HeaderMenuLink[] = [
     href: "/approve",
   },
   {
+    label: "Re-register",
+    href: "/re-register",
+  },
+  {
     label: "DeFi",
     href: "/defi",
   },
