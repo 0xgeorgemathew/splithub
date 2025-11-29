@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useRef } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Sparkles } from "lucide-react";
 import { Bars3Icon } from "@heroicons/react/24/outline";
 import { RainbowKitCustomConnectButton } from "~~/components/scaffold-eth";
 import { useOutsideClick } from "~~/hooks/scaffold-eth";
@@ -81,8 +81,8 @@ export const Header = () => {
           </ul>
         </details>
         <Link href="/" passHref className="hidden lg:flex items-center gap-3 ml-4 mr-6 shrink-0">
-          <div className="flex relative w-10 h-10">
-            <Image alt="SplitHub logo" className="cursor-pointer" fill src="/logo.svg" />
+          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-slate-900">
+            <Sparkles className="w-5 h-5 text-white" />
           </div>
           <div className="flex flex-col">
             <span className="font-bold leading-tight text-slate-900 text-lg tracking-tight">SplitHub</span>

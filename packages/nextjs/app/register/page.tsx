@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { AlertCircle, CheckCircle2, Loader2, Mail, Sparkles, User, Wallet } from "lucide-react";
 import { useAccount } from "wagmi";
@@ -70,22 +69,20 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50">
+    <div className="min-h-screen flex items-center justify-center p-4 pt-8 bg-slate-50">
       <div className="w-full max-w-lg">
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 mb-4">
-            <div className="relative w-16 h-16">
-              <Image alt="SplitHub logo" className="cursor-pointer" fill src="/logo.svg" />
-            </div>
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-slate-900 mb-3 shadow-md">
+            <Sparkles className="w-7 h-7 text-white" />
           </div>
-          <h1 className="text-5xl font-bold mb-3 text-slate-900 tracking-tight">Welcome to SplitHub</h1>
-          <p className="text-slate-600 text-lg font-light">Create your profile to start splitting expenses</p>
+          <h1 className="text-4xl font-bold mb-2 text-slate-900 tracking-tight">Welcome to SplitHub</h1>
+          <p className="text-slate-600 text-base font-light">Create your profile to start splitting expenses</p>
         </div>
 
         {/* Main Card */}
         <div className="card bg-white shadow-lg border border-slate-200">
-          <div className="card-body p-8">
+          <div className="card-body p-6">
             {!isConnected ? (
               <div className="text-center py-8">
                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-100 mb-4">
