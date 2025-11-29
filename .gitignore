@@ -22,6 +22,10 @@ node_modules
 
 # cli
 dist
+packages/foundry/broadcast/Deploy.s.sol/*/run-*.json
+packages/foundry/broadcast/DeploySplitHubRegistry.s.sol/*/run-*.json
+packages/foundry/broadcast/RegisterChip.s.sol/*/run-*.json
+
 packages/foundry/broadcast/Deploy.s.sol/84532/run-1764429762200.json
 packages/foundry/broadcast/Deploy.s.sol/84532/run-1764430226342.json
 packages/foundry/broadcast/Deploy.s.sol/84532/run-1764434125263.json
@@ -36,3 +40,7 @@ packages/foundry/broadcast/RegisterChip.s.sol/84532/run-latest.json
 
 dev-tunnel.sh
 Docs.md 
+packages/foundry/broadcast/Deploy.s.sol/84532/run-1764439095221.json
+packages/foundry/broadcast/Deploy.s.sol/84532/run-1764441832913.json
+packages/foundry/broadcast/Deploy.s.sol/84532/run-1764445841105.json
+packages/foundry/broadcast/RegisterChip.s.sol/84532/run-1764441901802.json
