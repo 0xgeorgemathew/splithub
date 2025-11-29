@@ -5,6 +5,7 @@ import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { ISplitHubRegistry } from "./ISplitHubRegistry.sol";
 
 /// @title SplitHubPayments
 /// @notice Gasless ERC-20 payments via EIP-712 signatures
@@ -26,14 +27,12 @@ contract SplitHubPayments is EIP712 {
         "PaymentAuth(address payer,address recipient,address token,uint256 amount,uint256 nonce,uint256 deadline)"
     );
 
+    /// @notice Reference to the SplitHubRegistry for chip ownership verification
+    ISplitHubRegistry public immutable registry;
+
     /// @notice Nonce for each payer (increments with each payment)
     mapping(address payer => uint256 nonce) public nonces;
 
-    /// @notice Authorized signers for each payer (payer => signer => authorized)
-    mapping(address payer => mapping(address signer => bool)) public isAuthorizedSigner;
-
-    event SignerAuthorized(address indexed payer, address indexed signer);
-    event SignerRevoked(address indexed payer, address indexed signer);
     event PaymentExecuted(
         address indexed payer,
         address indexed recipient,
@@ -48,20 +47,8 @@ contract SplitHubPayments is EIP712 {
     error ExpiredSignature();
     error InvalidNonce();
 
-    constructor() EIP712("SplitHubPayments", "1") {}
-
-    /// @notice Authorize a signer to make payments on your behalf
-    /// @param signer The address to authorize (e.g., NFC chip address)
-    function authorize(address signer) external {
-        isAuthorizedSigner[msg.sender][signer] = true;
-        emit SignerAuthorized(msg.sender, signer);
-    }
-
-    /// @notice Revoke a signer's authorization
-    /// @param signer The address to revoke
-    function revoke(address signer) external {
-        isAuthorizedSigner[msg.sender][signer] = false;
-        emit SignerRevoked(msg.sender, signer);
+    constructor(address _registry) EIP712("SplitHubPayments", "1") {
+        registry = ISplitHubRegistry(_registry);
     }
 
     /// @notice Execute a payment using a signed authorization
@@ -93,8 +80,8 @@ contract SplitHubPayments is EIP712 {
         bytes32 digest = _hashTypedDataV4(structHash);
         address signer = digest.recover(signature);
 
-        // Check signer is authorized for this payer
-        if (!isAuthorizedSigner[auth.payer][signer]) {
+        // Check signer (chip) is registered to this payer
+        if (registry.ownerOf(signer) != auth.payer) {
             revert UnauthorizedSigner();
         }
 

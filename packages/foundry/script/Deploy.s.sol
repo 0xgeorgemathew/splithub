@@ -1,25 +1,31 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
+import "forge-std/console.sol";
 import "./DeployHelpers.s.sol";
-import { DeployYourContract } from "./DeployYourContract.s.sol";
-import { DeploySplitHubRegistry } from "./DeploySplitHubRegistry.s.sol";
+import "../contracts/SplitHubRegistry.sol";
+import "../contracts/SplitHubPayments.sol";
 
 /**
- * @notice Main deployment script for all contracts
- * @dev Run this when you want to deploy multiple contracts at once
+ * @notice Main deployment script for all SplitHub contracts
+ * @dev Run this when you want to deploy all contracts at once
  *
- * Example: yarn deploy # runs this script(without`--file` flag)
+ * Example: yarn deploy # runs this script (without `--file` flag)
  */
 contract DeployScript is ScaffoldETHDeploy {
-    function run() external {
-        // Deploys all your contracts sequentially
-        // Add new deployments here when needed
+    function run() external ScaffoldEthDeployerRunner {
+        // Deploy SplitHubRegistry first
+        console.log("Deploying SplitHubRegistry...");
+        SplitHubRegistry registry = new SplitHubRegistry();
+        console.log("SplitHubRegistry deployed at:", address(registry));
+        deployments.push(Deployment({ name: "SplitHubRegistry", addr: address(registry) }));
 
-        DeployYourContract deployYourContract = new DeployYourContract();
-        deployYourContract.run();
+        // Deploy SplitHubPayments with registry address
+        console.log("Deploying SplitHubPayments...");
+        SplitHubPayments payments = new SplitHubPayments(address(registry));
+        console.log("SplitHubPayments deployed at:", address(payments));
+        deployments.push(Deployment({ name: "SplitHubPayments", addr: address(payments) }));
 
-        DeploySplitHubRegistry deploySplitHubRegistry = new DeploySplitHubRegistry();
-        deploySplitHubRegistry.run();
+        console.log("All contracts deployed successfully!");
     }
 }
