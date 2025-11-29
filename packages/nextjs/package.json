@@ -16,6 +16,7 @@
     "vercel:yolo": "vercel --build-env YARN_ENABLE_IMMUTABLE_INSTALLS=false --build-env ENABLE_EXPERIMENTAL_COREPACK=1 --build-env NEXT_PUBLIC_IGNORE_BUILD_ERROR=true --build-env VERCEL_TELEMETRY_DISABLED=1"
   },
   "dependencies": {
+    "@arx-research/libhalo": "^1.15.0",
     "@heroicons/react": "~2.1.5",
     "@rainbow-me/rainbowkit": "2.2.8",
     "@scaffold-ui/components": "^0.1.3",
