@@ -20,6 +20,14 @@ export const menuLinks: HeaderMenuLink[] = [
     href: "/pay",
   },
   {
+    label: "Settle",
+    href: "/settle",
+  },
+  {
+    label: "Approve",
+    href: "/approve",
+  },
+  {
     label: "DeFi",
     href: "/defi",
   },

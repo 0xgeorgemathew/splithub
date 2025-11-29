@@ -128,7 +128,7 @@ const deployedContracts = {
   },
   84532: {
     SplitHubRegistry: {
-      address: "0x8a97046b52719cd62a0d595f624551e2e33c9f6f",
+      address: "0x57a19309e50a26b736d838d3a6e42eb7e4fdf734",
       abi: [
         {
           type: "function",
@@ -244,7 +244,369 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 34335404,
+      deployedOnBlock: 34336773,
+    },
+    SplitHubPayments: {
+      address: "0xd81f664c901c90d00f57cc9906a272e49bd17d23",
+      abi: [
+        {
+          type: "constructor",
+          inputs: [
+            {
+              name: "_registry",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "PAYMENT_AUTH_TYPEHASH",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "bytes32",
+              internalType: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "domainSeparator",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "bytes32",
+              internalType: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "eip712Domain",
+          inputs: [],
+          outputs: [
+            {
+              name: "fields",
+              type: "bytes1",
+              internalType: "bytes1",
+            },
+            {
+              name: "name",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "version",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "chainId",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "verifyingContract",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "salt",
+              type: "bytes32",
+              internalType: "bytes32",
+            },
+            {
+              name: "extensions",
+              type: "uint256[]",
+              internalType: "uint256[]",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "executePayment",
+          inputs: [
+            {
+              name: "auth",
+              type: "tuple",
+              internalType: "struct SplitHubPayments.PaymentAuth",
+              components: [
+                {
+                  name: "payer",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "recipient",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "token",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "amount",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "nonce",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "deadline",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+              ],
+            },
+            {
+              name: "signature",
+              type: "bytes",
+              internalType: "bytes",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "getDigest",
+          inputs: [
+            {
+              name: "auth",
+              type: "tuple",
+              internalType: "struct SplitHubPayments.PaymentAuth",
+              components: [
+                {
+                  name: "payer",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "recipient",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "token",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "amount",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "nonce",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "deadline",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+              ],
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "bytes32",
+              internalType: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getNonce",
+          inputs: [
+            {
+              name: "payer",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "nonces",
+          inputs: [
+            {
+              name: "payer",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [
+            {
+              name: "nonce",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "registry",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "contract ISplitHubRegistry",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "event",
+          name: "EIP712DomainChanged",
+          inputs: [],
+          anonymous: false,
+        },
+        {
+          type: "event",
+          name: "PaymentExecuted",
+          inputs: [
+            {
+              name: "payer",
+              type: "address",
+              indexed: true,
+              internalType: "address",
+            },
+            {
+              name: "recipient",
+              type: "address",
+              indexed: true,
+              internalType: "address",
+            },
+            {
+              name: "token",
+              type: "address",
+              indexed: true,
+              internalType: "address",
+            },
+            {
+              name: "amount",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+            {
+              name: "signer",
+              type: "address",
+              indexed: false,
+              internalType: "address",
+            },
+            {
+              name: "nonce",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+          ],
+          anonymous: false,
+        },
+        {
+          type: "error",
+          name: "ECDSAInvalidSignature",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "ECDSAInvalidSignatureLength",
+          inputs: [
+            {
+              name: "length",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+        },
+        {
+          type: "error",
+          name: "ECDSAInvalidSignatureS",
+          inputs: [
+            {
+              name: "s",
+              type: "bytes32",
+              internalType: "bytes32",
+            },
+          ],
+        },
+        {
+          type: "error",
+          name: "ExpiredSignature",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "InvalidNonce",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "InvalidShortString",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "InvalidSignature",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "SafeERC20FailedOperation",
+          inputs: [
+            {
+              name: "token",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+        },
+        {
+          type: "error",
+          name: "StringTooLong",
+          inputs: [
+            {
+              name: "str",
+              type: "string",
+              internalType: "string",
+            },
+          ],
+        },
+        {
+          type: "error",
+          name: "UnauthorizedSigner",
+          inputs: [],
+        },
+      ],
+      inheritedFunctions: {},
+      deployedOnBlock: 34336773,
     },
   },
 } as const;
