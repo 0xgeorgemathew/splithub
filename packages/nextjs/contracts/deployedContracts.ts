@@ -272,7 +272,7 @@ const deployedContracts = {
   },
   84532: {
     YourContract: {
-      address: "0x4f980d9eaeb964de9cd84f019fb93ca408b9b313",
+      address: "0x99852e9b6f80de6e519b8a8e70006109cc181fde",
       abi: [
         {
           type: "constructor",
@@ -413,10 +413,10 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 34330970,
+      deployedOnBlock: 34333060,
     },
     SplitHubRegistry: {
-      address: "0x8c04afd3a271573cd4070d1f5b316db469cc54e4",
+      address: "0xeb9d535acf613eaf5f9347b0bb34f9b951330c4b",
       abi: [
         {
           type: "function",
@@ -532,7 +532,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 34330970,
+      deployedOnBlock: 34333060,
     },
   },
 } as const;

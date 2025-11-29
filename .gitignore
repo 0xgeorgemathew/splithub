@@ -8,7 +8,8 @@ node_modules
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
-
+/Users/george/Workspace/splithub/packages/foundry/broadcast
+/Users/george/Workspace/splithub/packages/foundry/out
 # eslint
 .eslintcache
 
@@ -21,3 +22,13 @@ node_modules
 
 # cli
 dist
+packages/foundry/broadcast/Deploy.s.sol/84532/run-1764429762200.json
+packages/foundry/broadcast/Deploy.s.sol/84532/run-1764430226342.json
+packages/foundry/broadcast/Deploy.s.sol/84532/run-1764434125263.json
+packages/foundry/broadcast/Deploy.s.sol/84532/run-1764434408206.json
+packages/foundry/broadcast/Deploy.s.sol/84532/run-latest.json
+packages/foundry/broadcast/DeploySplitHubRegistry.s.sol/84532/run-1764428532423.json
+packages/foundry/broadcast/DeploySplitHubRegistry.s.sol/84532/run-latest.json
+packages/foundry/broadcast/RegisterChip.s.sol/84532/run-1764429800563.json
+packages/foundry/broadcast/RegisterChip.s.sol/84532/run-1764430763921.json
+packages/foundry/broadcast/RegisterChip.s.sol/84532/run-latest.json
