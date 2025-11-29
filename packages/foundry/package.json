@@ -15,6 +15,8 @@
     "deploy:base": "node scripts-js/parseArgs.js --network baseSepolia",
     "register:local": "node scripts-js/parseArgs.js --file RegisterChip.s.sol --network localhost",
     "register:base": "node scripts-js/parseArgs.js --file RegisterChip.s.sol --network baseSepolia",
+    "deploy:payments:local": "node scripts-js/parseArgs.js --file DeploySplitHubPayments.s.sol --network localhost",
+    "deploy:payments:base": "node scripts-js/parseArgs.js --file DeploySplitHubPayments.s.sol --network baseSepolia",
     "flatten": "make flatten",
     "fork": "make fork FORK_URL=${1:-mainnet}",
     "format": "make format",
@@ -22,6 +24,7 @@
     "lint": "make lint",
     "test": "forge test",
     "test:registry": "forge test --match-contract SplitHubRegistryTest -vvv",
+    "test:payments": "forge test --match-contract SplitHubPaymentsTest -vvv",
     "verify": "make verify RPC_URL=${1:-localhost}"
   },
   "dependencies": {
