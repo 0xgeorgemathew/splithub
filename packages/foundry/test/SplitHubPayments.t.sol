@@ -5,7 +5,6 @@ import { Test, console } from "forge-std/Test.sol";
 import { SplitHubPayments } from "../contracts/SplitHubPayments.sol";
 import { SplitHubRegistry } from "../contracts/SplitHubRegistry.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { MessageHashUtils } from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 /// @dev Mock ERC20 token for testing
 contract MockERC20 is ERC20 {
@@ -19,8 +18,6 @@ contract MockERC20 is ERC20 {
 }
 
 contract SplitHubPaymentsTest is Test {
-    using MessageHashUtils for bytes32;
-
     SplitHubRegistry public registry;
     SplitHubPayments public payments;
     MockERC20 public token;
@@ -65,12 +62,11 @@ contract SplitHubPaymentsTest is Test {
         console.log("Token:", address(token));
     }
 
-    /// @dev Helper to register a chip to a payer in the registry
+    /// @dev Helper to register a chip to a payer in the registry using EIP-712 signature
     function _registerChip(uint256 chipPk, address owner) internal {
         address chip = vm.addr(chipPk);
-        bytes32 messageHash = keccak256(abi.encodePacked(owner));
-        bytes32 ethSignedHash = messageHash.toEthSignedMessageHash();
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(chipPk, ethSignedHash);
+        bytes32 digest = registry.getDigest(owner, chip);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(chipPk, digest);
         bytes memory signature = abi.encodePacked(r, s, v);
         registry.register(chip, owner, signature);
     }

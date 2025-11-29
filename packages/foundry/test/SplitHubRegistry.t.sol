@@ -37,18 +37,16 @@ contract SplitHubRegistryTest is Test {
     function test_RegisterChipToOwner() public {
         console.log("\n=== Test: Register NFC Chip to Owner ===");
 
-        // Step 1: NFC chip signs the owner's address (DEPLOYER is the owner)
-        bytes32 messageHash = keccak256(abi.encodePacked(DEPLOYER));
-        bytes32 ethSignedHash = keccak256(
-            abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash)
-        );
+        // Step 1: NFC chip signs the EIP-712 ChipRegistration struct
+        // Using contract's getDigest helper for the EIP-712 digest
+        bytes32 digest = registry.getDigest(DEPLOYER, BRAVO_KEY);
 
-        console.log("Message hash (owner address):", vm.toString(messageHash));
+        console.log("EIP-712 digest:", vm.toString(digest));
 
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(bravoKeyPk, ethSignedHash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(bravoKeyPk, digest);
         bytes memory signature = abi.encodePacked(r, s, v);
 
-        console.log("Signature created by NFC chip (bravoKey)");
+        console.log("EIP-712 signature created by NFC chip (bravoKey)");
 
         // Step 2: Deployer calls register to link chip to themselves
         console.log("Deployer calling register...");
