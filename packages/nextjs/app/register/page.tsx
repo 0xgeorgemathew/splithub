@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { AlertCircle, CheckCircle2, Loader2, Mail, Nfc, Sparkles, User, Wallet } from "lucide-react";
 import { useAccount } from "wagmi";
 import { useHaloChip } from "~~/hooks/halochip-arx/useHaloChip";
-import { useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
+import { useDeployedContractInfo } from "~~/hooks/scaffold-eth";
 import { supabase } from "~~/lib/supabase";
 
 type FlowState = "idle" | "tapping" | "registering" | "saving" | "success" | "error";
@@ -14,8 +14,8 @@ type Step = 1 | 2;
 export default function RegisterPage() {
   const { address, isConnected } = useAccount();
   const router = useRouter();
-  const { signMessage } = useHaloChip();
-  const { writeContractAsync } = useScaffoldWriteContract({ contractName: "SplitHubRegistry" });
+  const { signMessage, signTypedData } = useHaloChip();
+  const { data: registryContract } = useDeployedContractInfo("SplitHubRegistry");
 
   // Form data
   const [name, setName] = useState("");
@@ -54,26 +54,54 @@ export default function RegisterPage() {
       return;
     }
 
+    if (!registryContract?.address) {
+      setError("Registry contract not found");
+      return;
+    }
+
     setError("");
     setFlowState("tapping");
     setStatusMessage("Hold your device near the NFC chip for 2-3 seconds...");
 
     try {
-      // Step 1: Tap chip to get its address and signature
+      // Step 1: Tap chip to detect its address (simple message for detection)
       setStatusMessage("Reading chip...");
 
-      // Chip signs the owner's wallet address
-      const messageToSign = address.toLowerCase();
-      const chipResult = await signMessage({
-        message: messageToSign,
+      const chipData = await signMessage({
+        message: "init",
         format: "text",
       });
 
-      const detectedChipAddress = chipResult.address;
+      const detectedChipAddress = chipData.address;
       setChipAddress(detectedChipAddress);
       setStatusMessage(`Chip detected: ${detectedChipAddress.slice(0, 10)}...`);
 
-      // Step 2: Check if chip is already registered
+      // Step 2: Sign registration with EIP-712
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setStatusMessage("Tap your chip again to authorize registration...");
+
+      const registrationSig = await signTypedData({
+        domain: {
+          name: "SplitHubRegistry",
+          version: "1",
+          verifyingContract: registryContract.address,
+        },
+        types: {
+          ChipRegistration: [
+            { name: "owner", type: "address" },
+            { name: "chipAddress", type: "address" },
+          ],
+        },
+        primaryType: "ChipRegistration",
+        message: {
+          owner: address,
+          chipAddress: detectedChipAddress,
+        },
+      });
+
+      setStatusMessage("");
+
+      // Step 3: Check if chip is already registered
       const { data: existingChip } = await supabase
         .from("users")
         .select("chip_address")
@@ -84,7 +112,7 @@ export default function RegisterPage() {
         throw new Error("This chip is already registered to another user");
       }
 
-      // Step 3: Check if wallet is already registered
+      // Step 4: Check if wallet is already registered
       const { data: existingUser } = await supabase
         .from("users")
         .select("wallet_address")
@@ -95,16 +123,29 @@ export default function RegisterPage() {
         throw new Error("This wallet is already registered");
       }
 
-      // Step 4: Register chip on-chain
+      // Step 5: Register chip on-chain via relayer (gasless)
       setFlowState("registering");
       setStatusMessage("Registering chip on blockchain...");
 
-      await writeContractAsync({
-        functionName: "register",
-        args: [detectedChipAddress as `0x${string}`, address, chipResult.signature as `0x${string}`],
+      const relayResponse = await fetch("/api/relay/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          signer: detectedChipAddress,
+          owner: address,
+          signature: registrationSig.signature,
+        }),
       });
 
-      // Step 5: Save to database
+      const relayData = await relayResponse.json();
+
+      if (!relayResponse.ok) {
+        throw new Error(relayData.error || "Registration failed");
+      }
+
+      console.log("✅ Registration transaction:", relayData.txHash);
+
+      // Step 6: Save to database
       setFlowState("saving");
       setStatusMessage("Saving your profile...");
 
