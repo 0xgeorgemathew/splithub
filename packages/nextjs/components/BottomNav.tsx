@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, RefreshCw, Send, ShieldCheck } from "lucide-react";
+import { Home, RefreshCw, Send, ShieldCheck, Users } from "lucide-react";
 
 const navItems = [
   { label: "Home", href: "/", icon: Home },
   { label: "Settle", href: "/settle", icon: Send },
+  { label: "Multi", href: "/multi-settle", icon: Users },
   { label: "Approve", href: "/approve", icon: ShieldCheck },
   { label: "Re-register", href: "/re-register", icon: RefreshCw },
 ];
