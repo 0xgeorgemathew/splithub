@@ -57,8 +57,8 @@ export const TopNav = () => {
             <div className="bg-base-100/95 backdrop-blur-lg rounded-full shadow-lg border border-base-300/50 p-1.5 flex items-center justify-between">
               {/* Logo - Unified segmented control */}
               <Link href="/" className="flex items-center rounded-full overflow-hidden">
-                <span className="bg-base-300 text-white px-7 py-2.5 font-bold text-xl">Split</span>
-                <span className="bg-primary text-primary-content px-7 py-2.5 font-bold text-xl">hub</span>
+                <span className="bg-base-300 text-white pl-4 pr-0.5 py-2.5 font-bold text-2xl">Split</span>
+                <span className="bg-primary text-primary-content pl-0.5 pr-4 py-2.5 font-bold text-2xl">hub</span>
               </Link>
 
               {/* Wallet Section */}
