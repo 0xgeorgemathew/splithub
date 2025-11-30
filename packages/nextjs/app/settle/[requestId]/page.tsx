@@ -1,22 +1,23 @@
 "use client";
 
+import { use } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle, CheckCircle, Clock, Loader2, Wallet } from "lucide-react";
 import { useAccount } from "wagmi";
 import { SettleModal, usePaymentRequest } from "~~/components/settle";
 
 interface SettleRequestPageProps {
-  params: {
+  params: Promise<{
     requestId: string;
-  };
+  }>;
 }
 
 export default function SettleRequestPage({ params }: SettleRequestPageProps) {
+  const { requestId } = use(params);
   const router = useRouter();
   const { address, isConnected } = useAccount();
-  const { paymentParams, isLoading, error, isExpired, isCompleted, isWrongWallet, markAsCompleted } = usePaymentRequest(
-    params.requestId,
-  );
+  const { paymentParams, isLoading, error, isExpired, isCompleted, isWrongWallet, markAsCompleted } =
+    usePaymentRequest(requestId);
 
   const handleClose = () => {
     router.push("/");
