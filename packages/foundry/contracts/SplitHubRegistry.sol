@@ -10,9 +10,8 @@ import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 contract SplitHubRegistry is EIP712 {
     using ECDSA for bytes32;
 
-    bytes32 public constant CHIP_REGISTRATION_TYPEHASH = keccak256(
-        "ChipRegistration(address owner,address chipAddress)"
-    );
+    bytes32 public constant CHIP_REGISTRATION_TYPEHASH =
+        keccak256("ChipRegistration(address owner,address chipAddress)");
 
     mapping(address signer => address owner) public ownerOf;
     mapping(address owner => address signer) public signerOf;
@@ -21,7 +20,7 @@ contract SplitHubRegistry is EIP712 {
 
     error InvalidSignature();
 
-    constructor() EIP712("SplitHubRegistry", "1") {}
+    constructor() EIP712("SplitHubRegistry", "1") { }
 
     /// @notice Register a signer address to an owner (gasless - can be called by relayer)
     /// @param signer The address being registered (e.g., NFC chip address)
@@ -29,11 +28,13 @@ contract SplitHubRegistry is EIP712 {
     /// @param signature EIP-712 signature of ChipRegistration struct by signer
     function register(address signer, address owner, bytes calldata signature) external {
         // Verify EIP-712 signature
-        bytes32 structHash = keccak256(abi.encode(
-            CHIP_REGISTRATION_TYPEHASH,
-            owner,
-            signer  // chipAddress in the struct
-        ));
+        bytes32 structHash = keccak256(
+            abi.encode(
+                CHIP_REGISTRATION_TYPEHASH,
+                owner,
+                signer // chipAddress in the struct
+            )
+        );
         bytes32 digest = _hashTypedDataV4(structHash);
         address recovered = digest.recover(signature);
 
@@ -58,11 +59,7 @@ contract SplitHubRegistry is EIP712 {
     /// @param chipAddress The chip address
     /// @return The EIP-712 typed data hash to sign
     function getDigest(address owner, address chipAddress) external view returns (bytes32) {
-        bytes32 structHash = keccak256(abi.encode(
-            CHIP_REGISTRATION_TYPEHASH,
-            owner,
-            chipAddress
-        ));
+        bytes32 structHash = keccak256(abi.encode(CHIP_REGISTRATION_TYPEHASH, owner, chipAddress));
         return _hashTypedDataV4(structHash);
     }
 }

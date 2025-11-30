@@ -18,22 +18,22 @@
 @plugin "daisyui/theme" {
   name: "light";
 
-  --color-primary: #93bbfb;
-  --color-primary-content: #212638;
-  --color-secondary: #dae8ff;
-  --color-secondary-content: #212638;
-  --color-accent: #93bbfb;
-  --color-accent-content: #212638;
-  --color-neutral: #212638;
+  --color-primary: #f2a900;
+  --color-primary-content: #1b1b1b;
+  --color-secondary: #292929;
+  --color-secondary-content: #ffffff;
+  --color-accent: #f2a900;
+  --color-accent-content: #1b1b1b;
+  --color-neutral: #292929;
   --color-neutral-content: #ffffff;
-  --color-base-100: #ffffff;
-  --color-base-200: #f4f8ff;
-  --color-base-300: #dae8ff;
-  --color-base-content: #212638;
-  --color-info: #93bbfb;
-  --color-success: #34eeb6;
-  --color-warning: #ffcf72;
-  --color-error: #ff8863;
+  --color-base-100: #1b1b1b;
+  --color-base-200: #292929;
+  --color-base-300: #3a3a3a;
+  --color-base-content: #ffffff;
+  --color-info: #f2a900;
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
 
   --radius-field: 9999rem;
   --radius-box: 1rem;
@@ -43,22 +43,22 @@
 @plugin "daisyui/theme" {
   name: "dark";
 
-  --color-primary: #212638;
-  --color-primary-content: #f9fbff;
-  --color-secondary: #323f61;
-  --color-secondary-content: #f9fbff;
-  --color-accent: #4969a6;
-  --color-accent-content: #f9fbff;
-  --color-neutral: #f9fbff;
-  --color-neutral-content: #385183;
-  --color-base-100: #385183;
-  --color-base-200: #2a3655;
-  --color-base-300: #212638;
-  --color-base-content: #f9fbff;
-  --color-info: #385183;
-  --color-success: #34eeb6;
-  --color-warning: #ffcf72;
-  --color-error: #ff8863;
+  --color-primary: #f2a900;
+  --color-primary-content: #1b1b1b;
+  --color-secondary: #292929;
+  --color-secondary-content: #ffffff;
+  --color-accent: #f2a900;
+  --color-accent-content: #1b1b1b;
+  --color-neutral: #808080;
+  --color-neutral-content: #ffffff;
+  --color-base-100: #1b1b1b;
+  --color-base-200: #292929;
+  --color-base-300: #3a3a3a;
+  --color-base-content: #ffffff;
+  --color-info: #f2a900;
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
 
   --radius-field: 9999rem;
   --radius-box: 1rem;
@@ -120,4 +120,172 @@
 
 .link:hover {
   opacity: 80%;
+}
+
+/* 3D NFC Chip Button */
+.nfc-chip-btn {
+  position: relative;
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #f2a900, #d99400);
+  box-shadow:
+    0 8px 32px rgba(242, 169, 0, 0.4),
+    0 4px 16px rgba(0, 0, 0, 0.3),
+    inset 0 2px 4px rgba(255, 255, 255, 0.2),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.15s ease-out;
+  cursor: pointer;
+}
+
+.nfc-chip-btn::before {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  pointer-events: none;
+}
+
+.nfc-chip-btn::after {
+  content: "";
+  position: absolute;
+  inset: 16px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.1), transparent);
+  pointer-events: none;
+}
+
+.nfc-chip-btn:hover:not(:disabled) {
+  box-shadow:
+    0 12px 40px rgba(242, 169, 0, 0.5),
+    0 6px 20px rgba(0, 0, 0, 0.35),
+    inset 0 2px 4px rgba(255, 255, 255, 0.2),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+  transform: translateY(-2px);
+}
+
+.nfc-chip-btn:active:not(:disabled) {
+  box-shadow:
+    0 4px 16px rgba(242, 169, 0, 0.3),
+    0 2px 8px rgba(0, 0, 0, 0.25),
+    inset 0 2px 8px rgba(0, 0, 0, 0.2);
+  transform: translateY(1px) scale(0.98);
+}
+
+.nfc-chip-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* NFC Pulse Ring Animation */
+.nfc-pulse-ring {
+  position: absolute;
+  inset: -12px;
+  border-radius: 50%;
+  border: 2px solid rgba(242, 169, 0, 0.6);
+  animation: nfc-pulse 2s ease-out infinite;
+}
+
+.nfc-pulse-ring:nth-child(2) {
+  animation-delay: 0.5s;
+}
+
+.nfc-pulse-ring:nth-child(3) {
+  animation-delay: 1s;
+}
+
+@keyframes nfc-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+
+/* NFC Wave Animation */
+@keyframes nfc-wave {
+  0%,
+  100% {
+    transform: scale(0.8);
+    opacity: 0.3;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.nfc-wave {
+  animation: nfc-wave 1.5s ease-in-out infinite;
+}
+
+/* Scanning Animation */
+@keyframes scan-wave {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+.scan-wave {
+  animation: scan-wave 1.5s ease-in-out infinite;
+}
+
+/* Draw Check Animation */
+@keyframes draw-check {
+  0% {
+    stroke-dashoffset: 100;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+.draw-check {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: draw-check 0.6s ease-out forwards;
+}
+
+/* Fade In Up Animation */
+@keyframes fade-in-up {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in-up {
+  animation: fade-in-up 0.4s ease-out forwards;
+}
+
+/* Success Glow */
+@keyframes success-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(34, 197, 94, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(34, 197, 94, 0.6);
+  }
+}
+
+.success-glow {
+  animation: success-glow 2s ease-in-out infinite;
 }

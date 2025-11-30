@@ -52,7 +52,7 @@ contract DeploySplitHubPayments is ScaffoldETHDeploy {
                     return vm.parseAddress(keys[i]);
                 }
             }
-        } catch {}
+        } catch { }
 
         revert RegistryNotDeployed();
     }

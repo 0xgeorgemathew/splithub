@@ -17,3 +17,18 @@ export type User = {
   email: string;
   created_at: string;
 };
+
+// Payment request table type
+export type PaymentRequest = {
+  id: string;
+  payer: string;
+  recipient: string;
+  token: string;
+  amount: string;
+  memo: string | null;
+  status: "pending" | "completed" | "expired";
+  tx_hash: string | null;
+  expires_at: string;
+  created_at: string;
+  completed_at?: string;
+};

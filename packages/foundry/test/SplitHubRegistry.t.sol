@@ -8,8 +8,8 @@ contract SplitHubRegistryTest is Test {
     SplitHubRegistry public registry;
 
     // Real keystore addresses
-    address constant DEPLOYER = 0xB2b6B516Df4B159c0E4Eb1d6D7D65a5f2F04C30E;  // Also the owner
-    address constant BRAVO_KEY = 0x59d4C5BE20B41139494b3F1ba2A745ad9e71B00B;  // NFC chip (signer)
+    address constant DEPLOYER = 0xB2b6B516Df4B159c0E4Eb1d6D7D65a5f2F04C30E; // Also the owner
+    address constant BRAVO_KEY = 0x59d4C5BE20B41139494b3F1ba2A745ad9e71B00B; // NFC chip (signer)
 
     // Loaded from environment
     uint256 bravoKeyPk;
