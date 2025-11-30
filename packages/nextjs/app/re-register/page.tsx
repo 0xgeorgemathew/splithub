@@ -1,17 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import { AlertCircle, CheckCircle2, Loader2, Nfc, Wallet } from "lucide-react";
+import { AlertCircle, Check, Cpu, Loader2, Nfc, Wallet, Wrench } from "lucide-react";
 import { useAccount } from "wagmi";
 import { useHaloChip } from "~~/hooks/halochip-arx/useHaloChip";
-import { useDeployedContractInfo } from "~~/hooks/scaffold-eth";
+import { useDeployedContractInfo, useTargetNetwork } from "~~/hooks/scaffold-eth";
 
-type FlowState = "idle" | "tapping" | "registering" | "success" | "error";
+type FlowState = "idle" | "reading" | "signing" | "registering" | "success" | "error";
+
+// Progress steps
+const FLOW_STEPS = [
+  { key: "reading", label: "Read" },
+  { key: "signing", label: "Sign" },
+  { key: "registering", label: "Register" },
+] as const;
 
 export default function ReRegisterPage() {
   const { address, isConnected } = useAccount();
   const { signMessage, signTypedData } = useHaloChip();
   const { data: registryContract } = useDeployedContractInfo("SplitHubRegistry");
+  const { targetNetwork } = useTargetNetwork();
 
   const [flowState, setFlowState] = useState<FlowState>("idle");
   const [error, setError] = useState("");
@@ -32,13 +40,11 @@ export default function ReRegisterPage() {
 
     setError("");
     setTxHash(null);
-    setFlowState("tapping");
-    setStatusMessage("Hold your device near the NFC chip for 2-3 seconds...");
+    setFlowState("reading");
+    setStatusMessage("Tap chip");
 
     try {
       // Step 1: Tap chip to detect its address
-      setStatusMessage("Reading chip...");
-
       const chipData = await signMessage({
         message: "init",
         format: "text",
@@ -46,11 +52,11 @@ export default function ReRegisterPage() {
 
       const detectedChipAddress = chipData.address;
       setChipAddress(detectedChipAddress);
-      setStatusMessage(`Chip detected: ${detectedChipAddress.slice(0, 10)}...`);
 
       // Step 2: Sign registration with EIP-712
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setStatusMessage("Tap your chip again to authorize registration...");
+      setFlowState("signing");
+      setStatusMessage("Signing...");
+      await new Promise(resolve => setTimeout(resolve, 300));
 
       const registrationSig = await signTypedData({
         domain: {
@@ -74,7 +80,7 @@ export default function ReRegisterPage() {
 
       // Step 3: Register chip on-chain via relayer (gasless)
       setFlowState("registering");
-      setStatusMessage("Registering chip on blockchain...");
+      setStatusMessage("Registering...");
 
       const relayResponse = await fetch("/api/relay/register", {
         method: "POST",
@@ -92,16 +98,13 @@ export default function ReRegisterPage() {
         throw new Error(relayData.error || "Registration failed");
       }
 
-      console.log("✅ Re-registration transaction:", relayData.txHash);
       setTxHash(relayData.txHash);
-
-      // Success!
       setFlowState("success");
-      setStatusMessage("Chip re-registered on-chain successfully!");
+      setStatusMessage("Complete!");
     } catch (err: any) {
       console.error("Re-registration error:", err);
       setFlowState("error");
-      setError(err.message || "Re-registration failed. Please try again.");
+      setError(err.message || "Registration failed. Try again.");
       setStatusMessage("");
     }
   };
@@ -114,143 +117,186 @@ export default function ReRegisterPage() {
     setTxHash(null);
   };
 
+  // Helper to get current step index
+  const getCurrentStepIndex = () => {
+    const stepMap: Record<string, number> = {
+      reading: 0,
+      signing: 1,
+      registering: 2,
+    };
+    return stepMap[flowState] ?? -1;
+  };
+
+  const isProcessing = ["reading", "signing", "registering"].includes(flowState);
+
   return (
-    <div className="min-h-[calc(100vh-64px)] flex items-center justify-center p-4 bg-slate-50">
-      <div className="w-full max-w-lg">
-        {/* Header */}
-        <div className="text-center mb-6">
-          <h1 className="text-4xl font-bold mb-2 text-slate-900 tracking-tight">Re-register Chip</h1>
-        </div>
+    <div className="min-h-[calc(100vh-64px)] bg-base-200 p-4 pb-24">
+      <div className="w-full max-w-md mx-auto">
+        {!isConnected ? (
+          /* Not Connected State */
+          <div className="flex flex-col items-center justify-center mt-20">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-base-100 mb-4 shadow-md">
+              <Wallet className="w-8 h-8 text-base-content/50" />
+            </div>
+            <p className="text-base-content/50 text-center">Connect your wallet to register</p>
+          </div>
+        ) : flowState === "success" ? (
+          /* Success State */
+          <div className="flex flex-col items-center justify-center mt-12 fade-in-up">
+            <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-success/20 mb-6 success-glow">
+              <Check className="w-12 h-12 text-success" strokeWidth={3} />
+            </div>
+            <h3 className="text-2xl font-bold mb-3 text-base-content">Registered!</h3>
 
-        {/* Info Banner */}
-        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-sm text-blue-800">
-            <strong>Development Mode:</strong> Used for registering the chip with the newly deployed contract
-          </p>
-        </div>
-
-        {/* Main Card */}
-        <div className="card bg-white shadow-lg border border-slate-200">
-          <div className="card-body p-6">
-            {!isConnected ? (
-              /* Not Connected State */
-              <div className="text-center py-8">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-100 mb-4">
-                  <Wallet className="w-8 h-8 text-slate-700" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2 text-slate-900">Connect Your Wallet</h3>
-                <p className="text-slate-600">Please connect your wallet using the button in the header to continue</p>
+            {/* Chip Address */}
+            {chipAddress && (
+              <div className="flex items-center gap-2 px-4 py-2 bg-base-100 border border-success/30 rounded-full mb-4">
+                <Cpu className="w-4 h-4 text-success" />
+                <span className="text-sm font-medium text-base-content">
+                  {chipAddress.slice(0, 6)}...{chipAddress.slice(-4)}
+                </span>
               </div>
-            ) : flowState === "success" ? (
-              /* Success State */
-              <div className="text-center py-8">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-100 mb-4">
-                  <CheckCircle2 className="w-8 h-8 text-emerald-600" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2 text-slate-900">Re-registration Successful!</h3>
-                <p className="text-slate-600 mb-4">{statusMessage}</p>
+            )}
 
-                {chipAddress && (
-                  <div className="bg-slate-50 rounded-lg p-3 mb-4">
-                    <p className="text-xs text-slate-600 mb-1">Chip Address</p>
-                    <p className="font-mono text-sm text-slate-900 break-all">{chipAddress}</p>
-                  </div>
-                )}
+            {/* Transaction hash */}
+            {txHash && (
+              <a
+                href={`${targetNetwork.blockExplorers?.default.url}/tx/${txHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-primary hover:underline font-mono mb-6"
+              >
+                View transaction →
+              </a>
+            )}
 
-                {txHash && (
-                  <div className="bg-slate-50 rounded-lg p-3 mb-4">
-                    <p className="text-xs text-slate-600 mb-1">Transaction Hash</p>
-                    <p className="font-mono text-xs text-slate-900 break-all">{txHash}</p>
-                  </div>
-                )}
-
-                {registryContract && (
-                  <div className="bg-slate-50 rounded-lg p-3 mb-4">
-                    <p className="text-xs text-slate-600 mb-1">Registry Contract</p>
-                    <p className="font-mono text-xs text-slate-900 break-all">{registryContract.address}</p>
-                  </div>
-                )}
-
-                <button
-                  onClick={handleReset}
-                  className="py-2 px-4 bg-slate-900 hover:bg-slate-800 text-white font-medium rounded-lg transition-all duration-200"
-                >
-                  Re-register Another Chip
-                </button>
-              </div>
-            ) : (
-              /* Main Flow */
-              <div className="space-y-6">
-                {/* Wallet Info */}
-                <div className="bg-slate-50 rounded-lg p-4">
-                  <p className="text-xs text-slate-600 mb-1">Connected Wallet</p>
-                  <p className="font-mono text-sm text-slate-900 break-all">{address}</p>
-                </div>
-
-                {/* Current Contract */}
-                {registryContract && (
-                  <div className="bg-slate-50 rounded-lg p-4">
-                    <p className="text-xs text-slate-600 mb-1">Registry Contract</p>
-                    <p className="font-mono text-xs text-slate-900 break-all">{registryContract.address}</p>
-                  </div>
-                )}
-
-                {/* Status Icon */}
-                <div className="text-center">
-                  <div
-                    className={`inline-flex items-center justify-center w-20 h-20 rounded-full mb-4 ${
-                      flowState === "idle" ? "bg-slate-100" : flowState === "error" ? "bg-red-100" : "bg-blue-100"
-                    }`}
-                  >
-                    {flowState === "idle" || flowState === "error" ? (
-                      <Nfc className="w-10 h-10 text-slate-700" />
-                    ) : (
-                      <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+            <button
+              onClick={handleReset}
+              className="px-6 py-2.5 bg-primary hover:bg-primary/90 text-primary-content font-medium rounded-full transition-all duration-200 shadow-md"
+            >
+              Done
+            </button>
+          </div>
+        ) : isProcessing ? (
+          /* Processing States */
+          <div className="flex flex-col items-center justify-center mt-12">
+            {/* Progress Steps */}
+            <div className="flex items-center gap-2 mb-8">
+              {FLOW_STEPS.map((step, idx) => {
+                const currentIdx = getCurrentStepIndex();
+                const isComplete = idx < currentIdx;
+                const isCurrent = idx === currentIdx;
+                return (
+                  <div key={step.key} className="flex items-center">
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold transition-all ${
+                        isComplete
+                          ? "bg-success text-success-content"
+                          : isCurrent
+                            ? "bg-primary text-primary-content"
+                            : "bg-base-300 text-base-content/50"
+                      }`}
+                    >
+                      {isComplete ? <Check className="w-4 h-4" /> : idx + 1}
+                    </div>
+                    {idx < FLOW_STEPS.length - 1 && (
+                      <div className={`w-6 h-0.5 ${isComplete ? "bg-success" : "bg-base-300"}`} />
                     )}
                   </div>
-                  {statusMessage && <p className="text-slate-600 mb-4">{statusMessage}</p>}
+                );
+              })}
+            </div>
 
-                  {chipAddress && (
-                    <div className="bg-slate-50 rounded-lg p-3 mb-4">
-                      <p className="text-xs text-slate-600 mb-1">Chip Address</p>
-                      <p className="font-mono text-sm text-slate-900 break-all">{chipAddress}</p>
-                    </div>
-                  )}
-                </div>
+            {/* Animated Processing Indicator */}
+            <div className="relative mb-6">
+              <div className="w-28 h-28 rounded-full bg-primary/20 flex items-center justify-center">
+                <Loader2 className="w-12 h-12 text-primary animate-spin" />
+              </div>
+              {flowState === "reading" && (
+                <>
+                  <div className="nfc-pulse-ring" />
+                  <div className="nfc-pulse-ring" style={{ animationDelay: "0.5s" }} />
+                </>
+              )}
+            </div>
 
-                {/* Error Message */}
-                {error && (
-                  <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
-                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-                    <span className="text-red-800 text-sm">{error}</span>
-                  </div>
-                )}
+            <h3 className="text-lg font-semibold mb-1 text-base-content">{statusMessage}</h3>
+            <p className="text-base-content/50 text-sm">
+              {flowState === "reading" && "Hold device near chip"}
+              {flowState === "signing" && "Authorizing registration"}
+              {flowState === "registering" && "Writing to blockchain"}
+            </p>
 
-                {/* Action Button */}
-                <button
-                  onClick={handleReRegister}
-                  disabled={flowState !== "idle" && flowState !== "error"}
-                  className="w-full py-3.5 px-6 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {flowState === "idle" || flowState === "error" ? (
-                    <>Tap Chip to Re-register</>
-                  ) : (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      {flowState === "tapping" ? "Reading Chip..." : "Registering..."}
-                    </>
-                  )}
-                </button>
+            {/* Show detected chip */}
+            {chipAddress && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-base-100 border border-base-300 rounded-full mt-4">
+                <Cpu className="w-3.5 h-3.5 text-primary" />
+                <span className="text-xs font-medium text-base-content">
+                  {chipAddress.slice(0, 6)}...{chipAddress.slice(-4)}
+                </span>
               </div>
             )}
           </div>
-        </div>
+        ) : (
+          /* Main UI - Idle State */
+          <div className="flex flex-col items-center pt-6">
+            {/* Dev Mode Badge */}
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-base-100 border border-primary/30 rounded-full mb-6">
+              <Wrench className="w-3.5 h-3.5 text-primary" />
+              <span className="text-xs font-medium text-primary">Dev Mode</span>
+            </div>
 
-        {/* Help Text */}
-        {isConnected && flowState === "idle" && (
-          <div className="mt-4 text-center text-sm text-slate-600">
-            <p>Make sure NFC is enabled on your device</p>
-            <p className="mt-1">Hold your device close to the chip for 2-3 seconds</p>
+            {/* Info Pills */}
+            <div className="flex flex-wrap justify-center gap-2 mb-6">
+              {/* Wallet Pill */}
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-base-100 border border-base-300 rounded-full">
+                <Wallet className="w-3.5 h-3.5 text-primary" />
+                <span className="text-xs font-medium text-base-content">
+                  {address?.slice(0, 6)}...{address?.slice(-4)}
+                </span>
+              </div>
+
+              {/* Registry Pill */}
+              {registryContract && (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-base-100 border border-base-300 rounded-full">
+                  <Cpu className="w-3.5 h-3.5 text-primary" />
+                  <span className="text-xs font-medium text-base-content">
+                    {registryContract.address.slice(0, 6)}...{registryContract.address.slice(-4)}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Title */}
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold text-base-content mb-1">Register Chip</h2>
+              <p className="text-base-content/50 text-sm">Link your NFC chip to your wallet</p>
+            </div>
+
+            {/* Error Message */}
+            {error && (
+              <div className="flex items-center gap-2 px-4 py-2.5 bg-error/10 border border-error/30 rounded-full mb-6 max-w-xs">
+                <AlertCircle className="w-4 h-4 text-error flex-shrink-0" />
+                <span className="text-error text-xs">{error}</span>
+              </div>
+            )}
+
+            {/* 3D NFC Chip Button */}
+            <div className="relative">
+              {/* Pulse rings */}
+              <div className="nfc-pulse-ring" />
+              <div className="nfc-pulse-ring" />
+              <div className="nfc-pulse-ring" />
+
+              <button
+                onClick={handleReRegister}
+                disabled={!registryContract}
+                className="nfc-chip-btn flex flex-col items-center justify-center text-primary-content disabled:opacity-50"
+              >
+                <Nfc className="w-12 h-12 mb-1" />
+                <span className="text-sm font-bold">Tap to Register</span>
+              </button>
+            </div>
           </div>
         )}
       </div>

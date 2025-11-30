@@ -15,12 +15,12 @@ contract SplitHubPayments is EIP712 {
     using SafeERC20 for IERC20;
 
     struct PaymentAuth {
-        address payer;      // Token owner (funds come from here)
-        address recipient;  // Payment receiver
-        address token;      // ERC20 token address
-        uint256 amount;     // Amount to transfer
-        uint256 nonce;      // Replay protection (auto-increment per payer)
-        uint256 deadline;   // Signature expiration timestamp
+        address payer; // Token owner (funds come from here)
+        address recipient; // Payment receiver
+        address token; // ERC20 token address
+        uint256 amount; // Amount to transfer
+        uint256 nonce; // Replay protection (auto-increment per payer)
+        uint256 deadline; // Signature expiration timestamp
     }
 
     bytes32 public constant PAYMENT_AUTH_TYPEHASH = keccak256(
@@ -68,15 +68,11 @@ contract SplitHubPayments is EIP712 {
         nonces[auth.payer]++;
 
         // Verify signature
-        bytes32 structHash = keccak256(abi.encode(
-            PAYMENT_AUTH_TYPEHASH,
-            auth.payer,
-            auth.recipient,
-            auth.token,
-            auth.amount,
-            auth.nonce,
-            auth.deadline
-        ));
+        bytes32 structHash = keccak256(
+            abi.encode(
+                PAYMENT_AUTH_TYPEHASH, auth.payer, auth.recipient, auth.token, auth.amount, auth.nonce, auth.deadline
+            )
+        );
         bytes32 digest = _hashTypedDataV4(structHash);
         address signer = digest.recover(signature);
 
@@ -88,14 +84,7 @@ contract SplitHubPayments is EIP712 {
         // Transfer tokens from payer to recipient
         IERC20(auth.token).safeTransferFrom(auth.payer, auth.recipient, auth.amount);
 
-        emit PaymentExecuted(
-            auth.payer,
-            auth.recipient,
-            auth.token,
-            auth.amount,
-            signer,
-            auth.nonce
-        );
+        emit PaymentExecuted(auth.payer, auth.recipient, auth.token, auth.amount, signer, auth.nonce);
     }
 
     /// @notice Get the current nonce for a payer
@@ -115,15 +104,11 @@ contract SplitHubPayments is EIP712 {
     /// @param auth The payment authorization to sign
     /// @return The EIP-712 typed data hash to sign
     function getDigest(PaymentAuth calldata auth) external view returns (bytes32) {
-        bytes32 structHash = keccak256(abi.encode(
-            PAYMENT_AUTH_TYPEHASH,
-            auth.payer,
-            auth.recipient,
-            auth.token,
-            auth.amount,
-            auth.nonce,
-            auth.deadline
-        ));
+        bytes32 structHash = keccak256(
+            abi.encode(
+                PAYMENT_AUTH_TYPEHASH, auth.payer, auth.recipient, auth.token, auth.amount, auth.nonce, auth.deadline
+            )
+        );
         return _hashTypedDataV4(structHash);
     }
 }

@@ -83,12 +83,7 @@ contract SplitHubPaymentsTest is Test {
         uint256 nonce = payments.getNonce(PAYER);
 
         SplitHubPayments.PaymentAuth memory auth = SplitHubPayments.PaymentAuth({
-            payer: PAYER,
-            recipient: RECIPIENT,
-            token: address(token),
-            amount: amount,
-            nonce: nonce,
-            deadline: deadline
+            payer: PAYER, recipient: RECIPIENT, token: address(token), amount: amount, nonce: nonce, deadline: deadline
         });
 
         // Sign the payment auth

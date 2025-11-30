@@ -1,15 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { AlertCircle, CheckCircle2, Coins, Loader2, Nfc, Send, Wallet } from "lucide-react";
-import { isAddress, parseUnits } from "viem";
+import { AlertCircle, Check, Coins, Fuel, Loader2, Nfc, User, Wallet } from "lucide-react";
+import { parseUnits } from "viem";
 import { useAccount, useReadContract } from "wagmi";
 import deployedContracts from "~~/contracts/deployedContracts";
 import { useHaloChip } from "~~/hooks/halochip-arx/useHaloChip";
 import { useTargetNetwork } from "~~/hooks/scaffold-eth";
 
-// Hardcoded recipient address
+// Hardcoded values
 const RECIPIENT_ADDRESS = "0x09a6f8C0194246c365bB42122E872626460F8a71" as const;
+const DEFAULT_TOKEN_ADDRESS = "0x0a215D8ba66387DCA84B284D18c3B4ec3de6E54a" as const;
+const DEFAULT_AMOUNT = "1";
 
 const ERC20_ABI = [
   {
@@ -38,15 +40,21 @@ const SPLIT_HUB_PAYMENTS_ABI = [
   },
 ] as const;
 
-type FlowState = "idle" | "tapping" | "submitting" | "success" | "error";
+type FlowState = "idle" | "tapping" | "signing" | "submitting" | "confirming" | "success" | "error";
+
+// Progress steps for visual indicator
+const FLOW_STEPS = [
+  { key: "tapping", label: "Tap" },
+  { key: "signing", label: "Sign" },
+  { key: "submitting", label: "Send" },
+  { key: "confirming", label: "Confirm" },
+] as const;
 
 export default function SettlePage() {
   const { address, isConnected } = useAccount();
   const { targetNetwork } = useTargetNetwork();
   const { signTypedData } = useHaloChip();
 
-  const [tokenAddress, setTokenAddress] = useState("");
-  const [amount, setAmount] = useState("");
   const [flowState, setFlowState] = useState<FlowState>("idle");
   const [statusMessage, setStatusMessage] = useState("");
   const [error, setError] = useState("");
@@ -60,26 +68,20 @@ export default function SettlePage() {
 
   // Read token decimals
   const { data: decimals } = useReadContract({
-    address: isAddress(tokenAddress) ? (tokenAddress as `0x${string}`) : undefined,
+    address: DEFAULT_TOKEN_ADDRESS,
     abi: ERC20_ABI,
     functionName: "decimals",
-    query: {
-      enabled: isAddress(tokenAddress),
-    },
   });
 
   // Read token symbol
   const { data: symbol } = useReadContract({
-    address: isAddress(tokenAddress) ? (tokenAddress as `0x${string}`) : undefined,
+    address: DEFAULT_TOKEN_ADDRESS,
     abi: ERC20_ABI,
     functionName: "symbol",
-    query: {
-      enabled: isAddress(tokenAddress),
-    },
   });
 
   // Read current nonce for payer
-  const { data: currentNonce } = useReadContract({
+  const { data: currentNonce, refetch: refetchNonce } = useReadContract({
     address: paymentsAddress,
     abi: SPLIT_HUB_PAYMENTS_ABI,
     functionName: "nonces",
@@ -95,16 +97,6 @@ export default function SettlePage() {
 
     if (!isConnected || !address) {
       setError("Please connect your wallet first");
-      return;
-    }
-
-    if (!isAddress(tokenAddress)) {
-      setError("Please enter a valid token address");
-      return;
-    }
-
-    if (!amount || parseFloat(amount) <= 0) {
-      setError("Please enter a valid amount");
       return;
     }
 
@@ -125,16 +117,16 @@ export default function SettlePage() {
 
     try {
       setFlowState("tapping");
-      setStatusMessage("Hold your device near the NFC chip for 2-3 seconds...");
+      setStatusMessage("Tap your chip");
 
       // Build PaymentAuth struct
-      const amountInWei = parseUnits(amount, decimals);
+      const amountInWei = parseUnits(DEFAULT_AMOUNT, decimals);
       const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600); // 1 hour from now
 
       const paymentAuth = {
         payer: address,
         recipient: RECIPIENT_ADDRESS,
-        token: tokenAddress as `0x${string}`,
+        token: DEFAULT_TOKEN_ADDRESS,
         amount: amountInWei,
         nonce: currentNonce,
         deadline: deadline,
@@ -159,7 +151,9 @@ export default function SettlePage() {
         ],
       };
 
-      setStatusMessage("Tap NFC chip to sign payment...");
+      // Signing state
+      setFlowState("signing");
+      setStatusMessage("Signing...");
 
       // Sign with NFC chip
       const chipResult = await signTypedData({
@@ -169,8 +163,9 @@ export default function SettlePage() {
         message: paymentAuth,
       });
 
-      setStatusMessage("Submitting payment to relay...");
+      // Submitting state
       setFlowState("submitting");
+      setStatusMessage("Sending...");
 
       // Submit to relay API
       const response = await fetch("/api/relay/payment", {
@@ -198,9 +193,19 @@ export default function SettlePage() {
         throw new Error(result.error || "Relay request failed");
       }
 
+      // Confirming state
+      setFlowState("confirming");
+      setStatusMessage("Confirming...");
       setTxHash(result.txHash);
+
+      // Brief delay to show confirming state
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Refetch nonce for next payment
+      await refetchNonce();
+
       setFlowState("success");
-      setStatusMessage("Payment successful!");
+      setStatusMessage("Complete!");
     } catch (err: any) {
       console.error("Settlement error:", err);
       setFlowState("error");
@@ -211,147 +216,178 @@ export default function SettlePage() {
 
   const handleReset = () => {
     setFlowState("idle");
-    setTokenAddress("");
-    setAmount("");
     setError("");
     setStatusMessage("");
     setTxHash(null);
   };
 
+  // Helper to get current step index
+  const getCurrentStepIndex = () => {
+    const stepMap: Record<string, number> = {
+      tapping: 0,
+      signing: 1,
+      submitting: 2,
+      confirming: 3,
+    };
+    return stepMap[flowState] ?? -1;
+  };
+
+  const isProcessing = ["tapping", "signing", "submitting", "confirming"].includes(flowState);
+
   return (
-    <div className="min-h-[calc(100vh-64px)] flex items-center justify-center p-4 bg-slate-50">
-      <div className="w-full max-w-lg">
-        {/* Header */}
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-slate-900 mb-3 shadow-md">
-            <Send className="w-7 h-7 text-white" />
+    <div className="min-h-[calc(100vh-64px)] bg-base-200 p-4 pb-24">
+      <div className="w-full max-w-md mx-auto">
+        {!isConnected ? (
+          /* Not Connected State */
+          <div className="flex flex-col items-center justify-center mt-20">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-base-100 mb-4 shadow-md">
+              <Wallet className="w-8 h-8 text-base-content/50" />
+            </div>
+            <p className="text-base-content/50 text-center">Connect your wallet to settle</p>
           </div>
-          <h1 className="text-4xl font-bold mb-2 text-slate-900 tracking-tight">Settlement</h1>
-          <p className="text-slate-600 text-base font-light">Send tokens via NFC chip (gasless)</p>
-        </div>
+        ) : flowState === "success" ? (
+          /* Success State */
+          <div className="flex flex-col items-center justify-center mt-12 fade-in-up">
+            <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-success/20 mb-6 success-glow">
+              <Check className="w-12 h-12 text-success" strokeWidth={3} />
+            </div>
+            <h3 className="text-2xl font-bold mb-3 text-base-content">Payment Complete</h3>
 
-        {/* Main Card */}
-        <div className="card bg-white shadow-lg border border-slate-200">
-          <div className="card-body p-6">
-            {!isConnected ? (
-              /* Not Connected State */
-              <div className="text-center py-8">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-100 mb-4">
-                  <Wallet className="w-8 h-8 text-slate-700" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2 text-slate-900">Connect Your Wallet</h3>
-                <p className="text-slate-600">Please connect your wallet using the button in the header to continue</p>
-              </div>
-            ) : flowState === "success" ? (
-              /* Success State */
-              <div className="text-center py-8">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-100 mb-4">
-                  <CheckCircle2 className="w-8 h-8 text-emerald-600" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2 text-slate-900">Payment Successful!</h3>
-                <p className="text-slate-600 mb-2">
-                  {amount} {symbol || "tokens"} sent to recipient
-                </p>
-                {txHash && (
-                  <p className="text-sm text-slate-500 font-mono break-all mb-4">
-                    Tx: {txHash.slice(0, 10)}...{txHash.slice(-8)}
-                  </p>
-                )}
-                <button
-                  onClick={handleReset}
-                  className="py-2 px-4 bg-slate-900 hover:bg-slate-800 text-white font-medium rounded-lg transition-all duration-200"
-                >
-                  Make Another Payment
-                </button>
-              </div>
-            ) : flowState === "tapping" || flowState === "submitting" ? (
-              /* Processing State */
-              <div className="text-center py-8">
-                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-blue-100 mb-4">
-                  <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2 text-slate-900">
-                  {flowState === "tapping" ? "Tap Your NFC Chip" : "Processing Payment"}
-                </h3>
-                <p className="text-slate-600">{statusMessage}</p>
-              </div>
-            ) : (
-              /* Form */
-              <div className="space-y-6">
-                {/* Recipient Info */}
-                <div className="bg-slate-50 rounded-lg p-4">
-                  <p className="text-xs text-slate-600 mb-1">Recipient</p>
-                  <p className="font-mono text-sm text-slate-900 break-all">{RECIPIENT_ADDRESS}</p>
-                </div>
+            {/* Amount sent */}
+            <div className="flex items-center gap-2 px-4 py-2 bg-base-100 border border-success/30 rounded-full mb-4">
+              <Coins className="w-4 h-4 text-success" />
+              <span className="text-sm font-semibold text-base-content">
+                {DEFAULT_AMOUNT} {symbol || "tokens"} sent
+              </span>
+            </div>
 
-                {/* Token Address Input */}
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text font-semibold text-slate-700 flex items-center gap-2">
-                      <Coins className="w-4 h-4 text-slate-600" />
-                      Token Address
-                    </span>
-                  </label>
-                  <input
-                    type="text"
-                    value={tokenAddress}
-                    onChange={e => setTokenAddress(e.target.value)}
-                    placeholder="0x..."
-                    className="w-full px-4 py-3 border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition font-mono text-sm"
-                  />
-                  {symbol && decimals !== undefined && (
-                    <p className="text-sm text-slate-600 mt-1">
-                      Token: {symbol} ({decimals} decimals)
-                    </p>
-                  )}
-                </div>
+            {/* Transaction hash */}
+            {txHash && (
+              <a
+                href={`${targetNetwork.blockExplorers?.default.url}/tx/${txHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-primary hover:underline font-mono mb-6"
+              >
+                View transaction →
+              </a>
+            )}
 
-                {/* Amount Input */}
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text font-semibold text-slate-700">Amount</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={amount}
-                    onChange={e => setAmount(e.target.value)}
-                    placeholder="100.0"
-                    className="w-full px-4 py-3 border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition"
-                  />
-                </div>
-
-                {/* Current Nonce Info */}
-                {currentNonce !== undefined && (
-                  <div className="text-sm text-slate-500">Current nonce: {currentNonce.toString()}</div>
-                )}
-
-                {/* Error Message */}
-                {error && (
-                  <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
-                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-                    <span className="text-red-800 text-sm">{error}</span>
+            <button
+              onClick={handleReset}
+              className="px-6 py-2.5 bg-primary hover:bg-primary/90 text-primary-content font-medium rounded-full transition-all duration-200 shadow-md"
+            >
+              Pay Again
+            </button>
+          </div>
+        ) : isProcessing ? (
+          /* Processing States */
+          <div className="flex flex-col items-center justify-center mt-12">
+            {/* Progress Steps */}
+            <div className="flex items-center gap-2 mb-8">
+              {FLOW_STEPS.map((step, idx) => {
+                const currentIdx = getCurrentStepIndex();
+                const isComplete = idx < currentIdx;
+                const isCurrent = idx === currentIdx;
+                return (
+                  <div key={step.key} className="flex items-center">
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold transition-all ${
+                        isComplete
+                          ? "bg-success text-success-content"
+                          : isCurrent
+                            ? "bg-primary text-primary-content"
+                            : "bg-base-300 text-base-content/50"
+                      }`}
+                    >
+                      {isComplete ? <Check className="w-4 h-4" /> : idx + 1}
+                    </div>
+                    {idx < FLOW_STEPS.length - 1 && (
+                      <div className={`w-6 h-0.5 ${isComplete ? "bg-success" : "bg-base-300"}`} />
+                    )}
                   </div>
-                )}
+                );
+              })}
+            </div>
 
-                {/* Submit Button */}
-                <button
-                  onClick={handleSettle}
-                  disabled={!paymentsAddress || !isAddress(tokenAddress) || !amount}
-                  className="w-full py-3.5 px-6 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Nfc className="w-5 h-5" />
-                  Tap Chip to Pay
-                </button>
+            {/* Animated Processing Indicator */}
+            <div className="relative mb-6">
+              <div className="w-28 h-28 rounded-full bg-primary/20 flex items-center justify-center">
+                <Loader2 className="w-12 h-12 text-primary animate-spin" />
+              </div>
+              {flowState === "tapping" && (
+                <>
+                  <div className="nfc-pulse-ring" />
+                  <div className="nfc-pulse-ring" style={{ animationDelay: "0.5s" }} />
+                </>
+              )}
+            </div>
+
+            <h3 className="text-lg font-semibold mb-1 text-base-content">{statusMessage}</h3>
+            <p className="text-base-content/50 text-sm">
+              {flowState === "tapping" && "Hold device near chip"}
+              {flowState === "signing" && "Authorizing payment"}
+              {flowState === "submitting" && "Broadcasting to network"}
+              {flowState === "confirming" && "Waiting for confirmation"}
+            </p>
+          </div>
+        ) : (
+          /* Main Payment UI - Idle State */
+          <div className="flex flex-col items-center pt-6">
+            {/* Info Pills */}
+            <div className="flex flex-wrap justify-center gap-2 mb-6">
+              {/* Recipient Pill */}
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-base-100 border border-base-300 rounded-full">
+                <User className="w-3.5 h-3.5 text-primary" />
+                <span className="text-xs font-medium text-base-content">
+                  {RECIPIENT_ADDRESS.slice(0, 6)}...{RECIPIENT_ADDRESS.slice(-4)}
+                </span>
+              </div>
+
+              {/* Token Pill */}
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-base-100 border border-primary/50 rounded-full">
+                <Coins className="w-3.5 h-3.5 text-primary" />
+                <span className="text-xs font-medium text-base-content">{symbol || "Token"}</span>
+                <span className="w-1.5 h-1.5 bg-success rounded-full" />
+              </div>
+
+              {/* Gasless Pill */}
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-base-100 border border-base-300 rounded-full">
+                <Fuel className="w-3.5 h-3.5 text-success" />
+                <span className="text-xs font-medium text-success">Gasless</span>
+              </div>
+            </div>
+
+            {/* Amount Display */}
+            <div className="text-center mb-8">
+              <p className="text-6xl font-bold text-base-content mb-1">{DEFAULT_AMOUNT}</p>
+              <p className="text-base-content/50 text-sm">{symbol || "tokens"}</p>
+            </div>
+
+            {/* Error Message */}
+            {error && (
+              <div className="flex items-center gap-2 px-4 py-2.5 bg-error/10 border border-error/30 rounded-full mb-6 max-w-xs">
+                <AlertCircle className="w-4 h-4 text-error flex-shrink-0" />
+                <span className="text-error text-xs">{error}</span>
               </div>
             )}
-          </div>
-        </div>
 
-        {/* Help Text */}
-        {isConnected && flowState === "idle" && (
-          <div className="mt-4 text-center text-sm text-slate-600">
-            <p>Make sure you have approved the token first</p>
-            <p className="mt-1">Payment is gasless - relayer pays the gas</p>
+            {/* 3D NFC Chip Button */}
+            <div className="relative">
+              {/* Pulse rings */}
+              <div className="nfc-pulse-ring" />
+              <div className="nfc-pulse-ring" />
+              <div className="nfc-pulse-ring" />
+
+              <button
+                onClick={handleSettle}
+                disabled={!paymentsAddress}
+                className="nfc-chip-btn flex flex-col items-center justify-center text-primary-content disabled:opacity-50"
+              >
+                <Nfc className="w-12 h-12 mb-1" />
+                <span className="text-sm font-bold">Tap to Pay</span>
+              </button>
+            </div>
           </div>
         )}
       </div>
