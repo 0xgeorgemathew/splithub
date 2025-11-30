@@ -13,6 +13,9 @@ import { type FriendBalance, supabase } from "~~/lib/supabase";
  * Negative balance = you owe friend
  */
 export async function getFriendBalances(userWallet: string): Promise<FriendBalance[]> {
+  // Normalize wallet address to lowercase for consistency
+  const normalizedUserWallet = userWallet.toLowerCase();
+
   // Step 1: Get all expenses where user is the creator
   // Other participants owe the user
   const { data: asCreatorData, error: asCreatorError } = await supabase
@@ -27,7 +30,7 @@ export async function getFriendBalances(userWallet: string): Promise<FriendBalan
       )
     `,
     )
-    .eq("expense.creator_wallet", userWallet)
+    .eq("expense.creator_wallet", normalizedUserWallet)
     .eq("is_creator", false)
     .eq("expense.status", "active");
 
@@ -49,7 +52,7 @@ export async function getFriendBalances(userWallet: string): Promise<FriendBalan
       )
     `,
     )
-    .eq("wallet_address", userWallet)
+    .eq("wallet_address", normalizedUserWallet)
     .eq("is_creator", false)
     .eq("expense.status", "active");
 
@@ -62,7 +65,7 @@ export async function getFriendBalances(userWallet: string): Promise<FriendBalan
     .from("settlements")
     .select("*")
     .eq("status", "completed")
-    .or(`payer_wallet.eq.${userWallet},payee_wallet.eq.${userWallet}`);
+    .or(`payer_wallet.eq.${normalizedUserWallet},payee_wallet.eq.${normalizedUserWallet}`);
 
   if (settlementsError) {
     throw new Error(`Failed to fetch settlements: ${settlementsError.message}`);
@@ -88,10 +91,10 @@ export async function getFriendBalances(userWallet: string): Promise<FriendBalan
   // Adjust for settlements
   settlementsData?.forEach(settlement => {
     const amount = Number(settlement.amount);
-    if (settlement.payer_wallet === userWallet) {
+    if (settlement.payer_wallet === normalizedUserWallet) {
       // User paid someone → reduces what user owes
       balances[settlement.payee_wallet] = (balances[settlement.payee_wallet] || 0) - amount;
-    } else if (settlement.payee_wallet === userWallet) {
+    } else if (settlement.payee_wallet === normalizedUserWallet) {
       // Someone paid user → reduces what they owe user
       balances[settlement.payer_wallet] = (balances[settlement.payer_wallet] || 0) - amount;
     }
