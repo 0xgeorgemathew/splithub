@@ -84,7 +84,7 @@ export const FriendBalancesList = ({ userWallet }: FriendBalancesListProps) => {
   return (
     <div className="min-h-screen bg-[#111111] flex flex-col">
       {/* Main content area - scrollable */}
-      <div className="flex-1 overflow-y-auto pb-24">
+      <div className="flex-1 overflow-y-auto pb-40">
         <div className="px-5 py-6">
           {/* Overall balance summary */}
           <div className="mb-6">
@@ -156,16 +156,14 @@ export const FriendBalancesList = ({ userWallet }: FriendBalancesListProps) => {
         </div>
       </div>
 
-      {/* Fixed Add Expense button at bottom */}
-      <div className="fixed bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-[#111111] via-[#111111] to-transparent pointer-events-none">
-        <button
-          onClick={() => router.push("/expense/add")}
-          className="w-full h-14 bg-primary hover:bg-primary/90 text-primary-content font-semibold text-base rounded-xl shadow-lg hover:shadow-primary/20 hover:shadow-xl transition-all flex items-center justify-center gap-2 pointer-events-auto"
-        >
-          <Plus className="w-5 h-5" />
-          <span>Add Expense</span>
-        </button>
-      </div>
+      {/* Fixed Add Expense button at bottom right - positioned above bottom nav */}
+      <button
+        onClick={() => router.push("/expense/add")}
+        className="fixed bottom-24 right-4 px-5 py-3 bg-primary hover:bg-primary/90 text-primary-content rounded-full shadow-lg hover:shadow-xl flex items-center gap-2 transition-all duration-200 hover:scale-105 z-40 font-semibold"
+      >
+        <Plus className="w-5 h-5" />
+        <span>Add Expense</span>
+      </button>
     </div>
   );
 };
