@@ -1,16 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "~~/lib/supabase";
 
-interface RouteParams {
-  params: {
-    id: string;
-  };
-}
-
 // GET /api/payment-requests/[id] - Fetch a payment request by ID
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     if (!id) {
       return NextResponse.json({ error: "Missing request ID" }, { status: 400 });
@@ -38,9 +32,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 }
 
 // PATCH /api/payment-requests/[id] - Update a payment request (mark as completed)
-export async function PATCH(request: NextRequest, { params }: RouteParams) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     const { status, tx_hash } = body;
 
