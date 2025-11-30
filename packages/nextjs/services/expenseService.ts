@@ -1,3 +1,4 @@
+import { ensureUserExists } from "./userService";
 import { type Expense, type ExpenseParticipant, supabase } from "~~/lib/supabase";
 
 export interface CreateExpenseParams {
@@ -19,12 +20,16 @@ export interface CreateExpenseResult {
 export async function createExpense(params: CreateExpenseParams): Promise<CreateExpenseResult> {
   const { creatorWallet, description, totalAmount, tokenAddress, participantWallets } = params;
 
+  // Normalize all wallet addresses to lowercase for consistency
+  const normalizedCreatorWallet = creatorWallet.toLowerCase();
+  const normalizedParticipantWallets = participantWallets.map(w => w.toLowerCase());
+
   // Validate
-  if (!participantWallets.includes(creatorWallet)) {
+  if (!normalizedParticipantWallets.includes(normalizedCreatorWallet)) {
     throw new Error("Creator must be included in participants");
   }
 
-  if (participantWallets.length === 0) {
+  if (normalizedParticipantWallets.length === 0) {
     throw new Error("Must have at least one participant");
   }
 
@@ -32,15 +37,21 @@ export async function createExpense(params: CreateExpenseParams): Promise<Create
     throw new Error("Total amount must be greater than 0");
   }
 
+  // Ensure all participants exist in the users table
+  // This prevents foreign key constraint violations
+  for (const wallet of normalizedParticipantWallets) {
+    await ensureUserExists(wallet);
+  }
+
   // Calculate equal share per person
-  const participantCount = participantWallets.length;
+  const participantCount = normalizedParticipantWallets.length;
   const shareAmount = totalAmount / participantCount;
 
   // 1. Insert expense
   const { data: expenseData, error: expenseError } = await supabase
     .from("expense")
     .insert({
-      creator_wallet: creatorWallet,
+      creator_wallet: normalizedCreatorWallet,
       description,
       total_amount: totalAmount,
       status: "active",
@@ -56,11 +67,11 @@ export async function createExpense(params: CreateExpenseParams): Promise<Create
   const expense = expenseData as Expense;
 
   // 2. Insert participants
-  const participantInserts = participantWallets.map(wallet => ({
+  const participantInserts = normalizedParticipantWallets.map(wallet => ({
     expense_id: expense.id,
     wallet_address: wallet,
     share_amount: shareAmount,
-    is_creator: wallet === creatorWallet,
+    is_creator: wallet === normalizedCreatorWallet,
   }));
 
   const { data: participantsData, error: participantsError } = await supabase
