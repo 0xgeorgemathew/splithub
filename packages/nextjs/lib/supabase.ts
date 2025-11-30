@@ -32,3 +32,45 @@ export type PaymentRequest = {
   created_at: string;
   completed_at?: string;
 };
+
+// Expense table type
+export type Expense = {
+  id: number;
+  created_at: string;
+  creator_wallet: string;
+  description: string;
+  total_amount: number;
+  status: string;
+  token_address: string;
+};
+
+// Expense participant table type
+export type ExpenseParticipant = {
+  id: number;
+  expense_id: number;
+  wallet_address: string;
+  share_amount: number;
+  is_creator: boolean;
+  created_at: string;
+};
+
+// Settlement table type
+export type Settlement = {
+  id: number;
+  payer_wallet: string;
+  payee_wallet: string;
+  amount: number;
+  token_address: string;
+  tx_hash: string | null;
+  status: "pending" | "completed" | "failed";
+  created_at: string;
+  completed_at: string | null;
+};
+
+// Friend balance type (computed)
+export type FriendBalance = {
+  friend_wallet: string;
+  friend_name: string;
+  friend_email: string;
+  net_balance: number;
+};
