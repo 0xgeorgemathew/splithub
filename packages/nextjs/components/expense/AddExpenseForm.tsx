@@ -8,12 +8,16 @@ import { FriendSelector } from "./FriendSelector";
 import { SplitSummary } from "./SplitSummary";
 import { useExpenseForm } from "./hooks/useExpenseForm";
 import { CheckCircle2, FileText, Plus } from "lucide-react";
+import { useAccount } from "wagmi";
+import { createExpense } from "~~/services/expenseService";
 
 export const AddExpenseForm = () => {
   const router = useRouter();
+  const { address: userWallet } = useAccount();
   const [isSelectorOpen, setIsSelectorOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const {
     description,
@@ -28,23 +32,33 @@ export const AddExpenseForm = () => {
   } = useExpenseForm();
 
   const handleSubmit = async () => {
-    if (!isValid) return;
+    if (!isValid || !userWallet) return;
 
     setIsSubmitting(true);
+    setError(null);
 
     try {
-      // TODO: Integrate with smart contract to create expense
-      // For now, just simulate a delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Get all participant wallet addresses (selected friends + user)
+      const participantWallets = [userWallet, ...selectedFriends.map(f => f.address)];
+
+      // Create expense in database
+      await createExpense({
+        creatorWallet: userWallet,
+        description,
+        totalAmount: parseFloat(amount),
+        tokenAddress: "0x036CbD53842c5426634e7929541eC2318f3dCF7e", // USDC on Base Sepolia
+        participantWallets,
+      });
 
       setIsSuccess(true);
 
-      // Navigate back after success
+      // Navigate back to home after success
       setTimeout(() => {
         router.push("/");
       }, 1500);
-    } catch (error) {
-      console.error("Error creating expense:", error);
+    } catch (err) {
+      console.error("Error creating expense:", err);
+      setError(err instanceof Error ? err.message : "Failed to create expense");
       setIsSubmitting(false);
     }
   };
@@ -115,11 +129,18 @@ export const AddExpenseForm = () => {
           <SplitSummary totalAmount={amount} participantCount={participantCount} currency="USDC" />
         )}
 
+        {/* Error Message */}
+        {error && (
+          <div className="px-3 py-2 bg-error/10 border border-error/30 rounded-lg">
+            <p className="text-sm text-error">{error}</p>
+          </div>
+        )}
+
         {/* Submit Button */}
         <div className="pt-1">
           <button
             onClick={handleSubmit}
-            disabled={!isValid || isSubmitting}
+            disabled={!isValid || isSubmitting || !userWallet}
             className="w-full h-12 px-6 bg-primary hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed text-primary-content font-semibold text-base rounded-xl shadow-lg hover:shadow-primary/20 hover:shadow-xl transition-all disabled:shadow-none"
           >
             {isSubmitting ? (
