@@ -1,6 +1,7 @@
 "use client";
 
-import { Cpu } from "lucide-react";
+import Link from "next/link";
+import { Cpu, Plus } from "lucide-react";
 import { useAccount } from "wagmi";
 import { useScaffoldReadContract } from "~~/hooks/scaffold-eth";
 
@@ -51,6 +52,18 @@ export default function Home() {
         <div className="flex flex-col items-center justify-center mt-20">
           <p className="text-base-content/50 text-center">Connect your wallet to get started</p>
         </div>
+      )}
+
+      {/* Add Expense Button */}
+      {isConnected && (
+        <Link
+          href="/expense/add"
+          className="fixed bottom-28 right-4 px-5 py-3 bg-primary hover:bg-primary/90 text-primary-content rounded-full shadow-lg hover:shadow-xl flex items-center gap-2 transition-all duration-200 hover:scale-105 z-40 font-semibold"
+          aria-label="Add expense"
+        >
+          <Plus className="w-5 h-5" />
+          <span>Add Expense</span>
+        </Link>
       )}
     </div>
   );
