@@ -18,11 +18,11 @@
 @plugin "daisyui/theme" {
   name: "light";
 
-  --color-primary: #ffa31a;
+  --color-primary: #f2a900;
   --color-primary-content: #1b1b1b;
   --color-secondary: #292929;
   --color-secondary-content: #ffffff;
-  --color-accent: #ffa31a;
+  --color-accent: #f2a900;
   --color-accent-content: #1b1b1b;
   --color-neutral: #292929;
   --color-neutral-content: #ffffff;
@@ -30,9 +30,9 @@
   --color-base-200: #292929;
   --color-base-300: #3a3a3a;
   --color-base-content: #ffffff;
-  --color-info: #ffa31a;
+  --color-info: #f2a900;
   --color-success: #22c55e;
-  --color-warning: #ffa31a;
+  --color-warning: #f59e0b;
   --color-error: #ef4444;
 
   --radius-field: 9999rem;
@@ -43,11 +43,11 @@
 @plugin "daisyui/theme" {
   name: "dark";
 
-  --color-primary: #ffa31a;
+  --color-primary: #f2a900;
   --color-primary-content: #1b1b1b;
   --color-secondary: #292929;
   --color-secondary-content: #ffffff;
-  --color-accent: #ffa31a;
+  --color-accent: #f2a900;
   --color-accent-content: #1b1b1b;
   --color-neutral: #808080;
   --color-neutral-content: #ffffff;
@@ -55,9 +55,9 @@
   --color-base-200: #292929;
   --color-base-300: #3a3a3a;
   --color-base-content: #ffffff;
-  --color-info: #ffa31a;
+  --color-info: #f2a900;
   --color-success: #22c55e;
-  --color-warning: #ffa31a;
+  --color-warning: #f59e0b;
   --color-error: #ef4444;
 
   --radius-field: 9999rem;
@@ -128,9 +128,9 @@
   width: 160px;
   height: 160px;
   border-radius: 50%;
-  background: linear-gradient(145deg, #ffa31a, #e6921a);
+  background: linear-gradient(145deg, #f2a900, #d99400);
   box-shadow:
-    0 8px 32px rgba(255, 163, 26, 0.4),
+    0 8px 32px rgba(242, 169, 0, 0.4),
     0 4px 16px rgba(0, 0, 0, 0.3),
     inset 0 2px 4px rgba(255, 255, 255, 0.2),
     inset 0 -2px 4px rgba(0, 0, 0, 0.2);
@@ -159,7 +159,7 @@
 
 .nfc-chip-btn:hover:not(:disabled) {
   box-shadow:
-    0 12px 40px rgba(255, 163, 26, 0.5),
+    0 12px 40px rgba(242, 169, 0, 0.5),
     0 6px 20px rgba(0, 0, 0, 0.35),
     inset 0 2px 4px rgba(255, 255, 255, 0.2),
     inset 0 -2px 4px rgba(0, 0, 0, 0.2);
@@ -168,7 +168,7 @@
 
 .nfc-chip-btn:active:not(:disabled) {
   box-shadow:
-    0 4px 16px rgba(255, 163, 26, 0.3),
+    0 4px 16px rgba(242, 169, 0, 0.3),
     0 2px 8px rgba(0, 0, 0, 0.25),
     inset 0 2px 8px rgba(0, 0, 0, 0.2);
   transform: translateY(1px) scale(0.98);
@@ -184,7 +184,7 @@
   position: absolute;
   inset: -12px;
   border-radius: 50%;
-  border: 2px solid rgba(255, 163, 26, 0.6);
+  border: 2px solid rgba(242, 169, 0, 0.6);
   animation: nfc-pulse 2s ease-out infinite;
 }
 
