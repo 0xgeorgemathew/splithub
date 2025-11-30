@@ -30,18 +30,18 @@ export const AmountInput = ({ value, onChange, currency = "USDC" }: AmountInputP
 
   return (
     <div className="w-full">
-      <div className="flex items-center justify-between mb-3.5">
-        <label className="text-base font-medium text-base-content/70 flex items-center gap-2">
-          <Coins className="w-5 h-5 text-primary/80" />
+      <div className="flex items-center justify-between mb-2">
+        <label className="text-sm font-medium text-base-content/70 flex items-center gap-1.5">
+          <Coins className="w-4 h-4 text-primary/80" />
           <span>Amount</span>
         </label>
-        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-base-100 rounded-full border border-base-300/50">
+        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-base-100 rounded-full border border-base-300/50">
           <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
           <span className="text-xs font-medium text-base-content/60">{currency}</span>
         </div>
       </div>
 
-      <div className="bg-base-100 rounded-[15px] py-10 px-6 flex items-baseline justify-center gap-4 shadow-sm">
+      <div className="bg-base-100 rounded-xl py-3 px-4 flex items-baseline justify-center gap-2 shadow-sm overflow-hidden">
         <input
           ref={inputRef}
           type="text"
@@ -50,10 +50,10 @@ export const AmountInput = ({ value, onChange, currency = "USDC" }: AmountInputP
           onChange={handleChange}
           onFocus={handleFocus}
           placeholder="0.00"
-          className="flex-1 bg-transparent text-6xl font-bold text-base-content text-center focus:outline-none placeholder:text-base-content/15"
+          className="w-32 bg-transparent text-4xl font-bold text-base-content text-right focus:outline-none placeholder:text-base-content/15"
           style={{ caretColor: "#f2a900" }}
         />
-        <span className="text-4xl font-bold text-primary">{currency}</span>
+        <span className="text-2xl font-bold text-primary flex-shrink-0">{currency}</span>
       </div>
     </div>
   );
