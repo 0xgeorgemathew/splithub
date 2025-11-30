@@ -47,12 +47,6 @@ export const FriendBalancesList = ({ userWallet }: FriendBalancesListProps) => {
     return Math.abs(amount).toFixed(2);
   };
 
-  const getBalanceColor = (balance: number): string => {
-    if (balance > 0) return "text-success"; // Green - they owe you
-    if (balance < 0) return "text-error"; // Red - you owe them
-    return "text-base-content/50"; // Gray - settled
-  };
-
   const getBalanceText = (balance: number): string => {
     if (balance > 0) return "owes you";
     if (balance < 0) return "you owe";
@@ -82,84 +76,96 @@ export const FriendBalancesList = ({ userWallet }: FriendBalancesListProps) => {
   }
 
   return (
-    <div className="min-h-screen bg-[#111111] flex flex-col">
+    <div className="min-h-screen bg-[#0E0E0E] flex flex-col">
       {/* Main content area - scrollable */}
-      <div className="flex-1 overflow-y-auto pb-40">
-        <div className="px-5 py-6">
-          {/* Overall balance summary */}
-          <div className="mb-6">
-            <p className="text-sm font-medium text-base-content/60 mb-1">Overall,</p>
+      <div className="flex-1 overflow-y-auto pb-32">
+        {/* Clean Summary Section - No card */}
+        <div className="pt-4 px-4">
+          <p className="text-[13px] font-medium text-white/45 mb-2">Total balance</p>
+          <div className="flex items-center justify-between">
             {overallBalance === 0 ? (
-              <p className="text-[22px] font-semibold text-base-content/70">you are settled up</p>
+              <p className="text-[21px] font-semibold text-white/60">$0.00 USDC</p>
             ) : (
-              <p className="text-[22px] font-semibold">
-                {overallBalance > 0 ? (
-                  <>
-                    you are owed <span className="text-[#F3B53D]">${formatAmount(overallBalance)} USDC</span>
-                  </>
-                ) : (
-                  <>
-                    you owe <span className="text-[#F3B53D]">${formatAmount(overallBalance)} USDC</span>
-                  </>
-                )}
-              </p>
+              <>
+                <p className="text-[21px] font-semibold text-[#F3B53D]">${formatAmount(overallBalance)} USDC</p>
+                <div
+                  className={`h-[23px] px-2.5 rounded-xl flex items-center ${
+                    overallBalance > 0 ? "bg-[#49D792]/15" : "bg-[#FF6A4A]/15"
+                  }`}
+                >
+                  <span
+                    className={`text-[12px] font-medium ${overallBalance > 0 ? "text-[#49D792]" : "text-[#FF6A4A]"}`}
+                  >
+                    {overallBalance > 0 ? "You're owed" : "You owe"}
+                  </span>
+                </div>
+              </>
             )}
           </div>
+        </div>
 
-          {/* Friend balances list */}
-          {balances.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16">
-              <div className="w-16 h-16 rounded-full bg-base-100 flex items-center justify-center mb-4">
-                <Plus className="w-8 h-8 text-base-content/30" />
-              </div>
-              <p className="text-base-content/50 text-sm text-center mb-2">No expenses yet</p>
-              <p className="text-base-content/40 text-xs text-center max-w-xs">
-                Create your first expense to split bills with friends
-              </p>
+        {/* Clean Friend List */}
+        {balances.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-3">
+              <Plus className="w-6 h-6 text-white/20" />
             </div>
-          ) : (
-            <div className="space-y-2">
-              {balances.map(balance => (
+            <p className="text-white/50 text-sm text-center mb-1">No expenses yet</p>
+            <p className="text-white/30 text-xs text-center max-w-xs">Create your first expense to split bills</p>
+          </div>
+        ) : (
+          <div className="mt-6">
+            {balances.map((balance, index) => (
+              <div key={balance.friend_wallet}>
                 <div
-                  key={balance.friend_wallet}
-                  className="flex items-center gap-3 px-3 py-3.5 bg-base-100 border border-base-300/40 rounded-xl hover:border-base-300 transition-colors cursor-pointer"
+                  className="flex items-center px-4 py-3 hover:bg-white/[0.02] active:bg-white/[0.04] transition-colors cursor-pointer h-[54px]"
                   onClick={() => {
                     // TODO: Navigate to friend detail page
                     console.log("View details for", balance.friend_name);
                   }}
                 >
-                  {/* Avatar */}
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center flex-shrink-0">
-                    <span className="text-base font-bold text-primary">
+                  {/* Avatar - 32px */}
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#F3B53D]/20 to-[#F3B53D]/5 flex items-center justify-center flex-shrink-0">
+                    <span className="text-[13px] font-semibold text-[#F3B53D]">
                       {balance.friend_name.charAt(0).toUpperCase()}
                     </span>
                   </div>
 
                   {/* Name */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-base font-medium text-base-content truncate">{balance.friend_name}</p>
+                  <div className="flex-1 ml-3 min-w-0">
+                    <p className="text-[15px] font-medium text-white truncate">{balance.friend_name}</p>
                   </div>
 
-                  {/* Balance */}
-                  <div className="flex flex-col items-end flex-shrink-0">
-                    <p className={`text-[13px] font-medium ${getBalanceColor(balance.net_balance)}`}>
+                  {/* Right side - Status + Amount on one line */}
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <span
+                      className={`text-[13px] font-medium ${
+                        balance.net_balance > 0 ? "text-[#49D792]" : "text-[#FF6A4A]"
+                      }`}
+                    >
                       {getBalanceText(balance.net_balance)}
-                    </p>
-                    <p className={`text-base font-semibold ${getBalanceColor(balance.net_balance)}`}>
+                    </span>
+                    <span
+                      className={`text-[15px] font-semibold ${
+                        balance.net_balance > 0 ? "text-[#49D792]" : "text-[#FF6A4A]"
+                      }`}
+                    >
                       ${formatAmount(balance.net_balance)}
-                    </p>
+                    </span>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+                {/* Clean divider */}
+                {index < balances.length - 1 && <div className="mx-4 h-px bg-white/[0.05]" />}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Fixed Add Expense button at bottom right - positioned above bottom nav */}
       <button
         onClick={() => router.push("/expense/add")}
-        className="fixed bottom-24 right-4 px-5 py-3 bg-primary hover:bg-primary/90 text-primary-content rounded-full shadow-lg hover:shadow-xl flex items-center gap-2 transition-all duration-200 hover:scale-105 z-40 font-semibold"
+        className="fixed bottom-24 right-4 px-5 py-3 bg-[#F3B53D] hover:bg-[#F3B53D]/90 text-black rounded-full shadow-lg hover:shadow-xl flex items-center gap-2 transition-all duration-200 hover:scale-105 z-40 font-semibold"
       >
         <Plus className="w-5 h-5" />
         <span>Add Expense</span>
