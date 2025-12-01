@@ -101,7 +101,8 @@ export async function getFriendBalances(userWallet: string): Promise<FriendBalan
   });
 
   // Step 5: Fetch user details for each friend and format result
-  const friendWallets = Object.keys(balances).filter(wallet => Math.abs(balances[wallet]) > 0.000001); // Filter out ~0
+  // Filter out balances less than $0.01 (1 cent) to hide settled/zero balances
+  const friendWallets = Object.keys(balances).filter(wallet => Math.abs(balances[wallet]) > 0.01);
 
   if (friendWallets.length === 0) {
     return [];
