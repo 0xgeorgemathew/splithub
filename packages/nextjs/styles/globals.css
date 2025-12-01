@@ -289,3 +289,2050 @@
 .success-glow {
   animation: success-glow 2s ease-in-out infinite;
 }
+
+/* POS Terminal Styles */
+.pos-terminal {
+  background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
+  border: 2px solid rgba(242, 169, 0, 0.2);
+  border-radius: 16px;
+  box-shadow:
+    0 0 20px rgba(242, 169, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.pos-display {
+  background: linear-gradient(180deg, #0a0a0a 0%, #111111 100%);
+  border: 1px solid #2a2a2a;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.receipt-line {
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.15);
+}
+
+/* Smaller NFC Button for POS Terminal */
+.nfc-chip-btn-sm {
+  position: relative;
+  width: 100%;
+  max-width: 200px;
+  padding: 14px 24px;
+  border-radius: 9999px;
+  background: linear-gradient(145deg, #f2a900, #d99400);
+  box-shadow:
+    0 6px 24px rgba(242, 169, 0, 0.35),
+    0 3px 12px rgba(0, 0, 0, 0.25),
+    inset 0 1px 2px rgba(255, 255, 255, 0.2),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.15s ease-out;
+  cursor: pointer;
+}
+
+.nfc-chip-btn-sm:hover:not(:disabled) {
+  box-shadow:
+    0 8px 32px rgba(242, 169, 0, 0.45),
+    0 4px 16px rgba(0, 0, 0, 0.3),
+    inset 0 1px 2px rgba(255, 255, 255, 0.2),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+}
+
+.nfc-chip-btn-sm:active:not(:disabled) {
+  box-shadow:
+    0 3px 12px rgba(242, 169, 0, 0.25),
+    0 1px 6px rgba(0, 0, 0, 0.2),
+    inset 0 1px 4px rgba(0, 0, 0, 0.15);
+  transform: translateY(1px);
+}
+
+.nfc-chip-btn-sm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Smaller Pulse Ring */
+.nfc-pulse-ring-sm {
+  position: absolute;
+  inset: -8px;
+  border-radius: 9999px;
+  border: 2px solid rgba(242, 169, 0, 0.5);
+  animation: nfc-pulse 2s ease-out infinite;
+  pointer-events: none;
+}
+
+.nfc-pulse-ring-sm:nth-child(2) {
+  animation-delay: 0.5s;
+}
+
+/* Activity Stack Styles */
+.activity-stack {
+  perspective: 1000px;
+  cursor: grab;
+  user-select: none;
+}
+
+.activity-stack:active {
+  cursor: grabbing;
+}
+
+.stack-card {
+  will-change: transform, opacity;
+  transition:
+    transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    opacity 0.3s ease;
+  backface-visibility: hidden;
+}
+
+.stack-card.dragging {
+  transition: none;
+  cursor: grabbing;
+}
+
+@keyframes card-enter {
+  from {
+    transform: scale(0.8) translateY(50px);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+.card-enter {
+  animation: card-enter 0.3s ease-out forwards;
+}
+
+/* Access Granted Flash Animation */
+@keyframes access-flash {
+  0% {
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Glowing Border Pulse for Activity Tap Zone */
+@keyframes glow-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 20px currentColor;
+  }
+  50% {
+    box-shadow:
+      0 0 40px currentColor,
+      0 0 60px currentColor;
+  }
+}
+
+.glow-pulse {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+/* Scan Line Effect for Payment Success */
+@keyframes scan-line-move {
+  0% {
+    top: -2px;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
+}
+
+.scan-line-effect {
+  animation: scan-line-move 3s linear infinite;
+}
+
+/* Access Granted Overlay */
+.access-granted-overlay {
+  backdrop-filter: blur(8px);
+}
+
+/* ========================================
+   ENHANCED UI STYLES - Credits Flow
+   ======================================== */
+
+/* 3D Metallic Gold NFC Terminal Button - True POS Style */
+.nfc-terminal-btn {
+  position: relative;
+  width: 144px;
+  height: 144px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #ffc82c 0%, #f2a900 30%, #d99400 60%, #c08000 100%);
+  box-shadow:
+    /* Outer metallic rim */
+    0 0 0 3px rgba(180, 140, 60, 0.6),
+    0 0 0 6px rgba(100, 80, 40, 0.4),
+    /* Outer glow */ 0 0 30px rgba(242, 169, 0, 0.3),
+    0 0 60px rgba(242, 169, 0, 0.15),
+    /* 3D depth shadow */ 0 10px 30px rgba(0, 0, 0, 0.5),
+    0 4px 12px rgba(0, 0, 0, 0.3),
+    /* Inner lighting */ inset 0 3px 6px rgba(255, 255, 255, 0.4),
+    inset 0 -4px 10px rgba(0, 0, 0, 0.35);
+  border: none;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+/* Outer metallic ring bezel */
+.nfc-terminal-btn::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.15) 0%,
+    rgba(180, 140, 60, 0.3) 30%,
+    rgba(120, 90, 40, 0.4) 70%,
+    rgba(80, 60, 30, 0.5) 100%
+  );
+  border: 2px solid rgba(255, 220, 150, 0.3);
+  box-shadow:
+    inset 0 2px 4px rgba(255, 255, 255, 0.1),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Inner recessed center with subtle shine */
+.nfc-terminal-btn::after {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border-radius: 50%;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    transparent 30%,
+    transparent 70%,
+    rgba(0, 0, 0, 0.08) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  pointer-events: none;
+}
+
+.nfc-terminal-btn:hover:not(:disabled) {
+  box-shadow:
+    0 0 0 3px rgba(200, 160, 80, 0.7),
+    0 0 0 6px rgba(120, 100, 60, 0.5),
+    0 0 40px rgba(242, 169, 0, 0.45),
+    0 0 80px rgba(242, 169, 0, 0.2),
+    0 14px 40px rgba(0, 0, 0, 0.55),
+    0 6px 16px rgba(0, 0, 0, 0.35),
+    inset 0 3px 6px rgba(255, 255, 255, 0.45),
+    inset 0 -4px 10px rgba(0, 0, 0, 0.35);
+  transform: translateY(-3px);
+}
+
+.nfc-terminal-btn:active:not(:disabled) {
+  box-shadow:
+    0 0 0 3px rgba(160, 120, 50, 0.5),
+    0 0 0 5px rgba(80, 60, 30, 0.3),
+    0 0 20px rgba(242, 169, 0, 0.25),
+    0 4px 16px rgba(0, 0, 0, 0.4),
+    0 2px 8px rgba(0, 0, 0, 0.25),
+    inset 0 4px 8px rgba(0, 0, 0, 0.3);
+  transform: translateY(1px) scale(0.97);
+}
+
+.nfc-terminal-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(0.3);
+}
+
+/* NFC Terminal Button Pulse Rings - Smooth scaling, no clipping */
+.nfc-terminal-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid rgba(242, 169, 0, 0.4);
+  animation: nfc-ring-pulse 2.4s ease-out infinite;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.nfc-terminal-ring:nth-child(1) {
+  inset: -12px;
+  animation-delay: 0s;
+}
+
+.nfc-terminal-ring:nth-child(2) {
+  inset: -12px;
+  animation-delay: 0.8s;
+}
+
+.nfc-terminal-ring:nth-child(3) {
+  inset: -12px;
+  animation-delay: 1.6s;
+}
+
+@keyframes nfc-ring-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+    border-color: rgba(242, 169, 0, 0.5);
+  }
+  50% {
+    opacity: 0.3;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+    border-color: rgba(242, 169, 0, 0.2);
+  }
+}
+
+/* Buy/Spend Toggle Styles - iOS Sliding Indicator */
+.credits-toggle-container {
+  position: relative;
+  background: rgba(40, 40, 40, 0.6);
+  box-shadow:
+    inset 0 2px 6px rgba(0, 0, 0, 0.4),
+    inset 0 1px 2px rgba(0, 0, 0, 0.3),
+    0 1px 0 rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Sliding gold pill indicator */
+.credits-toggle-slider {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  width: calc(50% - 4px);
+  background: linear-gradient(145deg, #f5b800 0%, #e5a800 50%, #d49500 100%);
+  border-radius: 9999px;
+  box-shadow:
+    0 2px 8px rgba(242, 169, 0, 0.5),
+    0 1px 3px rgba(0, 0, 0, 0.3),
+    inset 0 1px 1px rgba(255, 255, 255, 0.25),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.15);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 0;
+}
+
+.credits-toggle-slider[data-position="buy"] {
+  transform: translateX(4px);
+}
+
+.credits-toggle-slider[data-position="spend"] {
+  transform: translateX(calc(100% + 4px));
+}
+
+.credits-toggle-btn {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.5);
+  transition: color 0.3s ease;
+}
+
+.credits-toggle-btn-active {
+  color: #1b1b1b;
+  font-weight: 700;
+}
+
+.credits-toggle-btn:not(.credits-toggle-btn-active):hover {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Credit Amount Option Buttons - Equal 72x72 sizing */
+.credit-option-btn {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
+  background: rgba(50, 50, 50, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.credit-option-btn:hover:not(.credit-option-active) {
+  background: rgba(60, 60, 60, 0.7);
+  border-color: rgba(255, 255, 255, 0.12);
+  transform: translateY(-2px);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.credit-option-active {
+  background: linear-gradient(145deg, rgba(242, 169, 0, 0.18), rgba(242, 169, 0, 0.08));
+  border-color: rgba(242, 169, 0, 0.4);
+  box-shadow:
+    0 0 0 1px rgba(242, 169, 0, 0.2),
+    0 0 24px rgba(242, 169, 0, 0.2),
+    0 4px 16px rgba(0, 0, 0, 0.25),
+    inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  transform: scale(1.02);
+}
+
+/* Soft circular glow on active - not overpowering */
+.credit-option-active::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 26px;
+  background: radial-gradient(circle, rgba(242, 169, 0, 0.12) 0%, transparent 70%);
+  pointer-events: none;
+  animation: option-glow-soft 2.5s ease-in-out infinite;
+}
+
+@keyframes option-glow-soft {
+  0%,
+  100% {
+    opacity: 0.6;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Receipt Details Card - Improved contrast and padding */
+.receipt-details-card {
+  background: rgba(45, 45, 45, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(8px);
+}
+
+.receipt-details-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 40px;
+  padding: 10px 0;
+}
+
+.receipt-details-row span:last-child {
+  text-align: right;
+}
+
+.receipt-details-divider {
+  border: none;
+  border-top: 1px dashed rgba(255, 255, 255, 0.08);
+  margin: 2px 0;
+}
+
+/* ========================================
+   POS RECEIPT STYLES
+   ======================================== */
+
+.pos-receipt-overlay {
+  background: rgba(0, 0, 0, 0.92);
+  backdrop-filter: blur(8px);
+}
+
+.receipt-paper {
+  background: linear-gradient(180deg, #fdfdf9 0%, #f8f8f3 50%, #f4f4ef 100%);
+  font-family: "Courier New", Courier, monospace;
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.5),
+    0 4px 16px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(0, 0, 0, 0.08);
+  width: 300px;
+  border-radius: 0 0 6px 6px;
+  position: relative;
+  transform-origin: top center;
+}
+
+/* Print reveal animation - paper unrolls from top */
+.receipt-print-reveal {
+  animation: receipt-print 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes receipt-print {
+  0% {
+    clip-path: inset(0 0 100% 0);
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  10% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    clip-path: inset(0 0 0% 0);
+  }
+}
+
+/* Torn/perforated top edge - enhanced */
+.receipt-torn-edge {
+  position: absolute;
+  top: -10px;
+  left: 0;
+  right: 0;
+  height: 10px;
+  background: repeating-linear-gradient(90deg, transparent 0px, transparent 4px, #fdfdf9 4px, #fdfdf9 8px);
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.1));
+}
+
+/* Paper texture overlay - enhanced */
+.receipt-paper::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  opacity: 0.04;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+/* Subtle thermal print effect - slight horizontal lines */
+.receipt-paper::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0px,
+    transparent 2px,
+    rgba(0, 0, 0, 0.01) 2px,
+    rgba(0, 0, 0, 0.01) 3px
+  );
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.receipt-text {
+  color: #1a1a1a;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.receipt-header {
+  font-weight: bold;
+  font-size: 14px;
+  letter-spacing: 2px;
+}
+
+.receipt-divider {
+  border: none;
+  border-top: 1px dashed #ccc;
+  margin: 8px 0;
+}
+
+.receipt-line {
+  opacity: 0;
+  transform: translateY(-2px);
+}
+
+.receipt-line-animate {
+  animation: receipt-line-appear 0.12s ease-out forwards;
+}
+
+@keyframes receipt-line-appear {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Receipt fade out */
+@keyframes receipt-fade-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+}
+
+.receipt-fade-out {
+  animation: receipt-fade-out 0.4s ease-in forwards;
+}
+
+/* ========================================
+   TRANSACTION SUCCESS STYLES
+   ======================================== */
+
+/* Success overlay with brightening effect */
+.success-overlay {
+  background: radial-gradient(
+    ellipse at center,
+    rgba(34, 197, 94, 0.12) 0%,
+    rgba(34, 197, 94, 0.04) 30%,
+    rgba(27, 27, 27, 0.98) 70%
+  );
+  animation: success-bg-brighten 0.6s ease-out forwards;
+}
+
+@keyframes success-bg-brighten {
+  0% {
+    background: radial-gradient(ellipse at center, rgba(34, 197, 94, 0.02) 0%, rgba(27, 27, 27, 1) 50%);
+  }
+  100% {
+    background: radial-gradient(
+      ellipse at center,
+      rgba(34, 197, 94, 0.12) 0%,
+      rgba(34, 197, 94, 0.04) 30%,
+      rgba(27, 27, 27, 0.98) 70%
+    );
+  }
+}
+
+.success-checkmark-circle {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: rgba(34, 197, 94, 0.12);
+  box-shadow:
+    0 0 40px rgba(34, 197, 94, 0.35),
+    0 0 80px rgba(34, 197, 94, 0.2),
+    0 0 120px rgba(34, 197, 94, 0.1),
+    inset 0 0 20px rgba(34, 197, 94, 0.1);
+  animation: success-circle-glow 2.5s ease-in-out infinite;
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+@keyframes success-circle-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 40px rgba(34, 197, 94, 0.35),
+      0 0 80px rgba(34, 197, 94, 0.2),
+      0 0 120px rgba(34, 197, 94, 0.1),
+      inset 0 0 20px rgba(34, 197, 94, 0.1);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow:
+      0 0 50px rgba(34, 197, 94, 0.5),
+      0 0 100px rgba(34, 197, 94, 0.3),
+      0 0 150px rgba(34, 197, 94, 0.15),
+      inset 0 0 30px rgba(34, 197, 94, 0.15);
+    transform: scale(1.02);
+  }
+}
+
+.success-summary-card {
+  background: rgba(50, 50, 50, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  backdrop-filter: blur(12px);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+/* Success entry animation - fluid easing */
+@keyframes success-entry {
+  0% {
+    opacity: 0;
+    transform: scale(0.85) translateY(30px);
+  }
+  60% {
+    transform: scale(1.02) translateY(-5px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.success-entry {
+  animation: success-entry 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Checkmark draw animation - enhanced */
+@keyframes draw-check-enhanced {
+  0% {
+    stroke-dashoffset: 100;
+    filter: drop-shadow(0 0 0 rgba(34, 197, 94, 0));
+  }
+  50% {
+    filter: drop-shadow(0 0 8px rgba(34, 197, 94, 0.6));
+  }
+  100% {
+    stroke-dashoffset: 0;
+    filter: drop-shadow(0 0 4px rgba(34, 197, 94, 0.4));
+  }
+}
+
+.draw-check-enhanced {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: draw-check-enhanced 0.8s ease-out 0.2s forwards;
+}
+
+/* ========================================
+   FULL-SCREEN POS TERMINAL STYLES
+   iPhone 16 Pro optimized
+   ======================================== */
+
+/* Full-screen overlay container */
+.pos-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Safe area insets for iPhone */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* POS Hardware Frame - physical device simulation */
+.pos-hardware-frame {
+  position: relative;
+  width: clamp(320px, 88vw, 380px);
+  height: clamp(520px, 75vh, 640px);
+  background: linear-gradient(180deg, #1f1f1f 0%, #0a0a0a 100%);
+  border-radius: 32px;
+  border: 3px solid #2a2a2a;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 25px 80px rgba(0, 0, 0, 0.8),
+    0 10px 30px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  overflow: hidden;
+}
+
+/* Speaker grille at top */
+.pos-speaker-grille {
+  display: flex;
+  justify-content: center;
+  gap: 3px;
+  margin-bottom: 12px;
+}
+
+.pos-speaker-slot {
+  width: 24px;
+  height: 3px;
+  background: #1a1a1a;
+  border-radius: 2px;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* Status LED */
+.pos-led-container {
+  position: absolute;
+  top: 20px;
+  right: 24px;
+}
+
+.pos-led {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.pos-led-ready {
+  background: #22c55e;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+}
+
+.pos-led-processing {
+  background: #f2a900;
+  box-shadow: 0 0 8px rgba(242, 169, 0, 0.6);
+  animation: led-blink 0.8s ease-in-out infinite;
+}
+
+.pos-led-success {
+  background: #22c55e;
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.8);
+  animation: led-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes led-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+@keyframes led-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(34, 197, 94, 1);
+  }
+}
+
+/* Screen area */
+.pos-screen {
+  flex: 1;
+  position: relative;
+  background: linear-gradient(180deg, #0d0d0d 0%, #151515 100%);
+  border-radius: 20px;
+  border: 2px solid #252525;
+  box-shadow:
+    inset 0 2px 8px rgba(0, 0, 0, 0.5),
+    0 1px 0 rgba(255, 255, 255, 0.03);
+  overflow: hidden;
+}
+
+.pos-screen-bezel {
+  position: absolute;
+  inset: 0;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  pointer-events: none;
+}
+
+.pos-screen-content {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Bottom branding */
+.pos-branding {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.pos-brand-text {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: rgba(255, 255, 255, 0.25);
+  text-transform: uppercase;
+}
+
+.pos-brand-accent {
+  width: 40px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(242, 169, 0, 0.4), transparent);
+  margin-top: 4px;
+  border-radius: 1px;
+}
+
+/* Card slot indicator */
+.pos-card-slot {
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 6px;
+  background: #0a0a0a;
+  border-radius: 3px 3px 0 0;
+  border: 1px solid #1a1a1a;
+  border-bottom: none;
+}
+
+.pos-card-slot-inner {
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 2px;
+  background: #2a2a2a;
+  border-radius: 1px;
+}
+
+/* ========================================
+   TAP BUTTON STYLES
+   ======================================== */
+
+.pos-tap-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 24px;
+}
+
+.pos-status-text {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 32px;
+  transition: color 0.3s ease;
+}
+
+.pos-tap-wrapper {
+  position: relative;
+  padding: 40px;
+}
+
+/* Main tap button */
+.pos-tap-btn {
+  position: relative;
+  width: 144px;
+  height: 144px;
+  min-width: 56px;
+  min-height: 56px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #1b1b1b;
+  background: linear-gradient(145deg, #ffd54f 0%, #f2a900 40%, #d99400 70%, #c08000 100%);
+  box-shadow:
+    0 0 0 4px rgba(180, 140, 60, 0.5),
+    0 0 0 8px rgba(100, 80, 40, 0.3),
+    0 0 40px rgba(242, 169, 0, 0.35),
+    0 12px 40px rgba(0, 0, 0, 0.5),
+    0 4px 12px rgba(0, 0, 0, 0.3),
+    inset 0 3px 6px rgba(255, 255, 255, 0.35),
+    inset 0 -4px 12px rgba(0, 0, 0, 0.3);
+  transition:
+    transform 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+
+.pos-tap-btn:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow:
+    0 0 0 4px rgba(200, 160, 80, 0.6),
+    0 0 0 8px rgba(120, 100, 60, 0.4),
+    0 0 60px rgba(242, 169, 0, 0.5),
+    0 16px 50px rgba(0, 0, 0, 0.55),
+    0 6px 16px rgba(0, 0, 0, 0.35),
+    inset 0 3px 6px rgba(255, 255, 255, 0.4),
+    inset 0 -4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.pos-tap-btn:active:not(:disabled) {
+  transform: translateY(2px) scale(0.96);
+  box-shadow:
+    0 0 0 3px rgba(150, 110, 40, 0.4),
+    0 0 0 6px rgba(80, 60, 30, 0.2),
+    0 0 20px rgba(242, 169, 0, 0.25),
+    0 4px 16px rgba(0, 0, 0, 0.4),
+    0 2px 6px rgba(0, 0, 0, 0.25),
+    inset 0 4px 10px rgba(0, 0, 0, 0.35);
+}
+
+.pos-tap-btn:disabled {
+  cursor: not-allowed;
+}
+
+.pos-tap-btn-processing {
+  background: linear-gradient(145deg, #ffd54f 0%, #f2a900 40%, #d99400 70%, #c08000 100%);
+  animation: btn-glow 1.5s ease-in-out infinite;
+}
+
+@keyframes btn-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 4px rgba(180, 140, 60, 0.5),
+      0 0 0 8px rgba(100, 80, 40, 0.3),
+      0 0 40px rgba(242, 169, 0, 0.35),
+      0 12px 40px rgba(0, 0, 0, 0.5),
+      0 4px 12px rgba(0, 0, 0, 0.3),
+      inset 0 3px 6px rgba(255, 255, 255, 0.35),
+      inset 0 -4px 12px rgba(0, 0, 0, 0.3);
+  }
+  50% {
+    box-shadow:
+      0 0 0 4px rgba(200, 160, 80, 0.7),
+      0 0 0 10px rgba(120, 100, 60, 0.4),
+      0 0 70px rgba(242, 169, 0, 0.55),
+      0 14px 45px rgba(0, 0, 0, 0.5),
+      0 5px 14px rgba(0, 0, 0, 0.3),
+      inset 0 3px 6px rgba(255, 255, 255, 0.4),
+      inset 0 -4px 12px rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* Radial pulse rings */
+.pos-pulse-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(242, 169, 0, 0.5);
+  animation: pos-ring-pulse 2.4s ease-out infinite;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+@keyframes pos-ring-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+
+/* Processing ring - solid rotating */
+.pos-processing-ring {
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  border-top-color: rgba(242, 169, 0, 0.8);
+  border-right-color: rgba(242, 169, 0, 0.4);
+  animation: processing-spin 1s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes processing-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Error message */
+.pos-error-message {
+  margin-top: 24px;
+  padding: 12px 20px;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 12px;
+  color: #ef4444;
+  font-size: 13px;
+  text-align: center;
+  max-width: 260px;
+}
+
+/* Helper text */
+.pos-helper-text {
+  margin-top: 24px;
+  text-align: center;
+  min-height: 20px;
+}
+
+/* ========================================
+   THERMAL RECEIPT STYLES
+   ======================================== */
+
+.pos-thermal-receipt-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 20px;
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.pos-thermal-receipt {
+  position: relative;
+  width: 260px;
+  background: linear-gradient(180deg, #fdfdf9 0%, #f8f8f4 50%, #f3f3ee 100%);
+  padding: 20px 16px 24px;
+  border-radius: 0 0 4px 4px;
+  box-shadow:
+    0 8px 30px rgba(0, 0, 0, 0.4),
+    0 2px 8px rgba(0, 0, 0, 0.2);
+  transform-origin: top center;
+}
+
+/* Print animation */
+.pos-receipt-printing {
+  animation: receipt-unroll 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes receipt-unroll {
+  0% {
+    clip-path: inset(0 0 100% 0);
+    transform: translateY(-15px);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    clip-path: inset(0 0 0% 0);
+  }
+}
+
+/* Serrated top edge */
+.pos-receipt-serrated-edge {
+  position: absolute;
+  top: -8px;
+  left: 0;
+  right: 0;
+  height: 8px;
+  background: repeating-linear-gradient(90deg, transparent 0px, transparent 3px, #fdfdf9 3px, #fdfdf9 6px);
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.08));
+}
+
+/* Paper texture */
+.pos-thermal-receipt::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.035;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+/* Thermal print lines */
+.pos-thermal-receipt::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0px,
+    transparent 2px,
+    rgba(0, 0, 0, 0.008) 2px,
+    rgba(0, 0, 0, 0.008) 3px
+  );
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.pos-receipt-content {
+  position: relative;
+  z-index: 1;
+  font-family: "Courier New", Courier, monospace;
+  color: #1a1a1a;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* Receipt line animations */
+.pos-receipt-line {
+  opacity: 0;
+  transform: translateY(-2px);
+  transition:
+    opacity 0.1s ease-out,
+    transform 0.1s ease-out;
+}
+
+.pos-receipt-line.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.pos-receipt-header {
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  margin-bottom: 2px;
+}
+
+.pos-receipt-subheader {
+  text-align: center;
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.pos-receipt-divider {
+  height: 1px;
+  background: repeating-linear-gradient(90deg, #bbb 0px, #bbb 4px, transparent 4px, transparent 8px);
+  margin: 8px 0;
+}
+
+.pos-receipt-spacer {
+  height: 8px;
+}
+
+.pos-receipt-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 0;
+}
+
+.pos-receipt-datetime {
+  text-align: center;
+  font-size: 10px;
+  color: #555;
+}
+
+.pos-receipt-hash {
+  display: block;
+  text-align: center;
+  font-size: 10px;
+  color: #666;
+  text-decoration: none;
+  transition: color 0.2s ease;
+  cursor: pointer;
+}
+
+.pos-receipt-hash:hover {
+  color: #f2a900;
+}
+
+.pos-receipt-footer {
+  text-align: center;
+  font-weight: 600;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+/* Barcode */
+.pos-receipt-barcode {
+  display: flex;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.barcode-lines {
+  display: flex;
+  gap: 1px;
+  height: 28px;
+}
+
+.barcode-line {
+  background: #1a1a1a;
+  height: 100%;
+}
+
+/* ========================================
+   SUCCESS SCREEN STYLES
+   ======================================== */
+
+.pos-success-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 24px;
+  animation: success-fade-in 0.4s ease-out forwards;
+}
+
+@keyframes success-fade-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.pos-success-circle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: rgba(34, 197, 94, 0.1);
+  border: 2px solid rgba(34, 197, 94, 0.3);
+  box-shadow:
+    0 0 40px rgba(34, 197, 94, 0.3),
+    0 0 80px rgba(34, 197, 94, 0.15);
+  animation: success-circle-pulse 2s ease-in-out infinite;
+}
+
+@keyframes success-circle-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 40px rgba(34, 197, 94, 0.3),
+      0 0 80px rgba(34, 197, 94, 0.15);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow:
+      0 0 60px rgba(34, 197, 94, 0.45),
+      0 0 100px rgba(34, 197, 94, 0.25);
+    transform: scale(1.03);
+  }
+}
+
+/* Checkmark draw animation */
+.pos-check-draw {
+  stroke-dasharray: 50;
+  stroke-dashoffset: 50;
+  animation: check-draw 0.6s ease-out 0.2s forwards;
+}
+
+@keyframes check-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* ========================================
+   REDUCED MOTION PREFERENCES
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .pos-pulse-ring,
+  .pos-processing-ring,
+  .pos-tap-btn-processing,
+  .pos-receipt-printing,
+  .pos-success-circle,
+  .pos-check-draw,
+  .pos-led-processing,
+  .pos-led-success {
+    animation: none;
+  }
+
+  .pos-tap-btn {
+    transition: none;
+  }
+
+  .pos-receipt-line {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .pos-thermal-receipt {
+    clip-path: none;
+  }
+}
+
+/* ========================================
+   POS AMOUNT ENTRY STYLES
+   ======================================== */
+
+.pos-amount-entry {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 100%;
+  padding: 16px 20px 20px;
+}
+
+/* Balance bar at top */
+.pos-balance-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: rgba(40, 40, 40, 0.6);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.pos-balance-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.pos-balance-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: #f2a900;
+  font-family: "SF Mono", Monaco, "Courier New", monospace;
+}
+
+.pos-balance-unit {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* Amount display */
+.pos-amount-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 12px 0;
+}
+
+.pos-amount-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.4);
+  margin-bottom: 8px;
+}
+
+.pos-amount-value {
+  display: flex;
+  align-items: baseline;
+}
+
+.pos-currency {
+  font-size: 28px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.6);
+  margin-right: 2px;
+}
+
+.pos-amount-number {
+  font-size: 56px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1;
+  font-family: "SF Mono", Monaco, "Courier New", monospace;
+}
+
+.pos-amount-decimal {
+  font-size: 28px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.pos-amount-token {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 4px;
+}
+
+/* Keypad grid */
+.pos-keypad {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  width: 100%;
+  max-width: 280px;
+  margin: 8px 0;
+}
+
+.pos-keypad-btn {
+  position: relative;
+  padding: 14px 8px;
+  background: rgba(50, 50, 50, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.pos-keypad-btn:hover:not(:disabled) {
+  background: rgba(60, 60, 60, 0.8);
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.pos-keypad-btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.2),
+    inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.pos-keypad-btn-active {
+  background: linear-gradient(145deg, rgba(242, 169, 0, 0.25), rgba(242, 169, 0, 0.1));
+  border-color: rgba(242, 169, 0, 0.5);
+  color: #f2a900;
+  box-shadow:
+    0 0 20px rgba(242, 169, 0, 0.2),
+    0 4px 12px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.pos-keypad-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Credits preview */
+.pos-credits-preview {
+  width: 100%;
+  max-width: 280px;
+  padding: 12px 16px;
+  background: rgba(35, 35, 35, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  margin: 4px 0;
+}
+
+.pos-preview-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+}
+
+.pos-preview-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.pos-preview-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: #f2a900;
+  font-family: "SF Mono", Monaco, "Courier New", monospace;
+}
+
+.pos-preview-free {
+  font-size: 12px;
+  font-weight: 700;
+  color: #22c55e;
+  letter-spacing: 0.5px;
+}
+
+/* Tap to pay section */
+.pos-tap-section {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.pos-tap-pay-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 28px;
+  background: linear-gradient(145deg, #ffd54f 0%, #f2a900 40%, #d99400 70%, #c08000 100%);
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+  box-shadow:
+    0 0 0 3px rgba(180, 140, 60, 0.4),
+    0 0 30px rgba(242, 169, 0, 0.3),
+    0 8px 24px rgba(0, 0, 0, 0.4),
+    inset 0 2px 4px rgba(255, 255, 255, 0.3),
+    inset 0 -2px 6px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+}
+
+.pos-tap-pay-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow:
+    0 0 0 3px rgba(200, 160, 80, 0.5),
+    0 0 45px rgba(242, 169, 0, 0.45),
+    0 12px 32px rgba(0, 0, 0, 0.45),
+    inset 0 2px 4px rgba(255, 255, 255, 0.35),
+    inset 0 -2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.pos-tap-pay-btn:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow:
+    0 0 0 2px rgba(160, 120, 50, 0.3),
+    0 0 20px rgba(242, 169, 0, 0.2),
+    0 4px 12px rgba(0, 0, 0, 0.35),
+    inset 0 3px 6px rgba(0, 0, 0, 0.15);
+}
+
+.pos-tap-pay-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pos-tap-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1b1b1b;
+}
+
+.pos-tap-text {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: #1b1b1b;
+}
+
+/* ========================================
+   POS TRANSACTION DISPLAY STYLES
+   ======================================== */
+
+.pos-tx-display {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  padding: 20px;
+  font-family: "SF Mono", Monaco, "Courier New", monospace;
+}
+
+/* Status header */
+.pos-tx-status-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(242, 169, 0, 0.1);
+  border: 1px solid rgba(242, 169, 0, 0.3);
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+
+.pos-tx-status-header.pos-tx-success {
+  background: rgba(34, 197, 94, 0.1);
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.pos-tx-status-header.pos-tx-error {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.pos-tx-status-icon {
+  color: #f2a900;
+}
+
+.pos-tx-success .pos-tx-status-icon {
+  color: #22c55e;
+}
+
+.pos-tx-error .pos-tx-status-icon {
+  color: #ef4444;
+}
+
+.pos-tx-status-text {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #f2a900;
+}
+
+.pos-tx-success .pos-tx-status-text {
+  color: #22c55e;
+}
+
+.pos-tx-error .pos-tx-status-text {
+  color: #ef4444;
+}
+
+/* Progress bar */
+.pos-tx-progress-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.pos-tx-progress-bar {
+  flex: 1;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.pos-tx-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f2a900, #ffd54f);
+  border-radius: 3px;
+  transition: width 0.5s ease-out;
+}
+
+.pos-tx-progress-fill.pos-tx-progress-success {
+  background: linear-gradient(90deg, #22c55e, #4ade80);
+}
+
+.pos-tx-progress-percent {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+  min-width: 36px;
+  text-align: right;
+}
+
+/* Transaction details */
+.pos-tx-details {
+  flex: 1;
+  background: rgba(30, 30, 30, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+}
+
+.pos-tx-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.pos-tx-row:last-child {
+  border-bottom: none;
+}
+
+.pos-tx-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.pos-tx-value {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.pos-tx-value-free {
+  font-size: 12px;
+  font-weight: 700;
+  color: #22c55e;
+}
+
+.pos-tx-hash-link {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #f2a900;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.pos-tx-hash-link:hover {
+  color: #ffd54f;
+}
+
+/* Confirmations display */
+.pos-tx-confirmations {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pos-tx-conf-count {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.pos-tx-conf-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.pos-tx-conf-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+}
+
+.pos-tx-conf-dot-filled {
+  background: #22c55e;
+  border-color: #22c55e;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+}
+
+/* Amount summary (success) */
+.pos-tx-summary {
+  background: rgba(34, 197, 94, 0.08);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+}
+
+.pos-tx-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.pos-tx-summary-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.pos-tx-summary-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.pos-tx-summary-credits .pos-tx-summary-value {
+  color: #22c55e;
+}
+
+/* Error box */
+.pos-tx-error-box {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+}
+
+.pos-tx-error-message {
+  font-size: 12px;
+  font-weight: 500;
+  color: #ef4444;
+  margin-bottom: 12px;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.pos-tx-retry-btn {
+  padding: 10px 24px;
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #ef4444;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pos-tx-retry-btn:hover {
+  background: rgba(239, 68, 68, 0.3);
+  border-color: rgba(239, 68, 68, 0.6);
+}
+
+/* Footer */
+.pos-tx-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.pos-tx-thank-you {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.pos-tx-done-btn {
+  padding: 12px 32px;
+  background: rgba(34, 197, 94, 0.2);
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  border-radius: 25px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #22c55e;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pos-tx-done-btn:hover {
+  background: rgba(34, 197, 94, 0.3);
+  border-color: rgba(34, 197, 94, 0.6);
+  transform: translateY(-1px);
+}
+
+/* ========================================
+   DOT MATRIX DISPLAY STYLES
+   ======================================== */
+
+/* Base container with LED grid effect */
+.dot-matrix-container {
+  position: relative;
+  background: #0a0a0a;
+  border-radius: 12px;
+  padding: 12px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    inset 0 2px 8px rgba(0, 0, 0, 0.5),
+    0 2px 8px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  /* Safe area insets for iPhone */
+  margin-left: env(safe-area-inset-left);
+  margin-right: env(safe-area-inset-right);
+}
+
+/* Dot grid overlay using SVG data URI */
+.dot-matrix-grid {
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg width='8' height='8' viewBox='0 0 8 8' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='4' cy='4' r='1' fill='rgba(255,255,255,0.03)'/%3E%3C/svg%3E");
+  background-size: 8px 8px;
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+/* Amber variant */
+.dot-matrix-amber {
+  border-color: rgba(242, 169, 0, 0.2);
+  box-shadow:
+    inset 0 2px 8px rgba(0, 0, 0, 0.5),
+    0 0 20px rgba(242, 169, 0, 0.1);
+}
+
+.dot-matrix-amber .dot-matrix-line,
+.dot-matrix-amber .dot-matrix-timestamp,
+.dot-matrix-amber .dot-matrix-prefix {
+  color: #f2a900;
+  text-shadow: 0 0 8px rgba(242, 169, 0, 0.5);
+}
+
+/* Green variant */
+.dot-matrix-green {
+  border-color: rgba(34, 197, 94, 0.2);
+  box-shadow:
+    inset 0 2px 8px rgba(0, 0, 0, 0.5),
+    0 0 20px rgba(34, 197, 94, 0.1);
+}
+
+.dot-matrix-green .dot-matrix-line,
+.dot-matrix-green .dot-matrix-timestamp,
+.dot-matrix-green .dot-matrix-prefix {
+  color: #22c55e;
+  text-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+}
+
+/* Line styling */
+.dot-matrix-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-family: "SF Mono", Monaco, "Courier New", monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  line-height: 1.6;
+  opacity: 0;
+  transform: translateY(-2px);
+  text-decoration: none;
+}
+
+.dot-matrix-line.visible {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.15s ease-out, transform 0.15s ease-out;
+}
+
+.dot-matrix-line:hover {
+  opacity: 0.8;
+}
+
+/* Success variant line */
+.dot-matrix-line-success {
+  font-weight: 700;
+}
+
+/* Timestamp column */
+.dot-matrix-timestamp {
+  flex-shrink: 0;
+  opacity: 0.6;
+  font-size: 10px;
+}
+
+/* Prefix (label) */
+.dot-matrix-prefix {
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+/* Typewriter animation */
+.dot-matrix-typing {
+  overflow: hidden;
+  white-space: nowrap;
+  animation: dot-matrix-type 0.3s steps(12, end) forwards;
+}
+
+@keyframes dot-matrix-type {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+/* Confirmation dots */
+.dot-matrix-conf-dots {
+  display: flex;
+  gap: 4px;
+  margin-left: 8px;
+}
+
+.dot-matrix-conf-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  transition: all 0.3s ease;
+}
+
+.dot-matrix-conf-dot.filled {
+  background: currentColor;
+  box-shadow: 0 0 6px currentColor;
+}
+
+/* Reduced motion - accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .dot-matrix-line {
+    transition: none;
+  }
+
+  .dot-matrix-typing {
+    animation: none;
+    width: 100%;
+  }
+
+  .dot-matrix-conf-dot {
+    transition: none;
+  }
+}
+
+/* iPhone 16 Pro OLED optimization - lighter font weight for better legibility */
+@media (min-resolution: 3dppx) {
+  .dot-matrix-line {
+    font-weight: 500;
+  }
+}
