@@ -55,10 +55,31 @@ export const TopNav = () => {
         return (
           <nav className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[94%] max-w-xl">
             <div className="bg-base-100/95 backdrop-blur-lg rounded-full shadow-lg border border-base-300/50 p-1.5 flex items-center justify-between">
-              {/* Logo - Unified segmented control */}
-              <Link href="/" className="flex items-center rounded-full overflow-hidden">
-                <span className="bg-base-300 text-white pl-4 pr-0.5 py-2.5 font-bold text-2xl">Split</span>
-                <span className="bg-primary text-primary-content pl-0.5 pr-4 py-2.5 font-bold text-2xl">hub</span>
+              {/* Logo - Unified capsule with proportional segments */}
+              <Link
+                href="/"
+                className="flex items-center h-11 rounded-full overflow-hidden"
+                style={{
+                  boxShadow: "inset 0 1px 3px rgba(0,0,0,0.2), 0 1px 0 rgba(255,255,255,0.03)",
+                }}
+              >
+                <span
+                  className="bg-base-300 text-white h-full flex items-center font-bold text-lg tracking-tight"
+                  style={{
+                    padding: "0 14px 0 16px",
+                    borderRight: "1px solid rgba(0,0,0,0.3)",
+                  }}
+                >
+                  Split
+                </span>
+                <span
+                  className="bg-primary text-primary-content h-full flex items-center font-bold text-lg tracking-tight"
+                  style={{
+                    padding: "0 16px 0 14px",
+                  }}
+                >
+                  hub
+                </span>
               </Link>
 
               {/* Wallet Section */}
@@ -66,7 +87,10 @@ export const TopNav = () => {
                 <button
                   onClick={openConnectModal}
                   type="button"
-                  className="px-6 py-3 text-base font-semibold bg-primary text-primary-content hover:bg-primary/90 rounded-full transition-all duration-200"
+                  className="h-11 px-5 text-sm font-bold bg-primary text-primary-content hover:bg-primary/90 rounded-full transition-all duration-200"
+                  style={{
+                    boxShadow: "0 2px 10px rgba(242, 169, 0, 0.35), inset 0 1px 1px rgba(255,255,255,0.2)",
+                  }}
                 >
                   Connect
                 </button>
@@ -99,10 +123,15 @@ export const TopNav = () => {
               ) : (
                 <div className="ml-auto flex items-center">
                   <details ref={dropdownRef} className="dropdown dropdown-end">
-                    <summary className="flex items-center gap-2 px-4 py-2.5 cursor-pointer list-none bg-base-300 rounded-full hover:bg-base-300/80 transition-colors">
-                      <BlockieAvatar address={checkSumAddress!} size={28} ensImage={account.ensAvatar} />
-                      <span className="text-base font-semibold text-base-content">{checkSumAddress?.slice(-4)}</span>
-                      <ChevronDownIcon className="h-4 w-4 text-base-content/60" />
+                    <summary
+                      className="flex items-center gap-2.5 h-11 px-3 cursor-pointer list-none bg-base-300 rounded-full hover:bg-base-300/80 transition-colors border border-base-300/50"
+                      style={{
+                        boxShadow: "inset 0 1px 2px rgba(0,0,0,0.15), 0 1px 0 rgba(255,255,255,0.03)",
+                      }}
+                    >
+                      <BlockieAvatar address={checkSumAddress!} size={26} ensImage={account.ensAvatar} />
+                      <span className="text-sm font-bold text-base-content">{checkSumAddress?.slice(-4)}</span>
+                      <ChevronDownIcon className="h-4 w-4 text-base-content/50" />
                     </summary>
                     <ul className="dropdown-content menu z-50 p-2 mt-2 shadow-xl bg-base-100 rounded-2xl border border-base-300 gap-1 min-w-[200px]">
                       <NetworkOptions hidden={!selectingNetwork} />
