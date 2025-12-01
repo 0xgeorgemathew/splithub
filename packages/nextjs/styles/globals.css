@@ -2119,7 +2119,10 @@
   font-weight: 500;
   color: #ef4444;
   margin-bottom: 12px;
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
 }
 
 .pos-tx-retry-btn {
@@ -2253,7 +2256,9 @@
 .dot-matrix-line.visible {
   opacity: 1;
   transform: translateY(0);
-  transition: opacity 0.15s ease-out, transform 0.15s ease-out;
+  transition:
+    opacity 0.15s ease-out,
+    transform 0.15s ease-out;
 }
 
 .dot-matrix-line:hover {
@@ -2335,4 +2340,676 @@
   .dot-matrix-line {
     font-weight: 500;
   }
+}
+
+/* ========================================
+   POS RECEIPT PRINTER STYLES
+   True dot-matrix thermal printer simulation
+   ======================================== */
+
+.pos-receipt-printer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+/* Receipt paper - thermal printer look */
+.pos-receipt-paper {
+  position: relative;
+  width: 100%;
+  max-width: 280px;
+  background: #0a0a0a;
+  border: 2px solid #1a1a1a;
+  border-radius: 4px;
+  padding: 16px 12px 20px;
+  box-shadow:
+    inset 0 0 30px rgba(0, 0, 0, 0.8),
+    0 0 20px rgba(34, 197, 94, 0.05);
+  /* Subtle scanline effect */
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 255, 0, 0.01) 2px,
+    rgba(0, 255, 0, 0.01) 4px
+  );
+}
+
+/* Serrated top edge */
+.pos-receipt-serrated {
+  position: absolute;
+  top: -6px;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: repeating-linear-gradient(90deg, transparent 0px, transparent 3px, #0a0a0a 3px, #0a0a0a 6px);
+}
+
+/* Receipt content area */
+.pos-receipt-content {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  letter-spacing: 0.5px;
+}
+
+/* Receipt line base */
+.pos-receipt-line {
+  opacity: 0;
+  transform: translateY(-1px);
+  transition:
+    opacity 0.08s ease-out,
+    transform 0.08s ease-out;
+  white-space: pre;
+  min-height: 16px;
+}
+
+.pos-receipt-line.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Line type variants */
+.pos-receipt-header {
+  color: #22c55e;
+  text-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+  font-weight: 700;
+  text-align: center;
+}
+
+.pos-receipt-divider {
+  color: #1a472a;
+  text-shadow: 0 0 4px rgba(34, 197, 94, 0.3);
+  opacity: 0.7;
+  text-align: center;
+}
+
+.pos-receipt-divider.visible {
+  opacity: 0.7;
+}
+
+.pos-receipt-status {
+  color: #4ade80;
+  text-shadow: 0 0 6px rgba(74, 222, 128, 0.5);
+}
+
+.pos-receipt-detail {
+  color: #22c55e;
+  text-shadow: 0 0 4px rgba(34, 197, 94, 0.4);
+  opacity: 0.85;
+}
+
+.pos-receipt-detail.visible {
+  opacity: 0.85;
+}
+
+.pos-receipt-amount {
+  color: #4ade80;
+  text-shadow: 0 0 8px rgba(74, 222, 128, 0.6);
+  font-weight: 700;
+}
+
+.pos-receipt-success {
+  color: #22c55e;
+  text-shadow: 0 0 10px rgba(34, 197, 94, 0.8);
+  font-weight: 700;
+  text-align: center;
+}
+
+.pos-receipt-error {
+  color: #ef4444;
+  text-shadow: 0 0 10px rgba(239, 68, 68, 0.8);
+  font-weight: 700;
+  text-align: center;
+}
+
+/* Action buttons */
+.pos-receipt-actions {
+  margin-top: 20px;
+  display: flex;
+  gap: 12px;
+}
+
+.pos-receipt-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 2px solid;
+}
+
+.pos-receipt-btn-success {
+  background: rgba(34, 197, 94, 0.15);
+  border-color: rgba(34, 197, 94, 0.4);
+  color: #22c55e;
+  box-shadow: 0 0 15px rgba(34, 197, 94, 0.2);
+}
+
+.pos-receipt-btn-success:hover {
+  background: rgba(34, 197, 94, 0.25);
+  border-color: rgba(34, 197, 94, 0.6);
+  box-shadow: 0 0 25px rgba(34, 197, 94, 0.3);
+}
+
+.pos-receipt-btn-error {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #ef4444;
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.2);
+}
+
+.pos-receipt-btn-error:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: rgba(239, 68, 68, 0.6);
+  box-shadow: 0 0 25px rgba(239, 68, 68, 0.3);
+}
+
+/* Reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .pos-receipt-line {
+    transition: none;
+  }
+}
+
+/* ========================================
+   ACTIVITY DEVICE FRAME STYLES
+   Standalone embedded terminal look
+   ======================================== */
+
+.activity-device-frame {
+  position: relative;
+  width: 100%;
+  max-width: 380px;
+  margin: 0 auto;
+  background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
+  border-radius: 24px;
+  border: 3px solid #252525;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.03),
+    0 20px 60px rgba(0, 0, 0, 0.7),
+    0 8px 24px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+/* Device header with speaker grille and LED */
+.activity-device-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: linear-gradient(180deg, #1f1f1f 0%, #181818 100%);
+  border-bottom: 1px solid #252525;
+}
+
+.activity-device-speaker {
+  display: flex;
+  gap: 3px;
+}
+
+.activity-device-speaker-slot {
+  width: 20px;
+  height: 3px;
+  background: #0d0d0d;
+  border-radius: 2px;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.activity-device-led {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.activity-device-led-idle {
+  background: #3a3a3a;
+  box-shadow: none;
+}
+
+.activity-device-led-ready {
+  background: #22c55e;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+}
+
+.activity-device-led-processing {
+  background: #f2a900;
+  box-shadow: 0 0 8px rgba(242, 169, 0, 0.6);
+  animation: led-blink 0.8s ease-in-out infinite;
+}
+
+.activity-device-led-success {
+  background: #22c55e;
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.8);
+}
+
+/* Device screen area */
+.activity-device-screen {
+  position: relative;
+  background: #0a0a0a;
+  margin: 12px;
+  border-radius: 12px;
+  border: 2px solid #1a1a1a;
+  box-shadow:
+    inset 0 2px 10px rgba(0, 0, 0, 0.8),
+    0 1px 0 rgba(255, 255, 255, 0.03);
+  overflow: hidden;
+  /* Subtle dot matrix overlay */
+  background-image: url("data:image/svg+xml,%3Csvg width='6' height='6' viewBox='0 0 6 6' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='3' cy='3' r='0.8' fill='rgba(34,197,94,0.03)'/%3E%3C/svg%3E");
+  background-size: 6px 6px;
+}
+
+.activity-device-screen-content {
+  position: relative;
+  z-index: 1;
+  padding: 20px 16px;
+}
+
+/* Device footer with branding */
+.activity-device-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 16px 16px;
+  border-top: 1px solid #1a1a1a;
+}
+
+.activity-device-brand {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: rgba(255, 255, 255, 0.2);
+  text-transform: uppercase;
+}
+
+.activity-device-model {
+  font-size: 8px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.1);
+  margin-top: 2px;
+}
+
+/* Activity info display - dot matrix style */
+.activity-info-display {
+  text-align: center;
+  padding: 16px;
+}
+
+.activity-info-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(34, 197, 94, 0.1);
+  border: 2px solid rgba(34, 197, 94, 0.3);
+  border-radius: 16px;
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.15);
+}
+
+.activity-info-icon svg {
+  color: #22c55e;
+  filter: drop-shadow(0 0 6px rgba(34, 197, 94, 0.5));
+}
+
+.activity-info-name {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 18px;
+  font-weight: 700;
+  color: #22c55e;
+  text-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.activity-info-cost {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 14px;
+  font-weight: 600;
+  color: #4ade80;
+  text-shadow: 0 0 6px rgba(74, 222, 128, 0.4);
+}
+
+/* Activity balance display */
+.activity-balance-display {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: rgba(34, 197, 94, 0.05);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  border-radius: 8px;
+  margin: 16px 0;
+}
+
+.activity-balance-label {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: rgba(34, 197, 94, 0.6);
+  text-transform: uppercase;
+}
+
+.activity-balance-value {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 16px;
+  font-weight: 700;
+  color: #22c55e;
+  text-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+}
+
+/* Activity tap button - terminal style */
+.activity-tap-btn {
+  width: 100%;
+  padding: 16px;
+  background: linear-gradient(180deg, #1a472a 0%, #0f2d1a 100%);
+  border: 2px solid rgba(34, 197, 94, 0.4);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow:
+    0 0 20px rgba(34, 197, 94, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.activity-tap-btn:hover:not(:disabled) {
+  background: linear-gradient(180deg, #1f5432 0%, #12361f 100%);
+  border-color: rgba(34, 197, 94, 0.6);
+  box-shadow:
+    0 0 30px rgba(34, 197, 94, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transform: translateY(-2px);
+}
+
+.activity-tap-btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow:
+    0 0 15px rgba(34, 197, 94, 0.1),
+    inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.activity-tap-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.activity-tap-btn-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.activity-tap-btn-icon {
+  color: #22c55e;
+  filter: drop-shadow(0 0 6px rgba(34, 197, 94, 0.5));
+}
+
+.activity-tap-btn-text {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #22c55e;
+  text-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+}
+
+.activity-tap-btn-subtext {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 10px;
+  font-weight: 500;
+  color: rgba(34, 197, 94, 0.6);
+  letter-spacing: 0.5px;
+}
+
+/* Activity error display */
+.activity-error-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.activity-error-display svg {
+  color: #ef4444;
+  flex-shrink: 0;
+}
+
+.activity-error-text {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 11px;
+  color: #ef4444;
+}
+
+/* Activity success display */
+.activity-success-display {
+  text-align: center;
+  padding: 24px 16px;
+}
+
+.activity-success-icon {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(34, 197, 94, 0.15);
+  border: 2px solid rgba(34, 197, 94, 0.4);
+  border-radius: 50%;
+  box-shadow: 0 0 30px rgba(34, 197, 94, 0.3);
+  animation: success-pulse 2s ease-in-out infinite;
+}
+
+@keyframes success-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 30px rgba(34, 197, 94, 0.3);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 50px rgba(34, 197, 94, 0.5);
+    transform: scale(1.02);
+  }
+}
+
+.activity-success-icon svg {
+  color: #22c55e;
+  filter: drop-shadow(0 0 8px rgba(34, 197, 94, 0.6));
+}
+
+.activity-success-title {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 18px;
+  font-weight: 700;
+  color: #22c55e;
+  text-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.activity-success-subtitle {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 12px;
+  color: #4ade80;
+  text-shadow: 0 0 6px rgba(74, 222, 128, 0.4);
+  margin-bottom: 20px;
+}
+
+.activity-success-btn {
+  padding: 12px 32px;
+  background: rgba(34, 197, 94, 0.15);
+  border: 2px solid rgba(34, 197, 94, 0.4);
+  border-radius: 8px;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #22c55e;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.activity-success-btn:hover {
+  background: rgba(34, 197, 94, 0.25);
+  border-color: rgba(34, 197, 94, 0.6);
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.2);
+}
+
+/* Activities navigation button (for credits page) */
+.activities-nav-btn {
+  position: fixed;
+  bottom: 100px;
+  right: 20px;
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #1a472a 0%, #0f2d1a 100%);
+  border: 2px solid rgba(34, 197, 94, 0.4);
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 110;
+  transition: all 0.2s ease;
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.4),
+    0 0 15px rgba(34, 197, 94, 0.2);
+}
+
+.activities-nav-btn:hover {
+  background: linear-gradient(180deg, #1f5432 0%, #12361f 100%);
+  border-color: rgba(34, 197, 94, 0.6);
+  transform: translateY(-2px);
+  box-shadow:
+    0 6px 25px rgba(0, 0, 0, 0.5),
+    0 0 25px rgba(34, 197, 94, 0.3);
+}
+
+.activities-nav-btn svg {
+  color: #22c55e;
+  filter: drop-shadow(0 0 4px rgba(34, 197, 94, 0.5));
+}
+
+/* Activities list page - device style */
+.activities-list-container {
+  min-height: 100vh;
+  background: #000;
+  padding: 20px;
+  padding-bottom: 120px;
+}
+
+.activities-list-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.activities-list-title {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: #22c55e;
+  text-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.activities-list-subtitle {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 10px;
+  color: rgba(34, 197, 94, 0.5);
+  letter-spacing: 1px;
+}
+
+/* Activity card - terminal style */
+.activity-card {
+  display: block;
+  background: linear-gradient(180deg, #0f0f0f 0%, #0a0a0a 100%);
+  border: 2px solid #1a1a1a;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.activity-card:hover {
+  border-color: rgba(34, 197, 94, 0.3);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 6px 20px rgba(0, 0, 0, 0.4),
+    0 0 20px rgba(34, 197, 94, 0.1);
+  transform: translateY(-2px);
+}
+
+.activity-card-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.activity-card-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  border-radius: 12px;
+}
+
+.activity-card-icon svg {
+  color: #22c55e;
+  filter: drop-shadow(0 0 4px rgba(34, 197, 94, 0.4));
+}
+
+.activity-card-info {
+  flex: 1;
+}
+
+.activity-card-name {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 14px;
+  font-weight: 700;
+  color: #22c55e;
+  text-shadow: 0 0 6px rgba(34, 197, 94, 0.4);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.activity-card-cost {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 12px;
+  color: #4ade80;
+  text-shadow: 0 0 4px rgba(74, 222, 128, 0.3);
+  margin-top: 4px;
+}
+
+.activity-card-arrow {
+  color: rgba(34, 197, 94, 0.4);
 }

@@ -2,9 +2,71 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project Overview
+## What is SplitHub?
 
-SplitHub is a tap-based payment splitting application built on Scaffold-ETH 2. Users tap NFC chips to authorize payments, enabling seamless bill splitting without wallet popups or manual transaction signing.
+SplitHub is a tap-to-pay bill splitting app. Users tap their NFC chip to pay friends instantly—no wallet popups, no transaction confirmations, no gas fees.
+
+### Problems We Solve
+
+1. **Bill splitting is awkward** — Venmo requests, IOUs, "I'll get you next time" never happens
+2. **Crypto payments are confusing** — Seed phrases, gas fees, wallet confirmations scare normal users
+3. **Group payments are chaos** — Collecting money from 6 friends at dinner is a nightmare
+
+### How SplitHub Fixes This
+
+- **One tap to pay** — NFC chip handles authentication and signing
+- **Gasless transactions** — Relayer pays gas, users pay nothing
+- **Instant settlement** — No pending transactions, no waiting
+- **No crypto knowledge needed** — All blockchain complexity hidden from users
+
+## User Flows
+
+### Onboarding (`/register`)
+New user setup in 2 steps:
+1. Enter name and email to create profile
+2. Tap NFC chip twice to register it to your wallet
+
+### Home Dashboard (`/`)
+- See all friends and balances at a glance
+- Green = money owed to you, Red = you owe them
+- Tap a friend card to settle the debt instantly
+
+### Quick Payment (`/settle`)
+Simple tap-to-pay flow:
+1. Enter amount and recipient
+2. Tap your NFC chip
+3. Watch progress: Tap → Sign → Send → Confirm
+4. Done—payment complete
+
+### Payment Links (`/settle/[requestId]`)
+Receive a payment request via link/QR:
+1. Open link showing who you owe and how much
+2. Tap your chip to pay
+3. Auto-redirect to confirmation
+
+### Group Payments (`/multi-settle`)
+Collect money from multiple people:
+1. Create payment slots for each person
+2. Each participant taps their chip in turn
+3. Track who's paid, who hasn't
+
+### Credits System (`/credits`)
+Two-part POS terminal for activity venues:
+
+**Buy Credits Tab:**
+- Enter USDC amount to spend
+- Tap chip to purchase (1 USDC = 10 credits)
+- Credits added to your balance
+
+**Activity Zone Tab:**
+- Browse available activities with credit costs
+- Select activity, tap chip to spend credits
+- Gain access to the activity
+
+### Token Approval (`/approve`)
+One-time setup before payments work:
+- Approve tokens for the Payments or Credits contract
+- Required for gasless transactions to execute
 
 ## Commands
 
@@ -14,18 +76,14 @@ yarn chain              # Start local Anvil chain
 yarn deploy             # Deploy contracts to local chain
 yarn start              # Start Next.js dev server (localhost:3000)
 
-# Smart Contracts
-yarn foundry:test       # Run Forge tests
-yarn compile            # Compile contracts
-yarn deploy:verify      # Deploy and verify on Etherscan
-
-# Network shortcuts
-yarn deploy:local       # Deploy to localhost
-yarn deploy:base        # Deploy to Base Sepolia
+# Testing
+yarn foundry:test       # Run all Forge tests
 yarn test:registry      # Test SplitHubRegistry
 yarn test:credit        # Test CreditToken
-yarn register:local     # Register chip on localhost
-yarn register:base      # Register chip on Base Sepolia
+
+# Deployment
+yarn deploy:local       # Deploy to localhost
+yarn deploy:base        # Deploy to Base Sepolia
 
 # Code Quality
 yarn lint               # Lint both frontend and contracts
@@ -41,74 +99,33 @@ yarn next:check-types   # TypeScript type checking
 
 ### Smart Contracts
 
-```
-packages/foundry/contracts/
-  SplitHubRegistry.sol    # Chip address → owner address mapping
-  SplitHubPayments.sol    # EIP-712 signature verification + gasless payments
-  CreditToken.sol         # ERC20 credits: purchase with USDC, spend at activities
-```
-
-**SplitHubRegistry** - Core registration contract linking NFC chip addresses to owner wallets. Uses EIP-712 signatures for gasless registration.
-
-**SplitHubPayments** - Executes gasless ERC-20 transfers using chip-signed authorizations. Verifies chip ownership via Registry.
-
-**CreditToken** - ERC20 for Activity Zone credits. 1 USDC = 10 credits (handles 6→18 decimal conversion). Supports gasless purchase and spend via EIP-712 signatures.
-
-EIP-712 types:
-```solidity
-// SplitHubPayments
-struct PaymentAuth {
-    address payer; address recipient; address token;
-    uint256 amount; uint256 nonce; uint256 deadline;
-}
-
-// CreditToken
-struct CreditPurchase { address buyer; uint256 usdcAmount; uint256 nonce; uint256 deadline; }
-struct CreditSpend { address spender; uint256 amount; address activityId; uint256 nonce; uint256 deadline; }
-```
-
-**Deployment**: Scripts in `packages/foundry/script/` use `ScaffoldETHDeploy` base class. Deployments auto-export to `deployments/{chainId}.json` and generate TypeScript ABIs.
+| Contract | Purpose |
+|----------|---------|
+| `SplitHubRegistry` | Links NFC chip addresses to user wallets |
+| `SplitHubPayments` | Executes gasless token transfers via chip signatures |
+| `CreditToken` | ERC20 credits: buy with USDC, spend at activities |
 
 ### Frontend
 
-- **Scaffold-ETH hooks** (`packages/nextjs/hooks/scaffold-eth/`): Type-safe wrappers around wagmi for contract interaction
-  - `useScaffoldReadContract` / `useScaffoldWriteContract` for contract calls
-  - `useDeployedContractInfo` for contract metadata
+- **Scaffold-ETH hooks** in `packages/nextjs/hooks/scaffold-eth/` for contract interaction
 - **Contract ABIs** auto-generated at `packages/nextjs/contracts/deployedContracts.ts`
-- **Config**: `packages/nextjs/scaffold.config.ts` for target networks and settings
+- **Config**: `packages/nextjs/scaffold.config.ts` for target networks
 
-### Pages
+### Pages Summary
 
-| Route | Purpose |
-|-------|---------|
-| `/` | Home dashboard with chip registration status |
-| `/register` | Onboarding: wallet + profile → NFC chip registration |
-| `/settle` | Single tap-to-pay payment flow |
-| `/multi-settle` | Batch payments with multiple payers |
-| `/settle/[requestId]` | Payment request links |
-| `/approve` | Token approvals for Payments or Credits contracts |
-| `/credits` | POS terminal for purchasing credits with USDC |
-
-### Payment Flow
-
-1. Initiator configures split (total, participants, token)
-2. Initiator taps NFC chip → identified as recipient
-3. Each participant taps → chip signs PaymentAuth → relay executes transfer
-4. Frontend tracks progress until all shares collected
-
-## Key Design Decisions
-
-- **Frontend-calculated splits**: No on-chain split logic (reduces gas)
-- **Gasless via relay**: Relayer submits transactions; users never pay gas
-- **Simplified nonces**: `uint256` auto-increment per payer
-- **NFC signing**: Uses `@arx-research/libhalo` for chip interaction
+| Route | User Action |
+|-------|-------------|
+| `/` | View balances, tap friend to settle |
+| `/register` | Create profile, register NFC chip |
+| `/settle` | Quick one-tap payment |
+| `/multi-settle` | Collect from multiple payers |
+| `/settle/[requestId]` | Pay via shared link |
+| `/approve` | Approve tokens for gasless payments |
+| `/credits` | Buy credits with USDC, spend at activities |
 
 ## Adding a New Contract
 
-When adding a new contract, create these yarn shortcuts in both `packages/foundry/package.json` and root `package.json`:
-
 1. **Deploy script** (`packages/foundry/script/Deploy{ContractName}.s.sol`):
-   - Must push to `deployments` array for JSON export
    ```solidity
    ContractName c = new ContractName();
    deployments.push(Deployment({ name: "ContractName", addr: address(c) }));
@@ -116,17 +133,11 @@ When adding a new contract, create these yarn shortcuts in both `packages/foundr
 
 2. **Test file** (`packages/foundry/test/{ContractName}.t.sol`)
 
-3. **Yarn shortcuts** (add to both package.json files):
+3. **Yarn shortcuts** (add to both `packages/foundry/package.json` and root `package.json`):
    ```json
    "test:{name}": "forge test --match-contract {ContractName}Test -vvv"
    "deploy:{name}:local": "node scripts-js/parseArgs.js --file Deploy{ContractName}.s.sol --network localhost"
    "deploy:{name}:base": "node scripts-js/parseArgs.js --file Deploy{ContractName}.s.sol --network baseSepolia"
-   ```
-
-4. **Script shortcuts** (if contract has associated scripts like RegisterChip):
-   ```json
-   "{action}:local": "node scripts-js/parseArgs.js --file {Script}.s.sol --network localhost"
-   "{action}:base": "node scripts-js/parseArgs.js --file {Script}.s.sol --network baseSepolia"
    ```
 
 ## Formatting

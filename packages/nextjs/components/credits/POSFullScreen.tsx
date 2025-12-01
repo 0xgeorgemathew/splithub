@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { POSAmountEntry } from "./POSAmountEntry";
 import { POSHardwareFrame } from "./POSHardwareFrame";
-import { POSTransactionDisplay } from "./POSTransactionDisplay";
+import { POSReceiptPrinter } from "./POSReceiptPrinter";
 import { CreditFlowState } from "~~/hooks/credits/useCreditPurchase";
 
 export type POSState = "idle" | "sending" | "confirming" | "printing" | "success";
@@ -22,9 +22,6 @@ interface POSFullScreenProps {
   flowState: CreditFlowState;
   error?: string;
   txHash?: string | null;
-  confirmations: number;
-  targetConfirmations: number;
-  blockNumber: string | null;
   creditsMinted: string | null;
   networkName: string;
 }
@@ -63,9 +60,6 @@ export function POSFullScreen({
   flowState,
   error,
   txHash,
-  confirmations,
-  targetConfirmations,
-  blockNumber,
   creditsMinted,
   networkName,
 }: POSFullScreenProps) {
@@ -134,12 +128,9 @@ export function POSFullScreen({
             disabled={isProcessing}
           />
         ) : (
-          <POSTransactionDisplay
+          <POSReceiptPrinter
             flowState={flowState}
             txHash={txHash || null}
-            confirmations={confirmations}
-            targetConfirmations={targetConfirmations}
-            blockNumber={blockNumber}
             networkName={networkName}
             creditsMinted={creditsMinted}
             amount={amount}

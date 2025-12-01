@@ -1,69 +1,57 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
-import { AlertCircle, CheckCircle, Loader2, Wallet } from "lucide-react";
-import { ActivityTxWidget } from "~~/components/activity";
+import { AlertCircle, ArrowLeft, Check, Loader2, Wallet, Wifi } from "lucide-react";
+import { ActivityDeviceFrame } from "~~/components/activity/ActivityDeviceFrame";
 import { getActivityById } from "~~/config/activities";
 import { useCreditBalance, useCreditSpend } from "~~/hooks/credits";
-import { useTargetNetwork } from "~~/hooks/scaffold-eth";
 
 export default function ActivityPage() {
   const params = useParams();
   const activityId = Number(params.activityId);
   const activity = getActivityById(activityId);
 
-  const { targetNetwork } = useTargetNetwork();
   const { formattedBalance, refetchBalance, isConnected } = useCreditBalance();
 
-  const [txHash, setTxHash] = useState<string | null>(null);
   const [accessGranted, setAccessGranted] = useState(false);
 
-  const {
-    flowState,
-    error,
-    txHash: spendTxHash,
-    creditTokenAddress,
-    spendCredits,
-    reset,
-  } = useCreditSpend({
-    onSuccess: hash => {
-      setTxHash(hash);
+  const { flowState, error, creditTokenAddress, spendCredits, reset } = useCreditSpend({
+    onSuccess: () => {
       refetchBalance();
+      // Delay access granted to show success state
+      setTimeout(() => setAccessGranted(true), 1500);
     },
   });
-
-  // Update txHash when spend succeeds
-  useEffect(() => {
-    if (spendTxHash) {
-      setTxHash(spendTxHash);
-    }
-  }, [spendTxHash]);
 
   const handleTap = useCallback(() => {
     if (!activity || flowState !== "idle") return;
     spendCredits(activity.credits, activity.id);
   }, [activity, flowState, spendCredits]);
 
-  const handleComplete = useCallback(() => {
-    setAccessGranted(true);
-  }, []);
-
   const handleReset = useCallback(() => {
     reset();
-    setTxHash(null);
     setAccessGranted(false);
   }, [reset]);
+
+  // Determine LED state
+  const getLedState = () => {
+    if (accessGranted || flowState === "success") return "success";
+    if (flowState !== "idle" && flowState !== "error") return "processing";
+    return "ready";
+  };
 
   // Activity not found
   if (!activity) {
     return (
-      <div className="min-h-[calc(100vh-64px)] bg-base-200 flex items-center justify-center pb-28">
-        <div className="text-center px-6">
-          <AlertCircle className="w-16 h-16 text-error mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-base-content mb-2">Activity Not Found</h2>
-          <p className="text-base-content/50 text-sm">This activity does not exist.</p>
-        </div>
+      <div className="min-h-screen bg-black flex items-center justify-center p-4">
+        <ActivityDeviceFrame ledState="idle">
+          <div className="text-center py-8">
+            <AlertCircle className="w-12 h-12 text-[#ef4444] mx-auto mb-4 filter drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
+            <div className="font-mono text-sm text-[#ef4444] tracking-wider">ACTIVITY NOT FOUND</div>
+          </div>
+        </ActivityDeviceFrame>
       </div>
     );
   }
@@ -71,14 +59,16 @@ export default function ActivityPage() {
   // Not connected
   if (!isConnected || !creditTokenAddress) {
     return (
-      <div className="min-h-[calc(100vh-64px)] bg-base-200 flex items-center justify-center pb-28">
-        <div className="flex flex-col items-center text-center px-6">
-          <div className="w-20 h-20 rounded-full bg-base-300/50 flex items-center justify-center mb-6">
-            <Wallet className="w-10 h-10 text-base-content/30" />
+      <div className="min-h-screen bg-black flex items-center justify-center p-4">
+        <ActivityDeviceFrame ledState="idle">
+          <div className="text-center py-8">
+            <Wallet className="w-12 h-12 text-[#22c55e] opacity-40 mx-auto mb-4" />
+            <div className="font-mono text-sm text-[#22c55e] opacity-60 tracking-wider">CONNECT WALLET</div>
+            <div className="font-mono text-xs text-[#22c55e] opacity-40 mt-2">
+              TO ACCESS {activity.name.toUpperCase()}
+            </div>
           </div>
-          <h2 className="text-xl font-bold text-base-content mb-2">Connect Wallet</h2>
-          <p className="text-base-content/50 text-sm">Connect your wallet to access {activity.name}</p>
-        </div>
+        </ActivityDeviceFrame>
       </div>
     );
   }
@@ -88,143 +78,90 @@ export default function ActivityPage() {
   const insufficientBalance = formattedBalance < activity.credits;
 
   return (
-    <div className="min-h-[calc(100vh-64px)] bg-base-200 pb-28">
-      <div className="w-full max-w-md mx-auto px-4 pt-6">
-        {/* Activity Header */}
-        <div className="text-center mb-6">
-          <div
-            className={`
-              w-20 h-20 mx-auto mb-4 rounded-2xl
-              bg-base-100 border border-base-300
-              flex items-center justify-center
-              shadow-lg
-            `}
-          >
-            <ActivityIcon
-              className={`w-10 h-10 ${
-                activity.color === "red"
-                  ? "text-red-400"
-                  : activity.color === "blue"
-                    ? "text-blue-400"
-                    : "text-cyan-400"
-              }`}
-            />
-          </div>
-          <h1 className="text-2xl font-bold text-base-content mb-1">{activity.name}</h1>
-          <p className="text-primary font-semibold">{activity.credits} CR per session</p>
-        </div>
+    <div className="min-h-screen bg-black p-4 pb-28">
+      {/* Back button */}
+      <Link
+        href="/activities"
+        className="inline-flex items-center gap-2 mb-6 text-[#22c55e] opacity-60 hover:opacity-100 transition-opacity"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        <span className="font-mono text-xs tracking-wider">BACK</span>
+      </Link>
 
-        {/* DotMatrix Transaction Widget */}
-        {txHash && (
-          <div className="mb-6">
-            <ActivityTxWidget
-              txHash={txHash}
-              creditsSpent={activity.credits}
-              chainId={targetNetwork.id}
-              networkName={targetNetwork.name}
-              onComplete={handleComplete}
-            />
-          </div>
-        )}
-
+      <ActivityDeviceFrame ledState={getLedState()}>
         {/* Access Granted State */}
-        {accessGranted && flowState === "success" ? (
-          <div className="bg-base-100 rounded-2xl p-6 text-center border border-success/30 shadow-lg">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-success/20 flex items-center justify-center">
-              <CheckCircle className="w-8 h-8 text-success" />
+        {accessGranted ? (
+          <div className="activity-success-display">
+            <div className="activity-success-icon">
+              <Check className="w-10 h-10" strokeWidth={3} />
             </div>
-            <h2 className="text-xl font-bold text-base-content mb-2">Access Granted!</h2>
-            <p className="text-base-content/60 text-sm mb-4">Enjoy your {activity.name} session</p>
-            <button
-              onClick={handleReset}
-              className="px-6 py-2.5 bg-primary hover:bg-primary/90 text-primary-content font-medium rounded-full transition-all duration-200"
-            >
-              Done
+            <div className="activity-success-title">ACCESS GRANTED</div>
+            <div className="activity-success-subtitle">ENJOY YOUR {activity.name.toUpperCase()} SESSION</div>
+            <button onClick={handleReset} className="activity-success-btn">
+              DONE
             </button>
           </div>
         ) : (
-          /* Tap Button Area */
-          <div className="bg-base-100 rounded-2xl p-6 border border-base-300 shadow-lg">
-            {/* Balance Display */}
-            <div className="flex items-center justify-between mb-6 px-2">
-              <span className="text-base-content/60 text-sm">Your Balance</span>
-              <span className="text-lg font-bold text-base-content">{formattedBalance.toFixed(0)} CR</span>
+          <>
+            {/* Activity Info */}
+            <div className="activity-info-display">
+              <div className="activity-info-icon">
+                <ActivityIcon className="w-8 h-8" />
+              </div>
+              <div className="activity-info-name">{activity.name}</div>
+              <div className="activity-info-cost">{activity.credits} CREDITS</div>
             </div>
 
-            {/* Error Message */}
+            {/* Balance Display */}
+            <div className="activity-balance-display">
+              <span className="activity-balance-label">YOUR BALANCE</span>
+              <span className="activity-balance-value">{formattedBalance.toFixed(0)} CR</span>
+            </div>
+
+            {/* Error Display */}
             {error && (
-              <div className="flex items-center gap-2 px-4 py-2.5 bg-error/10 border border-error/30 rounded-xl mb-4">
-                <AlertCircle className="w-4 h-4 text-error flex-shrink-0" />
-                <span className="text-error text-xs">{error}</span>
+              <div className="activity-error-display">
+                <AlertCircle className="w-4 h-4" />
+                <span className="activity-error-text">{error}</span>
               </div>
             )}
 
             {/* Insufficient Balance Warning */}
             {insufficientBalance && !error && (
-              <div className="flex items-center gap-2 px-4 py-2.5 bg-warning/10 border border-warning/30 rounded-xl mb-4">
-                <AlertCircle className="w-4 h-4 text-warning flex-shrink-0" />
-                <span className="text-warning text-xs">Insufficient credits. You need {activity.credits} CR.</span>
+              <div className="activity-error-display">
+                <AlertCircle className="w-4 h-4" />
+                <span className="activity-error-text">INSUFFICIENT CREDITS. NEED {activity.credits} CR.</span>
               </div>
             )}
 
             {/* Tap Button */}
-            <button
-              onClick={handleTap}
-              disabled={isProcessing || insufficientBalance}
-              className={`
-                w-full py-6 rounded-2xl font-bold text-lg
-                transition-all duration-200
-                flex flex-col items-center justify-center gap-2
-                ${
-                  isProcessing
-                    ? "bg-primary/20 text-primary cursor-wait"
-                    : insufficientBalance
-                      ? "bg-base-300 text-base-content/30 cursor-not-allowed"
-                      : "bg-primary hover:bg-primary/90 text-primary-content shadow-lg hover:shadow-xl"
-                }
-              `}
-            >
-              {isProcessing ? (
-                <>
-                  <Loader2 className="w-8 h-8 animate-spin" />
-                  <span className="text-sm">
-                    {flowState === "tapping"
-                      ? "Tap your chip..."
-                      : flowState === "signing"
-                        ? "Signing..."
-                        : flowState === "submitting"
-                          ? "Sending..."
-                          : "Confirming..."}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <svg
-                    className="w-8 h-8"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M6 8.32a7.43 7.43 0 0 1 0 7.36" />
-                    <path d="M9.46 6.21a11.76 11.76 0 0 1 0 11.58" />
-                    <path d="M12.91 4.1a15.91 15.91 0 0 1 .01 15.8" />
-                    <path d="M16.37 2a20.16 20.16 0 0 1 0 20" />
-                  </svg>
-                  <span>TAP TO ACCESS</span>
-                </>
-              )}
+            <button onClick={handleTap} disabled={isProcessing || insufficientBalance} className="activity-tap-btn">
+              <div className="activity-tap-btn-content">
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="w-8 h-8 activity-tap-btn-icon animate-spin" />
+                    <span className="activity-tap-btn-text">
+                      {flowState === "tapping"
+                        ? "WAITING..."
+                        : flowState === "signing"
+                          ? "SIGNING..."
+                          : flowState === "submitting"
+                            ? "SENDING..."
+                            : "CONFIRMING..."}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Wifi className="w-8 h-8 activity-tap-btn-icon" />
+                    <span className="activity-tap-btn-text">TAP TO ACCESS</span>
+                    <span className="activity-tap-btn-subtext">DEDUCTS {activity.credits} CR</span>
+                  </>
+                )}
+              </div>
             </button>
-
-            {/* Cost Info */}
-            <p className="text-center text-base-content/40 text-xs mt-4">
-              This will deduct {activity.credits} CR from your balance
-            </p>
-          </div>
+          </>
         )}
-      </div>
+      </ActivityDeviceFrame>
     </div>
   );
 }
