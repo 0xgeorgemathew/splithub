@@ -23,6 +23,7 @@ yarn deploy:verify      # Deploy and verify on Etherscan
 yarn deploy:local       # Deploy to localhost
 yarn deploy:base        # Deploy to Base Sepolia
 yarn test:registry      # Test SplitHubRegistry
+yarn test:credit        # Test CreditToken
 yarn register:local     # Register chip on localhost
 yarn register:base      # Register chip on Base Sepolia
 
@@ -44,18 +45,26 @@ yarn next:check-types   # TypeScript type checking
 packages/foundry/contracts/
   SplitHubRegistry.sol    # Chip address → owner address mapping
   SplitHubPayments.sol    # EIP-712 signature verification + gasless payments
+  CreditToken.sol         # ERC20 credits: purchase with USDC, spend at activities
 ```
 
-Core EIP-712 type for payment authorization:
+**SplitHubRegistry** - Core registration contract linking NFC chip addresses to owner wallets. Uses EIP-712 signatures for gasless registration.
+
+**SplitHubPayments** - Executes gasless ERC-20 transfers using chip-signed authorizations. Verifies chip ownership via Registry.
+
+**CreditToken** - ERC20 for Activity Zone credits. 1 USDC = 10 credits (handles 6→18 decimal conversion). Supports gasless purchase and spend via EIP-712 signatures.
+
+EIP-712 types:
 ```solidity
+// SplitHubPayments
 struct PaymentAuth {
-    address payer;      // Chip owner
-    address recipient;  // Payment receiver
-    address token;      // ERC20 token
-    uint256 amount;
-    uint256 nonce;      // Auto-increment per payer
-    uint256 deadline;
+    address payer; address recipient; address token;
+    uint256 amount; uint256 nonce; uint256 deadline;
 }
+
+// CreditToken
+struct CreditPurchase { address buyer; uint256 usdcAmount; uint256 nonce; uint256 deadline; }
+struct CreditSpend { address spender; uint256 amount; address activityId; uint256 nonce; uint256 deadline; }
 ```
 
 **Deployment**: Scripts in `packages/foundry/script/` use `ScaffoldETHDeploy` base class. Deployments auto-export to `deployments/{chainId}.json` and generate TypeScript ABIs.
@@ -67,6 +76,18 @@ struct PaymentAuth {
   - `useDeployedContractInfo` for contract metadata
 - **Contract ABIs** auto-generated at `packages/nextjs/contracts/deployedContracts.ts`
 - **Config**: `packages/nextjs/scaffold.config.ts` for target networks and settings
+
+### Pages
+
+| Route | Purpose |
+|-------|---------|
+| `/` | Home dashboard with chip registration status |
+| `/register` | Onboarding: wallet + profile → NFC chip registration |
+| `/settle` | Single tap-to-pay payment flow |
+| `/multi-settle` | Batch payments with multiple payers |
+| `/settle/[requestId]` | Payment request links |
+| `/approve` | Token approvals for Payments or Credits contracts |
+| `/credits` | POS terminal for purchasing credits with USDC |
 
 ### Payment Flow
 

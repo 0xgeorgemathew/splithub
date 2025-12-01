@@ -17,6 +17,7 @@
     "register:base": "node scripts-js/parseArgs.js --file RegisterChip.s.sol --network baseSepolia",
     "deploy:payments:local": "node scripts-js/parseArgs.js --file DeploySplitHubPayments.s.sol --network localhost",
     "deploy:payments:base": "node scripts-js/parseArgs.js --file DeploySplitHubPayments.s.sol --network baseSepolia",
+    "test:credittoken": "forge test --match-contract CreditTokenTest -vvv",
     "flatten": "make flatten",
     "fork": "make fork FORK_URL=${1:-mainnet}",
     "format": "make format",
