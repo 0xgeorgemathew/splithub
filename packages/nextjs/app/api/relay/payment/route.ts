@@ -40,6 +40,26 @@ const SPLIT_HUB_PAYMENTS_ABI: Abi = [
     outputs: [],
     stateMutability: "nonpayable",
   },
+  {
+    type: "error",
+    name: "InvalidSignature",
+    inputs: [],
+  },
+  {
+    type: "error",
+    name: "UnauthorizedSigner",
+    inputs: [],
+  },
+  {
+    type: "error",
+    name: "ExpiredSignature",
+    inputs: [],
+  },
+  {
+    type: "error",
+    name: "InvalidNonce",
+    inputs: [],
+  },
 ];
 
 export async function POST(request: NextRequest) {
@@ -117,9 +137,30 @@ export async function POST(request: NextRequest) {
       txHash: hash,
       blockNumber: receipt.blockNumber.toString(),
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Relay payment error:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
+
+    // Extract more specific error message
+    let message = "Unknown error";
+    if (error instanceof Error) {
+      message = error.message;
+
+      // Check for specific contract errors
+      if (message.includes("UnauthorizedSigner")) {
+        message = "Unauthorized signer: The NFC chip is not registered to this wallet";
+      } else if (message.includes("InvalidNonce")) {
+        message = "Invalid nonce: Transaction out of order or already processed";
+      } else if (message.includes("ExpiredSignature")) {
+        message = "Signature expired: Please try again";
+      } else if (message.includes("InvalidSignature")) {
+        message = "Invalid signature: Signature verification failed";
+      } else if (message.includes("ERC20: insufficient allowance")) {
+        message = "Insufficient token allowance: Please approve the contract to spend your tokens";
+      } else if (message.includes("ERC20: transfer amount exceeds balance")) {
+        message = "Insufficient balance: You don't have enough tokens";
+      }
+    }
+
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
