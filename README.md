@@ -1,83 +1,368 @@
-# 🏗 Scaffold-ETH 2
+<div align="center">
 
-<h4 align="center">
-  <a href="https://docs.scaffoldeth.io">Documentation</a> |
-  <a href="https://scaffoldeth.io">Website</a>
-</h4>
+<img src="https://img.shields.io/badge/Base-0052FF?style=for-the-badge&logo=ethereum&logoColor=white" alt="Base" />
+<img src="https://img.shields.io/badge/Solidity-363636?style=for-the-badge&logo=solidity&logoColor=white" alt="Solidity" />
+<img src="https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=next.js&logoColor=white" alt="Next.js" />
+<img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
 
-🧪 An open-source, up-to-date toolkit for building decentralized applications (dapps) on the Ethereum blockchain. It's designed to make it easier for developers to create and deploy smart contracts and build user interfaces that interact with those contracts.
+<br />
+<br />
 
-⚙️ Built using NextJS, RainbowKit, Foundry, Wagmi, Viem, and Typescript.
+# ✨ SplitHub
 
-- ✅ **Contract Hot Reload**: Your frontend auto-adapts to your smart contract as you edit it.
-- 🪝 **[Custom hooks](https://docs.scaffoldeth.io/hooks/)**: Collection of React hooks wrapper around [wagmi](https://wagmi.sh/) to simplify interactions with smart contracts with typescript autocompletion.
-- 🧱 [**Components**](https://docs.scaffoldeth.io/components/): Collection of common web3 components to quickly build your frontend.
-- 🔥 **Burner Wallet & Local Faucet**: Quickly test your application with a burner wallet and local faucet.
-- 🔐 **Integration with Wallet Providers**: Connect to different wallet providers and interact with the Ethereum network.
+### Tap-to-Pay Payments on the Blockchain
 
-![Debug Contracts tab](https://github.com/scaffold-eth/scaffold-eth-2/assets/55535804/b237af0c-5027-4849-a5c1-2e31495cccb1)
+**Splitwise meets web3 — powered by Arx Halo Chips**
 
-## Requirements
+<br />
 
-Before you begin, you need to install the following tools:
+[Features](#-features) · [How It Works](#-how-it-works) · [Architecture](#-technical-architecture) · [Quick Start](#-quick-start)
 
-- [Node (>= v20.18.3)](https://nodejs.org/en/download/)
-- Yarn ([v1](https://classic.yarnpkg.com/en/docs/install/) or [v2+](https://yarnpkg.com/getting-started/install))
-- [Git](https://git-scm.com/downloads)
+</div>
 
-## Quickstart
+<br />
 
-To get started with Scaffold-ETH 2, follow the steps below:
+---
 
-1. Install dependencies if it was skipped in CLI:
+<br />
+
+## 🎯 What is SplitHub?
+
+SplitHub makes crypto payments as simple as tapping your phone.
+
+No wallet popups. No seed phrases. No gas fees to manage.
+
+**Just tap your Arx Halo Chip and go.**
+
+<br />
+
+> We built two products on a single platform — a **consumer app** for friend groups and a **B2B solution** for venues.
+
+<br />
+
+---
+
+<br />
+
+## 🚀 Features
+
+<br />
+
+### 💸 Bill Split
+
+<table>
+<tr>
+<td width="50%">
+
+**The Problem**
+
+Splitting bills with friends is awkward. Venmo requests go ignored. "I'll get you next time" never happens.
+
+And if your friends hold crypto? Wallet confirmations and gas fees kill the vibe.
+
+</td>
+<td width="50%">
+
+**The Solution**
+
+Track who owes what, then settle instantly with a single tap of your Arx Halo Chip.
+
+No apps to open. No amounts to confirm. No gas to calculate.
+
+</td>
+</tr>
+</table>
+
+**How it works:**
 
 ```
-cd my-dapp-example
+1. View your balances — green means they owe you, red means you owe them
+2. Tap a friend's card to settle up
+3. Hold your Arx Halo Chip to your phone
+4. Done. Payment complete. On-chain. Final.
+```
+
+<br />
+
+---
+
+<br />
+
+### 🎮 Closed-Loop Stored Value
+
+<table>
+<tr>
+<td width="50%">
+
+**The Problem**
+
+Venues want cashless payments. Users don't want to fumble with cards or phones.
+
+Traditional systems require expensive POS integrations.
+
+</td>
+<td width="50%">
+
+**The Solution**
+
+A prepaid credit system powered by blockchain. Buy credits with USDC, spend them at activities — all with a tap of your Arx Halo Chip.
+
+</td>
+</tr>
+</table>
+
+<br />
+
+| Buy Credits | Spend Credits |
+|-------------|---------------|
+| 1. Enter USDC amount | 1. Select an activity |
+| 2. Tap your Arx Halo Chip | 2. Tap your Arx Halo Chip |
+| 3. Credits added instantly | 3. Access granted |
+
+<br />
+
+> **1 USDC = 10 Credits**
+>
+> Perfect for arcades, festivals, resorts, theme parks — anywhere you want frictionless, cashless payments.
+
+<br />
+
+---
+
+<br />
+
+## 🔐 How It Works
+
+<br />
+
+### The Arx Halo Chip
+
+The **Arx Halo Chip** is a secure element that stores your private key. When you tap:
+
+- ✅ The chip signs an EIP-712 message authorizing the payment
+- ✅ The private key **never leaves** the chip
+- ✅ No wallet popup, no confirmation screen
+- ✅ Impossible to clone or extract the key
+
+It's the same security model as your credit card's EMV chip — but for crypto.
+
+<br />
+
+### The Flow
+
+```
+┌─────────────────┐      ┌─────────────────┐      ┌─────────────────┐      ┌─────────────────┐
+│                 │      │                 │      │                 │      │                 │
+│  Arx Halo Chip  │ ───▶ │     Relayer     │ ───▶ │    Contract     │ ───▶ │   Settlement    │
+│     (Sign)      │      │    (Submit)     │      │    (Verify)     │      │   (Transfer)    │
+│                 │      │                 │      │                 │      │                 │
+└─────────────────┘      └─────────────────┘      └─────────────────┘      └─────────────────┘
+```
+
+<br />
+
+| Step | What Happens |
+|------|--------------|
+| **1. Sign** | Arx Halo Chip signs EIP-712 typed data containing payer, recipient, amount, nonce, deadline |
+| **2. Submit** | Relayer receives signature, wraps it in a transaction, pays gas, submits on-chain |
+| **3. Verify** | Smart contract verifies signature matches a registered chip |
+| **4. Transfer** | Tokens move instantly. On-chain finality. No chargebacks. |
+
+<br />
+
+> **Why can't the relayer steal funds?**
+>
+> The signature locks every field. If the relayer changes anything — even 1 wei — the signature becomes invalid. The relayer can only deliver the payment as-is.
+
+<br />
+
+---
+
+<br />
+
+## 🏗 Technical Architecture
+
+<br />
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              USER LAYER                                     │
+│                                                                             │
+│           ┌──────────────┐    ┌──────────────┐    ┌──────────────┐         │
+│           │   Register   │    │     Home     │    │   Credits    │         │
+│           │     Page     │    │   Balances   │    │     Page     │         │
+│           └──────┬───────┘    └──────┬───────┘    └──────┬───────┘         │
+│                  │                   │                   │                  │
+└──────────────────┼───────────────────┼───────────────────┼──────────────────┘
+                   │                   │                   │
+                   ▼                   ▼                   ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          ARX HALO CHIP LAYER                                │
+│                                                                             │
+│                      Signs EIP-712 typed data on tap                        │
+│                  Private key never leaves secure element                    │
+│                                                                             │
+└─────────────────────────────────────┬───────────────────────────────────────┘
+                                      │
+                                      ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                            RELAYER LAYER                                    │
+│                                                                             │
+│                 Receives signature • Submits tx • Pays gas                  │
+│                       Cannot modify signed payload                          │
+│                                                                             │
+└─────────────────────────────────────┬───────────────────────────────────────┘
+                                      │
+                                      ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           CONTRACT LAYER                                    │
+│                                                                             │
+│    ┌───────────────────┐  ┌───────────────────┐  ┌───────────────────┐     │
+│    │  SplitHubRegistry │  │ SplitHubPayments  │  │    CreditToken    │     │
+│    │                   │  │                   │  │                   │     │
+│    │   chip ↔ wallet   │  │  verify + send    │  │   buy + spend     │     │
+│    │      mapping      │  │      tokens       │  │     credits       │     │
+│    └───────────────────┘  └───────────────────┘  └───────────────────┘     │
+│                                                                             │
+└─────────────────────────────────────┬───────────────────────────────────────┘
+                                      │
+                                      ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          BASE L2 (BLOCKCHAIN)                               │
+│                                                                             │
+│               Instant finality  •  Sub-cent fees  •  EVM                    │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+<br />
+
+---
+
+<br />
+
+## 📜 Smart Contracts
+
+<br />
+
+### `SplitHubRegistry`
+
+> Links Arx Halo Chips to user wallets. The identity layer.
+
+| Function | Purpose |
+|----------|---------|
+| `register(signer, owner, signature)` | Link a chip to a wallet. Requires Arx Halo Chip signature to prove ownership. |
+| `ownerOf(signer)` | Look up which wallet owns a chip |
+| `signerOf(owner)` | Look up which chip belongs to a wallet |
+
+<br />
+
+### `SplitHubPayments`
+
+> Executes peer-to-peer token transfers via Arx Halo Chip signatures.
+
+| Function | Purpose |
+|----------|---------|
+| `executePayment(auth, signature)` | Transfer tokens from payer to recipient. Verifies chip signature, checks nonce, moves funds. |
+| `getNonce(payer)` | Get current nonce for replay protection |
+| `getDigest(auth)` | Compute signing hash for off-chain use |
+
+```solidity
+struct PaymentAuth {
+    address payer;      // Who's paying
+    address recipient;  // Who receives
+    address token;      // Which token
+    uint256 amount;     // How much
+    uint256 nonce;      // Replay protection
+    uint256 deadline;   // Expiration
+}
+```
+
+<br />
+
+### `CreditToken`
+
+> ERC-20 token for the closed-loop stored value system.
+
+| Function | Purpose |
+|----------|---------|
+| `purchaseCredits(purchase, signature)` | Buy credits with USDC. Transfers USDC, mints credits. |
+| `spendCredits(spend, signature)` | Spend credits at an activity. Burns credits, emits event. |
+| `withdrawUSDC(to)` | Venue withdraws collected USDC |
+
+<br />
+
+---
+
+<br />
+
+## 🗺 User Flows
+
+<br />
+
+| Route | What You Do |
+|-------|-------------|
+| `/register` | Create profile, link your Arx Halo Chip |
+| `/` | View all balances, tap a friend to pay |
+| `/credits` | Buy credits with USDC, spend at activities |
+| `/approve` | One-time token approval setup |
+
+<br />
+
+---
+
+<br />
+
+## ⚡ Quick Start
+
+<br />
+
+```bash
+# Install dependencies
 yarn install
-```
 
-2. Run a local network in the first terminal:
-
-```
+# Start local chain
 yarn chain
-```
 
-This command starts a local Ethereum network using Foundry. The network runs on your local machine and can be used for testing and development. You can customize the network configuration in `packages/foundry/foundry.toml`.
-
-3. On a second terminal, deploy the test contract:
-
-```
+# Deploy contracts (new terminal)
 yarn deploy
-```
 
-This command deploys a test smart contract to the local network. The contract is located in `packages/foundry/contracts` and can be modified to suit your needs. The `yarn deploy` command uses the deploy script located in `packages/foundry/script` to deploy the contract to the network. You can also customize the deploy script.
-
-4. On a third terminal, start your NextJS app:
-
-```
+# Run frontend (new terminal)
 yarn start
 ```
 
-Visit your app on: `http://localhost:3000`. You can interact with your smart contract using the `Debug Contracts` page. You can tweak the app config in `packages/nextjs/scaffold.config.ts`.
+Visit **http://localhost:3000**
 
-Run smart contract test with `yarn foundry:test`
+<br />
 
-- Edit your smart contracts in `packages/foundry/contracts`
-- Edit your frontend homepage at `packages/nextjs/app/page.tsx`. For guidance on [routing](https://nextjs.org/docs/app/building-your-application/routing/defining-routes) and configuring [pages/layouts](https://nextjs.org/docs/app/building-your-application/routing/pages-and-layouts) checkout the Next.js documentation.
-- Edit your deployment scripts in `packages/foundry/script`
+---
 
-## Documentation
+<br />
 
-Visit our [docs](https://docs.scaffoldeth.io) to learn how to start building with Scaffold-ETH 2.
+## 🛠 Tech Stack
 
-To know more about its features, check out our [website](https://scaffoldeth.io).
+<br />
 
-## Contributing to Scaffold-ETH 2
+| Layer | Technology |
+|-------|------------|
+| **Contracts** | Solidity, Foundry, OpenZeppelin |
+| **Frontend** | Next.js 15, TypeScript, Wagmi, Viem |
+| **Chain** | Base (Ethereum L2) |
+| **Signing** | EIP-712 typed data, ECDSA |
+| **Hardware** | Arx Halo Chips (secure element) |
 
-We welcome contributions to Scaffold-ETH 2!
+<br />
 
-Please see [CONTRIBUTING.MD](https://github.com/scaffold-eth/scaffold-eth-2/blob/main/CONTRIBUTING.md) for more information and guidelines for contributing to Scaffold-ETH 2.
+---
 
-yarn deploy:base
-yarn verify --network baseSepolia
-yarn test:registry
+<br />
+
+<div align="center">
+
+### ✨ Tap. Pay. Done. ✨
+
+<br />
+
+**Built with Arx Halo Chips**
+
+</div>
