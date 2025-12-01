@@ -11,6 +11,14 @@ import { useTargetNetwork } from "~~/hooks/scaffold-eth";
 const DEFAULT_TOKEN_ADDRESS = "0x0a215D8ba66387DCA84B284D18c3B4ec3de6E54a" as const;
 const DEFAULT_AMOUNT = "1000";
 
+// Contract options for approval
+type ContractType = "payments" | "credits";
+
+const CONTRACT_OPTIONS: { id: ContractType; label: string; contractKey: string }[] = [
+  { id: "payments", label: "Payments", contractKey: "SplitHubPayments" },
+  { id: "credits", label: "Credits", contractKey: "CreditToken" },
+];
+
 const ERC20_ABI = [
   {
     name: "approve",
@@ -43,12 +51,15 @@ export default function ApprovePage() {
   const { targetNetwork } = useTargetNetwork();
 
   const [error, setError] = useState("");
+  const [selectedContract, setSelectedContract] = useState<ContractType>("payments");
 
-  // Get SplitHubPayments contract address for the current network
+  // Get contract addresses for the current network
   const chainContracts = deployedContracts[targetNetwork.id as keyof typeof deployedContracts] as
     | Record<string, { address: string }>
     | undefined;
-  const spenderAddress = chainContracts?.SplitHubPayments?.address as `0x${string}` | undefined;
+
+  const selectedOption = CONTRACT_OPTIONS.find(opt => opt.id === selectedContract)!;
+  const spenderAddress = chainContracts?.[selectedOption.contractKey]?.address as `0x${string}` | undefined;
 
   // Read token decimals
   const { data: decimals } = useReadContract({
@@ -81,7 +92,7 @@ export default function ApprovePage() {
     }
 
     if (!spenderAddress) {
-      setError("SplitHubPayments contract not deployed on this network");
+      setError(`${selectedOption.contractKey} contract not deployed on this network`);
       return;
     }
 
@@ -99,9 +110,9 @@ export default function ApprovePage() {
         functionName: "approve",
         args: [spenderAddress, approvalAmount],
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Approval error:", err);
-      setError(err.message || "Approval failed");
+      setError(err instanceof Error ? err.message : "Approval failed");
     }
   };
 
@@ -130,12 +141,14 @@ export default function ApprovePage() {
             <h3 className="text-2xl font-bold mb-3 text-base-content">Approved!</h3>
 
             {/* Approval info */}
-            <div className="flex items-center gap-2 px-4 py-2 bg-base-100 border border-success/30 rounded-full mb-4">
+            <div className="flex items-center gap-2 px-4 py-2 bg-base-100 border border-success/30 rounded-full mb-2">
               <Shield className="w-4 h-4 text-success" />
               <span className="text-sm font-semibold text-base-content">
                 {DEFAULT_AMOUNT} {symbol || "tokens"}
               </span>
             </div>
+
+            <p className="text-xs text-base-content/50 mb-4">for {selectedOption.label}</p>
 
             {/* Transaction hash */}
             {txHash && (
@@ -194,6 +207,23 @@ export default function ApprovePage() {
         ) : (
           /* Main Approval UI */
           <div className="flex flex-col items-center pt-6">
+            {/* Contract Selector */}
+            <div className="flex bg-base-100 rounded-full p-1 mb-6 border border-base-300">
+              {CONTRACT_OPTIONS.map(option => (
+                <button
+                  key={option.id}
+                  onClick={() => setSelectedContract(option.id)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                    selectedContract === option.id
+                      ? "bg-primary text-primary-content"
+                      : "text-base-content/60 hover:text-base-content"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+
             {/* Info Pills */}
             <div className="flex flex-wrap justify-center gap-2 mb-6">
               {/* Token Pill */}
@@ -226,18 +256,22 @@ export default function ApprovePage() {
               </div>
             )}
 
-            {/* Approve Button - kept similar to original design */}
+            {/* Approve Button */}
             <button
               onClick={handleApprove}
               disabled={!spenderAddress}
               className="w-full max-w-xs py-3.5 px-6 bg-primary hover:bg-primary/90 text-primary-content font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Shield className="w-5 h-5" />
-              Approve Token
+              Approve for {selectedOption.label}
             </button>
 
             {/* Info text */}
-            <p className="mt-4 text-xs text-base-content/40 text-center">Required before making payments</p>
+            <p className="mt-4 text-xs text-base-content/40 text-center">
+              {selectedContract === "payments"
+                ? "Required before making payments"
+                : "Required before purchasing credits"}
+            </p>
           </div>
         )}
       </div>
