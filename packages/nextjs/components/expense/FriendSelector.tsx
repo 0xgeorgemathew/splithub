@@ -47,11 +47,14 @@ export const FriendSelector = ({ isOpen, onClose, onSelectFriend, selectedFriend
     if (isOpen) {
       document.addEventListener("keydown", handleEscape);
       document.body.style.overflow = "hidden";
+      // Prevent zoom on iOS
+      document.body.style.touchAction = "none";
     }
 
     return () => {
       document.removeEventListener("keydown", handleEscape);
       document.body.style.overflow = "unset";
+      document.body.style.touchAction = "auto";
     };
   }, [isOpen, onClose]);
 
@@ -71,12 +74,12 @@ export const FriendSelector = ({ isOpen, onClose, onSelectFriend, selectedFriend
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4">
       {/* Backdrop */}
       <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal */}
-      <div className="relative w-full max-w-md bg-base-200 rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[80vh] flex flex-col">
+      <div className="relative w-full max-w-sm bg-base-200 rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[80vh] flex flex-col mb-0 sm:mb-0">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-base-300/50">
           <h2 className="text-[20px] font-semibold text-base-content">Add Friends</h2>
