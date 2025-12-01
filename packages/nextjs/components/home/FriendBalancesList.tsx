@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
+import { SettleModal } from "~~/components/settle/SettleModal";
+import { type PaymentParams } from "~~/components/settle/types";
 import { type FriendBalance } from "~~/lib/supabase";
 import { getFriendBalances, getOverallBalance } from "~~/services/balanceService";
 
@@ -16,6 +18,11 @@ export const FriendBalancesList = ({ userWallet }: FriendBalancesListProps) => {
   const [overallBalance, setOverallBalance] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Settlement modal state
+  const [isSettleModalOpen, setIsSettleModalOpen] = useState(false);
+  const [selectedFriend, setSelectedFriend] = useState<FriendBalance | null>(null);
+  const [settlementParams, setSettlementParams] = useState<PaymentParams | null>(null);
 
   useEffect(() => {
     const fetchBalances = async () => {
@@ -51,6 +58,81 @@ export const FriendBalancesList = ({ userWallet }: FriendBalancesListProps) => {
     if (balance > 0) return "owes you";
     if (balance < 0) return "you owe";
     return "settled up";
+  };
+
+  const handleFriendClick = async (friend: FriendBalance) => {
+    // Only allow settlement if friend owes the user (positive balance)
+    if (friend.net_balance <= 0) {
+      console.log("Cannot settle - you owe this friend");
+      return;
+    }
+
+    setSelectedFriend(friend);
+
+    try {
+      // Fetch token address from their expenses
+      const response = await fetch(`/api/balances/token?userWallet=${userWallet}&friendWallet=${friend.friend_wallet}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to fetch token address");
+      }
+
+      const params: PaymentParams = {
+        recipient: userWallet as `0x${string}`,
+        token: data.tokenAddress as `0x${string}`,
+        amount: formatAmount(friend.net_balance),
+        memo: `Settlement with ${friend.friend_name}`,
+      };
+
+      setSettlementParams(params);
+      setIsSettleModalOpen(true);
+    } catch (err) {
+      console.error("Error preparing settlement:", err);
+      setError(err instanceof Error ? err.message : "Failed to prepare settlement");
+    }
+  };
+
+  const handleSettlementSuccess = async (txHash: string) => {
+    if (!selectedFriend || !settlementParams) return;
+
+    try {
+      // Record settlement in database
+      const response = await fetch("/api/settlements", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          payerWallet: selectedFriend.friend_wallet,
+          payeeWallet: userWallet,
+          amount: settlementParams.amount,
+          tokenAddress: settlementParams.token,
+          txHash,
+        }),
+      });
+
+      if (!response.ok) {
+        console.error("Failed to record settlement");
+      }
+
+      // Refresh balances to show updated amounts
+      const [friendBalances, overall] = await Promise.all([
+        getFriendBalances(userWallet),
+        getOverallBalance(userWallet),
+      ]);
+
+      setBalances(friendBalances);
+      setOverallBalance(overall);
+    } catch (err) {
+      console.error("Error handling settlement success:", err);
+    }
+  };
+
+  const handleCloseModal = () => {
+    setIsSettleModalOpen(false);
+    setSelectedFriend(null);
+    setSettlementParams(null);
   };
 
   if (loading) {
@@ -119,10 +201,7 @@ export const FriendBalancesList = ({ userWallet }: FriendBalancesListProps) => {
               <div key={balance.friend_wallet}>
                 <div
                   className="flex items-center px-4 py-3 hover:bg-white/[0.02] active:bg-white/[0.04] transition-colors cursor-pointer h-[54px]"
-                  onClick={() => {
-                    // TODO: Navigate to friend detail page
-                    console.log("View details for", balance.friend_name);
-                  }}
+                  onClick={() => handleFriendClick(balance)}
                 >
                   {/* Avatar - 32px */}
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#F3B53D]/20 to-[#F3B53D]/5 flex items-center justify-center flex-shrink-0">
@@ -170,6 +249,16 @@ export const FriendBalancesList = ({ userWallet }: FriendBalancesListProps) => {
         <Plus className="w-5 h-5" />
         <span>Add Expense</span>
       </button>
+
+      {/* Settlement Modal */}
+      {settlementParams && (
+        <SettleModal
+          isOpen={isSettleModalOpen}
+          onClose={handleCloseModal}
+          params={settlementParams}
+          onSuccess={handleSettlementSuccess}
+        />
+      )}
     </div>
   );
 };
