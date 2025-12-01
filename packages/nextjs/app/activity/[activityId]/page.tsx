@@ -35,7 +35,7 @@ export default function ActivityPage() {
   // Activity not found
   if (!activity) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center p-4">
+      <div className="activity-fullscreen">
         <ActivityDeviceFrame ledState="idle">
           <div className="text-center py-8">
             <AlertCircle className="w-12 h-12 text-[#ef4444] mx-auto mb-4 filter drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
@@ -51,14 +51,11 @@ export default function ActivityPage() {
   const showReceipt = flowState !== "idle";
 
   return (
-    <div className="min-h-screen bg-black p-4 pb-28">
-      {/* Back button */}
-      <Link
-        href="/activities"
-        className="inline-flex items-center gap-2 mb-6 text-[#22c55e] opacity-60 hover:opacity-100 transition-opacity"
-      >
+    <div className="activity-fullscreen">
+      {/* Back button - overlaid */}
+      <Link href="/activities" className="activity-back-btn">
         <ArrowLeft className="w-4 h-4" />
-        <span className="font-mono text-xs tracking-wider">BACK</span>
+        <span>BACK</span>
       </Link>
 
       <ActivityDeviceFrame ledState={getLedState()}>

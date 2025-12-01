@@ -3,11 +3,9 @@
 import Link from "next/link";
 import { ArrowLeft, ChevronRight } from "lucide-react";
 import { getAllActivities } from "~~/config/activities";
-import { useCreditBalance } from "~~/hooks/credits";
 
 export default function ActivitiesPage() {
   const activities = getAllActivities();
-  const { formattedBalance } = useCreditBalance();
 
   return (
     <div className="activities-list-container">
@@ -26,24 +24,13 @@ export default function ActivitiesPage() {
         <div className="activities-list-subtitle">SELECT AN ACTIVITY</div>
       </div>
 
-      {/* Balance display */}
-      <div className="activity-balance-display mb-6">
-        <span className="activity-balance-label">BALANCE</span>
-        <span className="activity-balance-value">{formattedBalance.toFixed(0)} CR</span>
-      </div>
-
       {/* Activity list */}
       <div>
         {activities.map(activity => {
           const Icon = activity.icon;
-          const canAfford = formattedBalance >= activity.credits;
 
           return (
-            <Link
-              key={activity.id}
-              href={`/activity/${activity.id}`}
-              className={`activity-card ${!canAfford ? "opacity-50" : ""}`}
-            >
+            <Link key={activity.id} href={`/activity/${activity.id}`} className="activity-card">
               <div className="activity-card-content">
                 <div className="activity-card-icon">
                   <Icon className="w-6 h-6" />

@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { POSAmountEntry } from "./POSAmountEntry";
 import { POSHardwareFrame } from "./POSHardwareFrame";
 import { POSReceiptPrinter } from "./POSReceiptPrinter";
+import { Gamepad2 } from "lucide-react";
 import { CreditFlowState } from "~~/hooks/credits/useCreditPurchase";
 
 export type POSState = "idle" | "sending" | "confirming" | "printing" | "success";
@@ -118,28 +120,35 @@ export function POSFullScreen({
         <button className="absolute inset-0 z-0" onClick={handleDismiss} aria-label="Close terminal" />
       )}
 
-      <POSHardwareFrame state={posState}>
-        {isIdle ? (
-          <POSAmountEntry
-            amount={amount}
-            onAmountChange={onAmountChange}
-            onSubmit={handleTap}
-            disabled={isProcessing}
-          />
-        ) : (
-          <POSReceiptPrinter
-            flowState={flowState}
-            txHash={txHash || null}
-            networkName={networkName}
-            creditsMinted={creditsMinted}
-            newBalance={newBalance}
-            amount={amount}
-            error={error || null}
-            onRetry={handleRetry}
-            onDismiss={handleDismiss}
-          />
-        )}
-      </POSHardwareFrame>
+      <div className="pos-terminal-wrapper">
+        <POSHardwareFrame state={posState}>
+          {isIdle ? (
+            <POSAmountEntry
+              amount={amount}
+              onAmountChange={onAmountChange}
+              onSubmit={handleTap}
+              disabled={isProcessing}
+            />
+          ) : (
+            <POSReceiptPrinter
+              flowState={flowState}
+              txHash={txHash || null}
+              networkName={networkName}
+              creditsMinted={creditsMinted}
+              newBalance={newBalance}
+              amount={amount}
+              error={error || null}
+              onRetry={handleRetry}
+              onDismiss={handleDismiss}
+            />
+          )}
+        </POSHardwareFrame>
+
+        {/* Activities Navigation Button - Below Terminal */}
+        <Link href="/activities" className="activities-nav-btn-inline" aria-label="View Activities">
+          <Gamepad2 className="w-6 h-6" />
+        </Link>
+      </div>
     </div>
   );
 }
