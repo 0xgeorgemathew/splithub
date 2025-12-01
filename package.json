@@ -21,6 +21,7 @@
     "register:base": "yarn workspace @se-2/foundry register:base",
     "deploy:payments:local": "yarn workspace @se-2/foundry deploy:payments:local",
     "deploy:payments:base": "yarn workspace @se-2/foundry deploy:payments:base",
+    "test:credittoken": "yarn workspace @se-2/foundry test:credittoken",
     "flatten": "yarn foundry:flatten",
     "fork": "yarn foundry:fork",
     "format": "yarn next:format && yarn foundry:format",
