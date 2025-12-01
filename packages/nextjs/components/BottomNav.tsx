@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Coins, Home, RefreshCw, ShieldCheck } from "lucide-react";
+import { Coins, RefreshCw, ShieldCheck, Split } from "lucide-react";
 
 const navItems = [
-  { label: "Home", href: "/", icon: Home },
+  { label: "Splits", href: "/", icon: Split },
   { label: "Credits", href: "/credits", icon: Coins },
   { label: "Approve", href: "/approve", icon: ShieldCheck },
   { label: "Re-register", href: "/re-register", icon: RefreshCw },
