@@ -127,9 +127,9 @@ export function SettleFlow({ params, onSuccess, onError }: SettleFlowProps) {
 
   // Idle State - Main Payment UI
   return (
-    <div className="flex flex-col items-center py-4">
+    <div className="flex flex-col items-center py-2">
       {/* Info Pills */}
-      <div className="flex flex-wrap justify-center gap-2 mb-6">
+      <div className="flex flex-wrap justify-center gap-2 mb-4">
         {/* Recipient Pill */}
         <div className="flex items-center gap-2 px-3 py-1.5 bg-base-100 border border-base-300 rounded-full">
           <User className="w-3.5 h-3.5 text-primary" />
@@ -153,9 +153,9 @@ export function SettleFlow({ params, onSuccess, onError }: SettleFlowProps) {
       </div>
 
       {/* Amount Display */}
-      <div className="text-center mb-8">
-        <p className="text-6xl font-bold text-base-content mb-1">{params.amount}</p>
-        <p className="text-base-content/50 text-sm">{symbol || "tokens"}</p>
+      <div className="text-center mb-6">
+        <p className="text-5xl font-bold text-base-content mb-1">{params.amount}</p>
+        <p className="text-base-content/50 text-sm">{symbol || "USDT"}</p>
       </div>
 
       {/* Error Message */}

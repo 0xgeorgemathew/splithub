@@ -45,12 +45,12 @@ export function SettleModal({ isOpen, onClose, params, onSuccess, onError }: Set
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 pb-24">
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-4">
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal Container */}
-      <div className="relative w-full max-w-sm bg-base-200 rounded-3xl shadow-2xl fade-in-up overflow-hidden">
+      <div className="relative w-full max-w-sm bg-base-200 rounded-3xl shadow-2xl fade-in-up overflow-y-auto max-h-[85vh]">
         {/* Close Button */}
         <button
           onClick={onClose}
