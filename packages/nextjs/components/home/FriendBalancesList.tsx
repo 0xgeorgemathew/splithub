@@ -164,27 +164,18 @@ export const FriendBalancesList = ({ userWallet }: FriendBalancesListProps) => {
         {/* Clean Summary Section - Only show when there are expenses */}
         {balances.length > 0 && (
           <div className="pt-4 px-4">
-            <p className="text-[13px] font-medium text-white/45 mb-2">Total balance</p>
-            <div className="flex items-center justify-between">
-              {overallBalance === 0 ? (
-                <p className="text-[21px] font-semibold text-white/60">$0.00 USDC</p>
-              ) : (
-                <>
-                  <p className="text-[21px] font-semibold text-[#F3B53D]">${formatAmount(overallBalance)} USDC</p>
-                  <div
-                    className={`h-[23px] px-2.5 rounded-xl flex items-center ${
-                      overallBalance > 0 ? "bg-[#49D792]/15" : "bg-[#FF6A4A]/15"
-                    }`}
-                  >
-                    <span
-                      className={`text-[12px] font-medium ${overallBalance > 0 ? "text-[#49D792]" : "text-[#FF6A4A]"}`}
-                    >
-                      {overallBalance > 0 ? "You're owed" : "You owe"}
-                    </span>
-                  </div>
-                </>
-              )}
-            </div>
+            {overallBalance === 0 ? (
+              <p className="text-[15px] text-white/60">
+                Overall, you are <span className="font-semibold">settled up</span>
+              </p>
+            ) : (
+              <div>
+                <p className="text-[15px] text-white/70 mb-1">Overall, you {overallBalance > 0 ? "are owed" : "owe"}</p>
+                <p className={`text-[28px] font-bold ${overallBalance < 0 ? "text-[#FF6A4A]" : "text-[#49D792]"}`}>
+                  ${formatAmount(overallBalance)} USDC
+                </p>
+              </div>
+            )}
           </div>
         )}
 
