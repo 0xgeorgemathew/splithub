@@ -1,30 +1,21 @@
 "use client";
 
-import { Coins, Nfc } from "lucide-react";
+import { Nfc } from "lucide-react";
 
 interface POSAmountEntryProps {
   amount: number;
   onAmountChange: (amount: number) => void;
-  balance: number;
   onSubmit: () => void;
   disabled: boolean;
 }
 
 const PRESET_AMOUNTS = [10, 25, 50, 100];
 
-export function POSAmountEntry({ amount, onAmountChange, balance, onSubmit, disabled }: POSAmountEntryProps) {
+export function POSAmountEntry({ amount, onAmountChange, onSubmit, disabled }: POSAmountEntryProps) {
   const creditsToReceive = amount * 10;
 
   return (
     <div className="pos-amount-entry">
-      {/* Balance Display */}
-      <div className="pos-balance-bar">
-        <Coins className="w-3.5 h-3.5 text-primary" />
-        <span className="pos-balance-label">BAL:</span>
-        <span className="pos-balance-value">{balance.toFixed(0)}</span>
-        <span className="pos-balance-unit">CR</span>
-      </div>
-
       {/* Amount Display */}
       <div className="pos-amount-display">
         <div className="pos-amount-label">AMOUNT</div>

@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Check, X } from "lucide-react";
-import { CreditFlowState } from "~~/hooks/credits/useCreditPurchase";
+import { Activity } from "~~/config/activities";
+import { CreditFlowState } from "~~/hooks/credits/useCreditSpend";
 
 interface ReceiptLine {
   id: string;
@@ -11,13 +12,12 @@ interface ReceiptLine {
   delay: number;
 }
 
-interface POSReceiptPrinterProps {
+interface ActivityReceiptPrinterProps {
   flowState: CreditFlowState;
+  activity: Activity;
   txHash: string | null;
   networkName: string;
-  creditsMinted: string | null;
-  newBalance: string | null;
-  amount: number;
+  remainingBalance: string | null;
   error: string | null;
   onRetry?: () => void;
   onDismiss?: () => void;
@@ -25,11 +25,10 @@ interface POSReceiptPrinterProps {
 
 function generateReceiptLines(
   flowState: CreditFlowState,
+  activity: Activity,
   txHash: string | null,
   networkName: string,
-  amount: number,
-  creditsMinted: string | null,
-  newBalance: string | null,
+  remainingBalance: string | null,
   error: string | null,
 ): ReceiptLine[] {
   const lines: ReceiptLine[] = [];
@@ -37,13 +36,12 @@ function generateReceiptLines(
   const dateStr = now.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "2-digit" });
   const timeStr = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const truncatedHash = txHash ? `${txHash.slice(0, 10)}...${txHash.slice(-6)}` : null;
-  const creditsNumber = creditsMinted ? Number(BigInt(creditsMinted) / BigInt(10 ** 18)) : amount * 10;
-  const balanceNumber = newBalance ? Number(BigInt(newBalance) / BigInt(10 ** 18)) : null;
+  const balanceNumber = remainingBalance ? Number(BigInt(remainingBalance) / BigInt(10 ** 18)) : null;
 
   // Header
   lines.push({ id: "h1", text: "================================", type: "divider", delay: 0 });
-  lines.push({ id: "h2", text: "SPLITHUB TERMINAL", type: "header", delay: 100 });
-  lines.push({ id: "h3", text: "CREDIT PURCHASE", type: "header", delay: 200 });
+  lines.push({ id: "h2", text: "SPLITHUB ACTIVITY TERMINAL", type: "header", delay: 100 });
+  lines.push({ id: "h3", text: activity.name.toUpperCase(), type: "header", delay: 200 });
   lines.push({ id: "h4", text: "================================", type: "divider", delay: 300 });
   lines.push({ id: "h5", text: `DATE: ${dateStr}  TIME: ${timeStr}`, type: "detail", delay: 400 });
   lines.push({ id: "h6", text: "--------------------------------", type: "divider", delay: 500 });
@@ -68,31 +66,28 @@ function generateReceiptLines(
 
   if (flowState === "confirming" || flowState === "success") {
     lines.push({ id: "s4", text: "> TRANSACTION CONFIRMED", type: "status", delay: 1200 });
-    lines.push({ id: "s5", text: "", type: "detail", delay: 1300 });
-    lines.push({ id: "s6", text: `> SENDING ${amount}.00 USDC...`, type: "status", delay: 1400 });
+    lines.push({ id: "s5", text: `> DEDUCTING ${activity.credits} CREDITS...`, type: "status", delay: 1400 });
   }
 
   if (flowState === "success") {
-    lines.push({ id: "s7", text: "> USDC TRANSFERRED", type: "status", delay: 1600 });
-    lines.push({ id: "s8", text: `> RECEIVING ${creditsNumber} CREDITS...`, type: "status", delay: 1800 });
-    lines.push({ id: "s9", text: "> CREDITS RECEIVED", type: "success", delay: 2000 });
-    lines.push({ id: "d1", text: "--------------------------------", type: "divider", delay: 2200 });
-    lines.push({ id: "a1", text: "TRANSACTION DETAILS:", type: "detail", delay: 2300 });
-    lines.push({ id: "a2", text: `NETWORK:   ${networkName.toUpperCase()}`, type: "detail", delay: 2400 });
+    lines.push({ id: "s6", text: "> CREDITS DEDUCTED", type: "success", delay: 1600 });
+    lines.push({ id: "d1", text: "--------------------------------", type: "divider", delay: 1800 });
+    lines.push({ id: "a1", text: "TRANSACTION DETAILS:", type: "detail", delay: 1900 });
+    lines.push({ id: "a2", text: `NETWORK:   ${networkName.toUpperCase()}`, type: "detail", delay: 2000 });
     if (truncatedHash) {
-      lines.push({ id: "a3", text: `TX HASH:   ${truncatedHash}`, type: "detail", delay: 2500 });
+      lines.push({ id: "a3", text: `TX HASH:   ${truncatedHash}`, type: "detail", delay: 2100 });
     }
-    lines.push({ id: "a4", text: "GAS FEE:   FREE (SPONSORED)", type: "detail", delay: 2600 });
-    lines.push({ id: "d2", text: "--------------------------------", type: "divider", delay: 2700 });
-    lines.push({ id: "t1", text: `AMOUNT:           $${amount}.00 USDC`, type: "amount", delay: 2800 });
-    lines.push({ id: "t2", text: `CREDITS:          +${creditsNumber} CR`, type: "success", delay: 2900 });
+    lines.push({ id: "a4", text: "GAS FEE:   FREE (SPONSORED)", type: "detail", delay: 2200 });
+    lines.push({ id: "d2", text: "--------------------------------", type: "divider", delay: 2300 });
+    lines.push({ id: "t1", text: `ACTIVITY:         ${activity.name.toUpperCase()}`, type: "detail", delay: 2400 });
+    lines.push({ id: "t2", text: `CREDITS:          -${activity.credits} CR`, type: "amount", delay: 2500 });
     if (balanceNumber !== null) {
-      lines.push({ id: "t3", text: `NEW BALANCE:      ${balanceNumber} CR`, type: "detail", delay: 3000 });
+      lines.push({ id: "t3", text: `BALANCE REMAINING: ${balanceNumber} CR`, type: "detail", delay: 2600 });
     }
-    lines.push({ id: "d3", text: "================================", type: "divider", delay: 3100 });
-    lines.push({ id: "f1", text: "** APPROVED **", type: "success", delay: 3200 });
-    lines.push({ id: "f2", text: "================================", type: "divider", delay: 3300 });
-    lines.push({ id: "f3", text: "*** THANK YOU ***", type: "header", delay: 3500 });
+    lines.push({ id: "d3", text: "================================", type: "divider", delay: 2700 });
+    lines.push({ id: "f1", text: "** ACCESS GRANTED **", type: "success", delay: 2800 });
+    lines.push({ id: "f2", text: "================================", type: "divider", delay: 2900 });
+    lines.push({ id: "f3", text: "*** ENJOY ***", type: "header", delay: 3100 });
   }
 
   if (flowState === "error") {
@@ -100,32 +95,31 @@ function generateReceiptLines(
     lines.push({ id: "d1", text: "--------------------------------", type: "divider", delay: 800 });
     lines.push({ id: "e2", text: `ERROR: ${error?.slice(0, 30) || "Unknown error"}`, type: "error", delay: 1000 });
     lines.push({ id: "d2", text: "================================", type: "divider", delay: 1200 });
-    lines.push({ id: "e3", text: "** DECLINED **", type: "error", delay: 1300 });
+    lines.push({ id: "e3", text: "** ACCESS DENIED **", type: "error", delay: 1300 });
     lines.push({ id: "d3", text: "================================", type: "divider", delay: 1400 });
   }
 
   return lines;
 }
 
-export function POSReceiptPrinter({
+export function ActivityReceiptPrinter({
   flowState,
+  activity,
   txHash,
   networkName,
-  creditsMinted,
-  newBalance,
-  amount,
+  remainingBalance,
   error,
   onRetry,
   onDismiss,
-}: POSReceiptPrinterProps) {
+}: ActivityReceiptPrinterProps) {
   const [visibleLines, setVisibleLines] = useState<string[]>([]);
   const [allLines, setAllLines] = useState<ReceiptLine[]>([]);
 
   // Generate lines based on current state
   useEffect(() => {
-    const lines = generateReceiptLines(flowState, txHash, networkName, amount, creditsMinted, newBalance, error);
+    const lines = generateReceiptLines(flowState, activity, txHash, networkName, remainingBalance, error);
     setAllLines(lines);
-  }, [flowState, txHash, networkName, amount, creditsMinted, newBalance, error]);
+  }, [flowState, activity, txHash, networkName, remainingBalance, error]);
 
   // Animate lines appearing
   useEffect(() => {

@@ -14,7 +14,6 @@ interface POSFullScreenProps {
   // Amount state
   amount: number;
   onAmountChange: (amount: number) => void;
-  balance: number;
   // Transaction handlers
   onTap: () => void;
   onReset: () => void;
@@ -23,6 +22,7 @@ interface POSFullScreenProps {
   error?: string;
   txHash?: string | null;
   creditsMinted: string | null;
+  newBalance: string | null;
   networkName: string;
 }
 
@@ -54,13 +54,13 @@ export function POSFullScreen({
   onClose,
   amount,
   onAmountChange,
-  balance,
   onTap,
   onReset,
   flowState,
   error,
   txHash,
   creditsMinted,
+  newBalance,
   networkName,
 }: POSFullScreenProps) {
   const [prevFlowState, setPrevFlowState] = useState<CreditFlowState>("idle");
@@ -123,7 +123,6 @@ export function POSFullScreen({
           <POSAmountEntry
             amount={amount}
             onAmountChange={onAmountChange}
-            balance={balance}
             onSubmit={handleTap}
             disabled={isProcessing}
           />
@@ -133,6 +132,7 @@ export function POSFullScreen({
             txHash={txHash || null}
             networkName={networkName}
             creditsMinted={creditsMinted}
+            newBalance={newBalance}
             amount={amount}
             error={error || null}
             onRetry={handleRetry}
