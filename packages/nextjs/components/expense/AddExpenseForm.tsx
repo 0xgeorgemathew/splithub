@@ -46,7 +46,7 @@ export const AddExpenseForm = () => {
         creatorWallet: userWallet,
         description,
         totalAmount: parseFloat(amount),
-        tokenAddress: "0x036CbD53842c5426634e7929541eC2318f3dCF7e", // USDC on Base Sepolia
+        tokenAddress: "0x0a215D8ba66387DCA84B284D18c3B4ec3de6E54a", // USDT on Base Sepolia
         participantWallets,
       });
 

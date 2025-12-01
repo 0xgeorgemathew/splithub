@@ -161,30 +161,32 @@ export const FriendBalancesList = ({ userWallet }: FriendBalancesListProps) => {
     <div className="min-h-screen bg-[#0E0E0E] flex flex-col">
       {/* Main content area - scrollable */}
       <div className="flex-1 overflow-y-auto pb-32">
-        {/* Clean Summary Section - No card */}
-        <div className="pt-4 px-4">
-          <p className="text-[13px] font-medium text-white/45 mb-2">Total balance</p>
-          <div className="flex items-center justify-between">
-            {overallBalance === 0 ? (
-              <p className="text-[21px] font-semibold text-white/60">$0.00 USDC</p>
-            ) : (
-              <>
-                <p className="text-[21px] font-semibold text-[#F3B53D]">${formatAmount(overallBalance)} USDC</p>
-                <div
-                  className={`h-[23px] px-2.5 rounded-xl flex items-center ${
-                    overallBalance > 0 ? "bg-[#49D792]/15" : "bg-[#FF6A4A]/15"
-                  }`}
-                >
-                  <span
-                    className={`text-[12px] font-medium ${overallBalance > 0 ? "text-[#49D792]" : "text-[#FF6A4A]"}`}
+        {/* Clean Summary Section - Only show when there are expenses */}
+        {balances.length > 0 && (
+          <div className="pt-4 px-4">
+            <p className="text-[13px] font-medium text-white/45 mb-2">Total balance</p>
+            <div className="flex items-center justify-between">
+              {overallBalance === 0 ? (
+                <p className="text-[21px] font-semibold text-white/60">$0.00 USDC</p>
+              ) : (
+                <>
+                  <p className="text-[21px] font-semibold text-[#F3B53D]">${formatAmount(overallBalance)} USDC</p>
+                  <div
+                    className={`h-[23px] px-2.5 rounded-xl flex items-center ${
+                      overallBalance > 0 ? "bg-[#49D792]/15" : "bg-[#FF6A4A]/15"
+                    }`}
                   >
-                    {overallBalance > 0 ? "You're owed" : "You owe"}
-                  </span>
-                </div>
-              </>
-            )}
+                    <span
+                      className={`text-[12px] font-medium ${overallBalance > 0 ? "text-[#49D792]" : "text-[#FF6A4A]"}`}
+                    >
+                      {overallBalance > 0 ? "You're owed" : "You owe"}
+                    </span>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Clean Friend List */}
         {balances.length === 0 ? (
