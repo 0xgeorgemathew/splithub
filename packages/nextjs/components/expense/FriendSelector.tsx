@@ -92,7 +92,7 @@ export const FriendSelector = ({
       <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal */}
-      <div className="relative w-full max-w-sm bg-base-200 rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[80vh] flex flex-col mb-0 sm:mb-0">
+      <div className="relative w-full max-w-sm bg-base-200 rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[80vh] flex flex-col mb-20 sm:mb-0">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-base-300/50">
           <h2 className="text-[20px] font-semibold text-base-content">Add Friends</h2>
