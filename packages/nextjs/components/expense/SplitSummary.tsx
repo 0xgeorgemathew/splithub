@@ -8,10 +8,9 @@ interface SplitSummaryProps {
 
 export const SplitSummary = ({ totalAmount, participantCount, currency = "USDC" }: SplitSummaryProps) => {
   const total = parseFloat(totalAmount) || 0;
-  const perPerson = participantCount > 0 ? (total / participantCount).toFixed(6) : "0.00";
+  const perPerson = participantCount > 0 ? (total / participantCount).toFixed(2) : "0.00";
 
-  // Remove trailing zeros
-  const formattedPerPerson = parseFloat(perPerson).toString();
+  const formattedPerPerson = perPerson;
 
   return (
     <div className="w-full bg-base-100 rounded-xl px-3 py-2.5 shadow-sm">
