@@ -13,8 +13,8 @@ export const AmountInput = ({ value, onChange, currency = "USDC" }: AmountInputP
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputValue = e.target.value;
 
-    // Only allow numbers and single decimal point
-    if (inputValue === "" || /^\d*\.?\d{0,6}$/.test(inputValue)) {
+    // Only allow numbers and single decimal point (max 2 decimals)
+    if (inputValue === "" || /^\d*\.?\d{0,2}$/.test(inputValue)) {
       onChange(inputValue);
     }
   };
@@ -35,13 +35,9 @@ export const AmountInput = ({ value, onChange, currency = "USDC" }: AmountInputP
           <Coins className="w-4 h-4 text-primary/80" />
           <span>Amount</span>
         </label>
-        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-base-100 rounded-full border border-base-300/50">
-          <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
-          <span className="text-xs font-medium text-base-content/60">{currency}</span>
-        </div>
       </div>
 
-      <div className="bg-base-100 rounded-xl py-3 px-4 flex items-baseline justify-center gap-2 shadow-sm overflow-hidden">
+      <div className="bg-base-200 rounded-lg py-3 px-4 flex items-baseline justify-center gap-2 overflow-hidden">
         <input
           ref={inputRef}
           type="text"
@@ -50,7 +46,7 @@ export const AmountInput = ({ value, onChange, currency = "USDC" }: AmountInputP
           onChange={handleChange}
           onFocus={handleFocus}
           placeholder="0.00"
-          className="w-32 bg-transparent text-4xl font-bold text-base-content text-right focus:outline-none placeholder:text-base-content/15"
+          className="w-auto min-w-[80px] max-w-[200px] bg-transparent text-4xl font-bold text-base-content text-center focus:outline-none placeholder:text-base-content/15"
           style={{ caretColor: "#f2a900" }}
         />
         <span className="text-2xl font-bold text-primary flex-shrink-0">{currency}</span>
