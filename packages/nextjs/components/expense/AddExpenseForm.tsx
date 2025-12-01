@@ -162,6 +162,9 @@ export const AddExpenseForm = () => {
         onSelectFriend={friend => {
           addFriend(friend);
         }}
+        onRemoveFriend={address => {
+          removeFriend(address);
+        }}
         selectedFriends={selectedFriends}
       />
     </div>

@@ -9,10 +9,17 @@ interface FriendSelectorProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectFriend: (friend: Friend) => void;
+  onRemoveFriend?: (address: string) => void;
   selectedFriends: Friend[];
 }
 
-export const FriendSelector = ({ isOpen, onClose, onSelectFriend, selectedFriends }: FriendSelectorProps) => {
+export const FriendSelector = ({
+  isOpen,
+  onClose,
+  onSelectFriend,
+  onRemoveFriend,
+  selectedFriends,
+}: FriendSelectorProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
@@ -68,7 +75,13 @@ export const FriendSelector = ({ isOpen, onClose, onSelectFriend, selectedFriend
 
   const handleSelectUser = (user: User) => {
     const isSelected = isFriendSelected(user.wallet_address);
-    if (!isSelected) {
+    if (isSelected) {
+      // If already selected, remove the friend
+      if (onRemoveFriend) {
+        onRemoveFriend(user.wallet_address);
+      }
+    } else {
+      // If not selected, add the friend
       onSelectFriend({ address: user.wallet_address, name: user.name });
     }
   };
@@ -120,10 +133,9 @@ export const FriendSelector = ({ isOpen, onClose, onSelectFriend, selectedFriend
                   <button
                     key={user.wallet_address}
                     onClick={() => handleSelectUser(user)}
-                    disabled={isSelected}
                     className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all ${
                       isSelected
-                        ? "bg-primary/15 border border-primary/40 cursor-default"
+                        ? "bg-primary/15 border border-primary/40 cursor-pointer"
                         : "bg-base-100/50 hover:bg-base-100 active:bg-base-300/50"
                     }`}
                   >
