@@ -141,7 +141,7 @@ export function SettleFlow({ params, onSuccess, onError }: SettleFlowProps) {
         {/* Token Pill */}
         <div className="flex items-center gap-2 px-3 py-1.5 bg-base-100 border border-primary/50 rounded-full">
           <Coins className="w-3.5 h-3.5 text-primary" />
-          <span className="text-xs font-medium text-base-content">{symbol || "Token"}</span>
+          <span className="text-xs font-medium text-base-content">{symbol || "USDT"}</span>
           <span className="w-1.5 h-1.5 bg-success rounded-full" />
         </div>
 
@@ -151,9 +151,6 @@ export function SettleFlow({ params, onSuccess, onError }: SettleFlowProps) {
           <span className="text-xs font-medium text-success">Gasless</span>
         </div>
       </div>
-
-      {/* Memo if present */}
-      {params.memo && <p className="text-base-content/70 text-sm text-center mb-4 max-w-xs">{params.memo}</p>}
 
       {/* Amount Display */}
       <div className="text-center mb-8">
