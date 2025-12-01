@@ -25,7 +25,7 @@ interface POSFullScreenProps {
   txHash?: string | null;
   creditsMinted: string | null;
   newBalance: string | null;
-  networkName: string;
+  chainId: number;
 }
 
 // Map hook flow states to POS states
@@ -63,7 +63,7 @@ export function POSFullScreen({
   txHash,
   creditsMinted,
   newBalance,
-  networkName,
+  chainId,
 }: POSFullScreenProps) {
   const [prevFlowState, setPrevFlowState] = useState<CreditFlowState>("idle");
 
@@ -133,7 +133,7 @@ export function POSFullScreen({
             <POSReceiptPrinter
               flowState={flowState}
               txHash={txHash || null}
-              networkName={networkName}
+              chainId={chainId}
               creditsMinted={creditsMinted}
               newBalance={newBalance}
               amount={amount}

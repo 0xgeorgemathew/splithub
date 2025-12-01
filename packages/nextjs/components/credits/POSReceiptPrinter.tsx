@@ -3,18 +3,20 @@
 import { useEffect, useState } from "react";
 import { Check, X } from "lucide-react";
 import { CreditFlowState } from "~~/hooks/credits/useCreditPurchase";
+import { getBlockExplorerTxLink } from "~~/utils/scaffold-eth";
 
 interface ReceiptLine {
   id: string;
   text: string;
-  type: "header" | "divider" | "status" | "detail" | "amount" | "success" | "error";
+  type: "header" | "divider" | "status" | "detail" | "amount" | "success" | "error" | "balance" | "link";
   delay: number;
+  href?: string;
 }
 
 interface POSReceiptPrinterProps {
   flowState: CreditFlowState;
   txHash: string | null;
-  networkName: string;
+  chainId: number;
   creditsMinted: string | null;
   newBalance: string | null;
   amount: number;
@@ -26,7 +28,7 @@ interface POSReceiptPrinterProps {
 function generateReceiptLines(
   flowState: CreditFlowState,
   txHash: string | null,
-  networkName: string,
+  chainId: number,
   amount: number,
   creditsMinted: string | null,
   newBalance: string | null,
@@ -37,6 +39,7 @@ function generateReceiptLines(
   const dateStr = now.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "2-digit" });
   const timeStr = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const truncatedHash = txHash ? `${txHash.slice(0, 10)}...${txHash.slice(-6)}` : null;
+  const txExplorerUrl = txHash ? getBlockExplorerTxLink(chainId, txHash) : null;
   const creditsNumber = creditsMinted ? Number(BigInt(creditsMinted) / BigInt(10 ** 18)) : amount * 10;
   const balanceNumber = newBalance ? Number(BigInt(newBalance) / BigInt(10 ** 18)) : null;
 
@@ -77,22 +80,19 @@ function generateReceiptLines(
     lines.push({ id: "s8", text: `> RECEIVING ${creditsNumber} CREDITS...`, type: "status", delay: 1800 });
     lines.push({ id: "s9", text: "> CREDITS RECEIVED", type: "success", delay: 2000 });
     lines.push({ id: "d1", text: "--------------------------------", type: "divider", delay: 2200 });
-    lines.push({ id: "a1", text: "TRANSACTION DETAILS:", type: "detail", delay: 2300 });
-    lines.push({ id: "a2", text: `NETWORK:   ${networkName.toUpperCase()}`, type: "detail", delay: 2400 });
-    if (truncatedHash) {
-      lines.push({ id: "a3", text: `TX HASH:   ${truncatedHash}`, type: "detail", delay: 2500 });
+    if (truncatedHash && txExplorerUrl) {
+      lines.push({ id: "a3", text: `TX: ${truncatedHash}`, type: "link", delay: 2300, href: txExplorerUrl });
     }
-    lines.push({ id: "a4", text: "GAS FEE:   FREE (SPONSORED)", type: "detail", delay: 2600 });
-    lines.push({ id: "d2", text: "--------------------------------", type: "divider", delay: 2700 });
-    lines.push({ id: "t1", text: `AMOUNT:           $${amount}.00 USDC`, type: "amount", delay: 2800 });
-    lines.push({ id: "t2", text: `CREDITS:          +${creditsNumber} CR`, type: "success", delay: 2900 });
+    lines.push({ id: "d2", text: "--------------------------------", type: "divider", delay: 2400 });
+    lines.push({ id: "t1", text: `AMOUNT: $${amount}.00 USDC`, type: "amount", delay: 2500 });
+    lines.push({ id: "t2", text: `CREDITS: +${creditsNumber} CR`, type: "success", delay: 2600 });
     if (balanceNumber !== null) {
-      lines.push({ id: "t3", text: `NEW BALANCE:      ${balanceNumber} CR`, type: "detail", delay: 3000 });
+      lines.push({ id: "t3", text: `NEW BALANCE: ${balanceNumber} CR`, type: "balance", delay: 2700 });
     }
-    lines.push({ id: "d3", text: "================================", type: "divider", delay: 3100 });
-    lines.push({ id: "f1", text: "** APPROVED **", type: "success", delay: 3200 });
-    lines.push({ id: "f2", text: "================================", type: "divider", delay: 3300 });
-    lines.push({ id: "f3", text: "*** THANK YOU ***", type: "header", delay: 3500 });
+    lines.push({ id: "d3", text: "================================", type: "divider", delay: 2800 });
+    lines.push({ id: "f1", text: "** APPROVED **", type: "success", delay: 2900 });
+    lines.push({ id: "f2", text: "================================", type: "divider", delay: 3000 });
+    lines.push({ id: "f3", text: "*** THANK YOU ***", type: "header", delay: 3200 });
   }
 
   if (flowState === "error") {
@@ -110,7 +110,7 @@ function generateReceiptLines(
 export function POSReceiptPrinter({
   flowState,
   txHash,
-  networkName,
+  chainId,
   creditsMinted,
   newBalance,
   amount,
@@ -123,9 +123,9 @@ export function POSReceiptPrinter({
 
   // Generate lines based on current state
   useEffect(() => {
-    const lines = generateReceiptLines(flowState, txHash, networkName, amount, creditsMinted, newBalance, error);
+    const lines = generateReceiptLines(flowState, txHash, chainId, amount, creditsMinted, newBalance, error);
     setAllLines(lines);
-  }, [flowState, txHash, networkName, amount, creditsMinted, newBalance, error]);
+  }, [flowState, txHash, chainId, amount, creditsMinted, newBalance, error]);
 
   // Animate lines appearing
   useEffect(() => {
@@ -159,7 +159,13 @@ export function POSReceiptPrinter({
               key={line.id}
               className={`pos-receipt-line ${visibleLines.includes(line.id) ? "visible" : ""} pos-receipt-${line.type}`}
             >
-              {line.text}
+              {line.type === "link" && line.href ? (
+                <a href={line.href} target="_blank" rel="noopener noreferrer" className="pos-receipt-hash">
+                  {line.text}
+                </a>
+              ) : (
+                line.text
+              )}
             </div>
           ))}
         </div>

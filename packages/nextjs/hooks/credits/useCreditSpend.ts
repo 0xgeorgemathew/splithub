@@ -198,11 +198,12 @@ export function useCreditSpend({ onSuccess, onError }: UseCreditSpendOptions = {
         // Set transaction data
         setTxHash(result.txHash);
 
-        // Transition directly to success (no artificial delay)
-        setFlowState("success");
-        setStatusMessage("Complete!");
+        // Wait for transaction confirmation
+        setFlowState("confirming");
+        setStatusMessage("Confirming...");
+        await publicClient.waitForTransactionReceipt({ hash: result.txHash as `0x${string}` });
 
-        // Fetch remaining balance for receipt display
+        // Fetch remaining balance AFTER confirmation
         const balance = (await publicClient.readContract({
           address: creditTokenAddress,
           abi: CREDIT_TOKEN_ABI,
@@ -211,6 +212,10 @@ export function useCreditSpend({ onSuccess, onError }: UseCreditSpendOptions = {
         })) as bigint;
 
         setRemainingBalance(balance.toString());
+
+        // Now transition to success
+        setFlowState("success");
+        setStatusMessage("Complete!");
 
         // Call success callback
         if (onSuccess) {

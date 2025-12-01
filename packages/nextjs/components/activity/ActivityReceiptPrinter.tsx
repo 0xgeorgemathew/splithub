@@ -4,19 +4,21 @@ import { useEffect, useState } from "react";
 import { Check, X } from "lucide-react";
 import { Activity } from "~~/config/activities";
 import { CreditFlowState } from "~~/hooks/credits/useCreditSpend";
+import { getBlockExplorerTxLink } from "~~/utils/scaffold-eth";
 
 interface ReceiptLine {
   id: string;
   text: string;
-  type: "header" | "divider" | "status" | "detail" | "amount" | "success" | "error";
+  type: "header" | "divider" | "status" | "detail" | "amount" | "success" | "error" | "balance" | "link";
   delay: number;
+  href?: string;
 }
 
 interface ActivityReceiptPrinterProps {
   flowState: CreditFlowState;
   activity: Activity;
   txHash: string | null;
-  networkName: string;
+  chainId: number;
   remainingBalance: string | null;
   error: string | null;
   onRetry?: () => void;
@@ -27,7 +29,7 @@ function generateReceiptLines(
   flowState: CreditFlowState,
   activity: Activity,
   txHash: string | null,
-  networkName: string,
+  chainId: number,
   remainingBalance: string | null,
   error: string | null,
 ): ReceiptLine[] {
@@ -36,6 +38,7 @@ function generateReceiptLines(
   const dateStr = now.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "2-digit" });
   const timeStr = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const truncatedHash = txHash ? `${txHash.slice(0, 10)}...${txHash.slice(-6)}` : null;
+  const txExplorerUrl = txHash ? getBlockExplorerTxLink(chainId, txHash) : null;
   const balanceNumber = remainingBalance ? Number(BigInt(remainingBalance) / BigInt(10 ** 18)) : null;
 
   // Header
@@ -70,24 +73,20 @@ function generateReceiptLines(
   }
 
   if (flowState === "success") {
-    lines.push({ id: "s6", text: "> CREDITS DEDUCTED", type: "success", delay: 1600 });
+    lines.push({ id: "s6", text: "> CREDITS DEDUCTED", type: "error", delay: 1600 });
     lines.push({ id: "d1", text: "--------------------------------", type: "divider", delay: 1800 });
-    lines.push({ id: "a1", text: "TRANSACTION DETAILS:", type: "detail", delay: 1900 });
-    lines.push({ id: "a2", text: `NETWORK:   ${networkName.toUpperCase()}`, type: "detail", delay: 2000 });
-    if (truncatedHash) {
-      lines.push({ id: "a3", text: `TX HASH:   ${truncatedHash}`, type: "detail", delay: 2100 });
+    if (truncatedHash && txExplorerUrl) {
+      lines.push({ id: "a3", text: `TX: ${truncatedHash}`, type: "link", delay: 1900, href: txExplorerUrl });
     }
-    lines.push({ id: "a4", text: "GAS FEE:   FREE (SPONSORED)", type: "detail", delay: 2200 });
-    lines.push({ id: "d2", text: "--------------------------------", type: "divider", delay: 2300 });
-    lines.push({ id: "t1", text: `ACTIVITY:         ${activity.name.toUpperCase()}`, type: "detail", delay: 2400 });
-    lines.push({ id: "t2", text: `CREDITS:          -${activity.credits} CR`, type: "amount", delay: 2500 });
+    lines.push({ id: "d2", text: "--------------------------------", type: "divider", delay: 2000 });
+    lines.push({ id: "t2", text: `CREDITS: -${activity.credits} CR`, type: "amount", delay: 2100 });
     if (balanceNumber !== null) {
-      lines.push({ id: "t3", text: `BALANCE REMAINING: ${balanceNumber} CR`, type: "detail", delay: 2600 });
+      lines.push({ id: "t3", text: `REMAINING: ${balanceNumber} CR`, type: "balance", delay: 2200 });
     }
-    lines.push({ id: "d3", text: "================================", type: "divider", delay: 2700 });
-    lines.push({ id: "f1", text: "** ACCESS GRANTED **", type: "success", delay: 2800 });
-    lines.push({ id: "f2", text: "================================", type: "divider", delay: 2900 });
-    lines.push({ id: "f3", text: "*** ENJOY ***", type: "header", delay: 3100 });
+    lines.push({ id: "d3", text: "================================", type: "divider", delay: 2300 });
+    lines.push({ id: "f1", text: "** ACCESS GRANTED **", type: "success", delay: 2400 });
+    lines.push({ id: "f2", text: "================================", type: "divider", delay: 2500 });
+    lines.push({ id: "f3", text: "*** ENJOY ***", type: "header", delay: 2700 });
   }
 
   if (flowState === "error") {
@@ -106,7 +105,7 @@ export function ActivityReceiptPrinter({
   flowState,
   activity,
   txHash,
-  networkName,
+  chainId,
   remainingBalance,
   error,
   onRetry,
@@ -117,9 +116,9 @@ export function ActivityReceiptPrinter({
 
   // Generate lines based on current state
   useEffect(() => {
-    const lines = generateReceiptLines(flowState, activity, txHash, networkName, remainingBalance, error);
+    const lines = generateReceiptLines(flowState, activity, txHash, chainId, remainingBalance, error);
     setAllLines(lines);
-  }, [flowState, activity, txHash, networkName, remainingBalance, error]);
+  }, [flowState, activity, txHash, chainId, remainingBalance, error]);
 
   // Animate lines appearing
   useEffect(() => {
@@ -153,7 +152,13 @@ export function ActivityReceiptPrinter({
               key={line.id}
               className={`pos-receipt-line ${visibleLines.includes(line.id) ? "visible" : ""} pos-receipt-${line.type}`}
             >
-              {line.text}
+              {line.type === "link" && line.href ? (
+                <a href={line.href} target="_blank" rel="noopener noreferrer" className="pos-receipt-hash">
+                  {line.text}
+                </a>
+              ) : (
+                line.text
+              )}
             </div>
           ))}
         </div>

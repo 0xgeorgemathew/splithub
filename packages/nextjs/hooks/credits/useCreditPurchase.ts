@@ -192,11 +192,12 @@ export function useCreditPurchase({ onSuccess, onError }: UseCreditPurchaseOptio
         setTxHash(result.txHash);
         setCreditsMinted(result.creditsMinted);
 
-        // Transition directly to success (no polling)
-        setFlowState("success");
-        setStatusMessage("Complete!");
+        // Wait for transaction confirmation
+        setFlowState("confirming");
+        setStatusMessage("Confirming...");
+        await publicClient.waitForTransactionReceipt({ hash: result.txHash as `0x${string}` });
 
-        // Fetch new balance for receipt display
+        // Fetch new balance AFTER confirmation
         const balance = (await publicClient.readContract({
           address: creditTokenAddress,
           abi: [
@@ -213,6 +214,10 @@ export function useCreditPurchase({ onSuccess, onError }: UseCreditPurchaseOptio
         })) as bigint;
 
         setNewBalance(balance.toString());
+
+        // Now transition to success
+        setFlowState("success");
+        setStatusMessage("Complete!");
 
         // Call success callback
         if (onSuccess) {

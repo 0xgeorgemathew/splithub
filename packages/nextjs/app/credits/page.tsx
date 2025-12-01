@@ -3,12 +3,13 @@
 import { useCallback, useState } from "react";
 import { POSFullScreen } from "~~/components/credits/POSFullScreen";
 import { useCreditPurchase } from "~~/hooks/credits";
+import { useTargetNetwork } from "~~/hooks/scaffold-eth";
 
 export default function CreditsPage() {
   const [amount, setAmount] = useState(25);
+  const { targetNetwork } = useTargetNetwork();
 
-  const { flowState, error, txHash, creditsMinted, newBalance, networkName, purchaseCredits, reset } =
-    useCreditPurchase({});
+  const { flowState, error, txHash, creditsMinted, newBalance, purchaseCredits, reset } = useCreditPurchase({});
 
   const handleTap = useCallback(() => {
     purchaseCredits(amount.toString());
@@ -31,7 +32,7 @@ export default function CreditsPage() {
       txHash={txHash}
       creditsMinted={creditsMinted}
       newBalance={newBalance}
-      networkName={networkName}
+      chainId={targetNetwork.id}
     />
   );
 }

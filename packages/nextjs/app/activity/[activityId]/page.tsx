@@ -7,13 +7,15 @@ import { AlertCircle, ArrowLeft, Nfc } from "lucide-react";
 import { ActivityDeviceFrame, ActivityReceiptPrinter } from "~~/components/activity";
 import { getActivityById } from "~~/config/activities";
 import { useCreditSpend } from "~~/hooks/credits";
+import { useTargetNetwork } from "~~/hooks/scaffold-eth";
 
 export default function ActivityPage() {
   const params = useParams();
   const activityId = Number(params.activityId);
   const activity = getActivityById(activityId);
+  const { targetNetwork } = useTargetNetwork();
 
-  const { flowState, error, txHash, remainingBalance, networkName, spendCredits, reset } = useCreditSpend({});
+  const { flowState, error, txHash, remainingBalance, spendCredits, reset } = useCreditSpend({});
 
   const handleTap = useCallback(() => {
     if (!activity || flowState !== "idle") return;
@@ -64,7 +66,7 @@ export default function ActivityPage() {
             flowState={flowState}
             activity={activity}
             txHash={txHash}
-            networkName={networkName}
+            chainId={targetNetwork.id}
             remainingBalance={remainingBalance}
             error={error}
             onRetry={handleReset}
