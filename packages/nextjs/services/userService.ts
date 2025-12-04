@@ -1,3 +1,4 @@
+import { type User as PrivyUser } from "@privy-io/react-auth";
 import { type User, supabase } from "~~/lib/supabase";
 
 /**
@@ -61,4 +62,98 @@ export async function userExists(walletAddress: string): Promise<boolean> {
     .single();
 
   return !error && !!data;
+}
+
+/**
+ * Syncs a Privy user to Supabase
+ * Called automatically on login via UserSyncWrapper
+ */
+export async function syncPrivyUser(privyUser: PrivyUser): Promise<User> {
+  const embeddedWallet = privyUser.wallet;
+  const twitter = privyUser.twitter;
+
+  if (!embeddedWallet?.address) {
+    throw new Error("No embedded wallet found");
+  }
+
+  if (!twitter) {
+    throw new Error("No Twitter account linked");
+  }
+
+  const walletAddress = embeddedWallet.address.toLowerCase();
+
+  // Check if user already exists
+  const { data: existingUser } = await supabase.from("users").select("*").eq("privy_user_id", privyUser.id).single();
+
+  const userData = {
+    privy_user_id: privyUser.id,
+    twitter_handle: twitter.username || null,
+    twitter_profile_url: twitter.profilePictureUrl || null,
+    twitter_user_id: twitter.subject || null,
+    wallet_address: walletAddress,
+    name: twitter.name || twitter.username || `User ${walletAddress.slice(0, 6)}`,
+    email: null, // No email with Twitter login
+  };
+
+  if (existingUser) {
+    // Update existing user
+    const { data, error } = await supabase
+      .from("users")
+      .update(userData)
+      .eq("privy_user_id", privyUser.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as User;
+  } else {
+    // Create new user (without chip - that comes in registration step)
+    const { data, error } = await supabase
+      .from("users")
+      .insert({ ...userData, chip_address: null })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as User;
+  }
+}
+
+/**
+ * Gets a user by Twitter handle
+ */
+export async function getUserByTwitter(twitterHandle: string): Promise<User | null> {
+  const { data, error } = await supabase.from("users").select("*").eq("twitter_handle", twitterHandle).single();
+
+  if (error) return null;
+  return data as User;
+}
+
+/**
+ * Gets a user by Privy user ID
+ */
+export async function getUserByPrivyId(privyUserId: string): Promise<User | null> {
+  const { data, error } = await supabase.from("users").select("*").eq("privy_user_id", privyUserId).single();
+
+  if (error) return null;
+  return data as User;
+}
+
+/**
+ * Search users by Twitter handle (for friend selector)
+ */
+export async function searchUsersByTwitter(query: string, limit = 20): Promise<User[]> {
+  const { data, error } = await supabase
+    .from("users")
+    .select("*")
+    .ilike("twitter_handle", `%${query}%`)
+    .limit(limit)
+    .order("twitter_handle");
+
+  if (error) {
+    console.error("Search error:", error);
+    return [];
+  }
+
+  return (data || []) as User[];
 }
