@@ -1,16 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { RainbowKitProvider, darkTheme, lightTheme } from "@rainbow-me/rainbowkit";
+import { UserSyncWrapper } from "./UserSyncWrapper";
+import { PrivyProvider } from "@privy-io/react-auth";
+import { WagmiProvider } from "@privy-io/wagmi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AppProgressBar as ProgressBar } from "next-nprogress-bar";
 import { useTheme } from "next-themes";
 import { Toaster } from "react-hot-toast";
-import { WagmiProvider } from "wagmi";
+import { http } from "viem";
+import { baseSepolia } from "viem/chains";
+import { createConfig } from "wagmi";
 import { BottomNav } from "~~/components/BottomNav";
 import { TopNav } from "~~/components/TopNav";
-import { BlockieAvatar } from "~~/components/scaffold-eth";
-import { wagmiConfig } from "~~/services/web3/wagmiConfig";
+import { privyConfig } from "~~/lib/privy";
 
 const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {
   return (
@@ -31,26 +33,36 @@ export const queryClient = new QueryClient({
   },
 });
 
+const wagmiConfig = createConfig({
+  chains: [baseSepolia],
+  transports: {
+    [baseSepolia.id]: http(),
+  },
+});
+
 export const ScaffoldEthAppWithProviders = ({ children }: { children: React.ReactNode }) => {
   const { resolvedTheme } = useTheme();
   const isDarkMode = resolvedTheme === "dark";
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   return (
-    <WagmiProvider config={wagmiConfig}>
+    <PrivyProvider
+      appId={privyConfig.appId}
+      config={{
+        ...privyConfig.config,
+        appearance: {
+          ...privyConfig.config.appearance,
+          theme: isDarkMode ? "dark" : "light",
+        },
+      }}
+    >
       <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider
-          avatar={BlockieAvatar}
-          theme={mounted ? (isDarkMode ? darkTheme() : lightTheme()) : lightTheme()}
-        >
+        <WagmiProvider config={wagmiConfig}>
           <ProgressBar height="3px" color="#2299dd" />
-          <ScaffoldEthApp>{children}</ScaffoldEthApp>
-        </RainbowKitProvider>
+          <UserSyncWrapper>
+            <ScaffoldEthApp>{children}</ScaffoldEthApp>
+          </UserSyncWrapper>
+        </WagmiProvider>
       </QueryClientProvider>
-    </WagmiProvider>
+    </PrivyProvider>
   );
 };
