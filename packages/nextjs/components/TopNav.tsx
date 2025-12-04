@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { usePrivy } from "@privy-io/react-auth";
 import { LogIn, LogOut, User } from "lucide-react";
 
@@ -28,7 +29,13 @@ export const TopNav = () => {
             {/* User Info */}
             <div className="flex items-center gap-2">
               {profilePic ? (
-                <img src={profilePic} alt={twitterHandle || "User"} className="w-8 h-8 rounded-full" />
+                <Image
+                  src={profilePic}
+                  alt={twitterHandle || "User"}
+                  width={32}
+                  height={32}
+                  className="w-8 h-8 rounded-full"
+                />
               ) : (
                 <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
                   <User className="w-4 h-4 text-primary" />

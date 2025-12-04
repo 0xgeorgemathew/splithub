@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
 import { CheckCircle2, Loader2, Send } from "lucide-react";
@@ -132,9 +133,11 @@ export default function CreateRequestPage() {
               {selectedFriend ? (
                 <div className="flex items-center gap-3 p-3 bg-base-200 rounded-lg">
                   {selectedFriend.twitterProfileUrl ? (
-                    <img
+                    <Image
                       src={selectedFriend.twitterProfileUrl}
                       alt={selectedFriend.name}
+                      width={40}
+                      height={40}
                       className="w-10 h-10 rounded-full"
                     />
                   ) : (

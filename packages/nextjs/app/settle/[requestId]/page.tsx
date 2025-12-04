@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
 import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
@@ -159,9 +160,11 @@ export default function SettleRequestPage({ params }: { params: Promise<{ reques
             {/* Requester Info */}
             <div className="mb-6">
               {request.recipient_user?.twitter_profile_url && (
-                <img
+                <Image
                   src={request.recipient_user.twitter_profile_url}
                   alt={request.recipient_user.twitter_handle || "User"}
+                  width={64}
+                  height={64}
                   className="w-16 h-16 rounded-full mx-auto mb-3"
                 />
               )}

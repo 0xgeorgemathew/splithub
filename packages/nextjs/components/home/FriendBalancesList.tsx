@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { usePrivy } from "@privy-io/react-auth";
 import { type FriendBalance } from "~~/lib/supabase";
 import { getFriendBalances } from "~~/services/balanceService";
@@ -57,9 +58,11 @@ export const FriendBalancesList = () => {
             <div className="card-body p-4 flex flex-row items-center gap-3">
               {/* Avatar */}
               {balance.friend_twitter_profile_url ? (
-                <img
+                <Image
                   src={balance.friend_twitter_profile_url}
                   alt={balance.friend_twitter_handle || balance.friend_name}
+                  width={48}
+                  height={48}
                   className="w-12 h-12 rounded-full"
                 />
               ) : (

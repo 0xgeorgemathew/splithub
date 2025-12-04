@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { Friend } from "./hooks/useExpenseForm";
 import { Check, Search, X } from "lucide-react";
 import { type User, supabase } from "~~/lib/supabase";
@@ -152,9 +153,11 @@ export const FriendSelector = ({
                   >
                     {/* Avatar */}
                     {user.twitter_profile_url ? (
-                      <img
+                      <Image
                         src={user.twitter_profile_url}
                         alt={user.twitter_handle || user.name}
+                        width={40}
+                        height={40}
                         className="w-10 h-10 rounded-full flex-shrink-0"
                       />
                     ) : (
