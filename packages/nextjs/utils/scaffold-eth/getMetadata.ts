@@ -23,6 +23,8 @@ export const getMetadata = ({
       template: titleTemplate,
     },
     description: description,
+    manifest: "/manifest.json",
+    themeColor: "#2563eb",
     openGraph: {
       title: {
         default: title,
@@ -48,6 +50,13 @@ export const getMetadata = ({
         {
           url: "/favicon.png",
           sizes: "32x32",
+          type: "image/png",
+        },
+      ],
+      apple: [
+        {
+          url: "/apple-touch-icon.png",
+          sizes: "180x180",
           type: "image/png",
         },
       ],
