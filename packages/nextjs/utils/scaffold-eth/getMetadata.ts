@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 
 const baseUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
   ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
@@ -24,7 +24,6 @@ export const getMetadata = ({
     },
     description: description,
     manifest: "/manifest.json",
-    themeColor: "#2563eb",
     openGraph: {
       title: {
         default: title,
@@ -61,5 +60,11 @@ export const getMetadata = ({
         },
       ],
     },
+  };
+};
+
+export const getViewport = (): Viewport => {
+  return {
+    themeColor: "#2563eb",
   };
 };
