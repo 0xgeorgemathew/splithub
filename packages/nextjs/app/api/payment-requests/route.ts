@@ -6,7 +6,8 @@ import { supabase } from "~~/lib/supabase";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { payer, recipient, token, amount, memo } = body;
+
+    const { payer, recipient, token, amount, memo, payerTwitter, requesterTwitter } = body;
 
     // Validate required fields
     if (!payer || !recipient || !token || !amount) {
@@ -46,6 +47,8 @@ export async function POST(request: NextRequest) {
         memo: memo || null,
         status: "pending",
         expires_at: expiresAt,
+        payer_twitter: payerTwitter || null,
+        requester_twitter: requesterTwitter || null,
       })
       .select()
       .single();
