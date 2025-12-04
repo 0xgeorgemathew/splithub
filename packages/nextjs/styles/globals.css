@@ -3104,3 +3104,219 @@
 .activity-card-arrow {
   color: rgba(34, 197, 94, 0.4);
 }
+
+/* ========================================
+   LANDING PAGE STYLES
+   ======================================== */
+
+/* Landing terminal - smaller version for hero */
+.landing-terminal {
+  transform: scale(0.9);
+}
+
+@media (min-width: 640px) {
+  .landing-terminal {
+    transform: scale(1);
+  }
+}
+
+/* Landing page fade-in animation */
+@keyframes landing-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.landing-fade-in {
+  opacity: 0;
+  animation: landing-fade-in 0.6s ease-out forwards;
+}
+
+/* Floating animation for terminal */
+@keyframes landing-float {
+  0%,
+  100% {
+    transform: translateY(0) scale(0.9);
+  }
+  50% {
+    transform: translateY(-8px) scale(0.9);
+  }
+}
+
+@media (min-width: 640px) {
+  @keyframes landing-float {
+    0%,
+    100% {
+      transform: translateY(0) scale(1);
+    }
+    50% {
+      transform: translateY(-8px) scale(1);
+    }
+  }
+}
+
+.landing-terminal {
+  animation: landing-float 6s ease-in-out infinite;
+}
+
+/* Smaller NFC button for landing demo */
+.nfc-chip-btn-sm {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #ffd54f 0%, #f2a900 40%, #d99400 70%, #c08000 100%);
+  box-shadow:
+    0 0 0 3px rgba(180, 140, 60, 0.4),
+    0 0 20px rgba(242, 169, 0, 0.25),
+    0 6px 18px rgba(0, 0, 0, 0.35),
+    inset 0 2px 4px rgba(255, 255, 255, 0.3),
+    inset 0 -2px 6px rgba(0, 0, 0, 0.2);
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+/* Override for landing page pulse rings - centered and slower */
+.landing-terminal .nfc-pulse-ring {
+  width: 100px;
+  height: 100px;
+  inset: 0;
+  animation: landing-nfc-pulse 3s ease-out infinite;
+}
+
+.landing-terminal .nfc-pulse-ring:nth-child(2) {
+  animation-delay: 0.8s;
+}
+
+.landing-terminal .nfc-pulse-ring:nth-child(3) {
+  animation-delay: 1.6s;
+}
+
+/* Slower pulse animation for landing page */
+@keyframes landing-nfc-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+/* ========================================
+   DUAL HERO ANIMATION STYLES
+   ======================================== */
+
+/* NFC pulse rings for friends animation */
+.landing-nfc-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid rgba(242, 169, 0, 0.4);
+  animation: landing-nfc-pulse 2s ease-out infinite;
+}
+
+/* Credits coin floating animation */
+@keyframes credits-coin-float {
+  0% {
+    transform: translateY(-20px) scale(0.8);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(30px) scale(0.8);
+    opacity: 0;
+  }
+}
+
+.credits-coin {
+  animation: credits-coin-float 2s ease-in-out infinite;
+}
+
+.credits-coin:nth-child(2) {
+  animation-delay: 0.4s;
+}
+
+.credits-coin:nth-child(3) {
+  animation-delay: 0.8s;
+}
+
+/* Wristband styling */
+.wristband-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Activity unlock animation */
+@keyframes activity-unlock {
+  0% {
+    opacity: 0.5;
+    filter: grayscale(1);
+  }
+  100% {
+    opacity: 1;
+    filter: grayscale(0);
+  }
+}
+
+.activity-unlocked {
+  animation: activity-unlock 0.4s ease-out forwards;
+}
+
+/* Credit burn animation for spending credits */
+@keyframes credit-burn {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+    filter: brightness(1);
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 0.8;
+    filter: brightness(1.5);
+  }
+  100% {
+    transform: scale(0);
+    opacity: 0;
+    filter: brightness(2);
+  }
+}
+
+.credit-burn {
+  animation: credit-burn 0.6s ease-out forwards;
+}
+
+/* Tab switcher pill animation handled by Framer Motion layoutId */
+
+/* Dual hero container responsive layout */
+.dual-hero-container {
+  display: flex;
+  align-items: stretch;
+  gap: 1.5rem;
+}
+
+@media (max-width: 639px) {
+  .dual-hero-container {
+    flex-direction: column;
+  }
+}
+
+/* Typography utility classes */
+.font-display {
+  font-family: var(--font-bricolage), system-ui, sans-serif;
+}
+
+.font-mono-accent {
+  font-family: var(--font-jetbrains), "SF Mono", Monaco, monospace;
+}
