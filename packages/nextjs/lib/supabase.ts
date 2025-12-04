@@ -14,7 +14,11 @@ export type User = {
   wallet_address: string;
   chip_address: string | null;
   name: string;
-  email: string;
+  email: string | null; // Now optional (Twitter login doesn't require email)
+  privy_user_id?: string | null;
+  twitter_handle?: string | null;
+  twitter_profile_url?: string | null;
+  twitter_user_id?: string | null;
   created_at: string;
 };
 
@@ -31,6 +35,20 @@ export type PaymentRequest = {
   expires_at: string;
   created_at: string;
   completed_at?: string;
+  // Twitter fields
+  requester_twitter?: string | null;
+  payer_twitter?: string | null;
+  // Joined user data (when fetched with joins)
+  recipient_user?: {
+    name: string;
+    twitter_handle?: string | null;
+    twitter_profile_url?: string | null;
+  };
+  payer_user?: {
+    name: string;
+    twitter_handle?: string | null;
+    twitter_profile_url?: string | null;
+  };
 };
 
 // Expense table type
@@ -72,5 +90,16 @@ export type FriendBalance = {
   friend_wallet: string;
   friend_name: string;
   friend_email: string;
+  friend_twitter_handle?: string | null;
+  friend_twitter_profile_url?: string | null;
   net_balance: number;
+};
+
+// Twitter user type (for friend selector and UI components)
+export type TwitterUser = {
+  twitter_handle: string;
+  twitter_profile_url: string | null;
+  wallet_address: string;
+  chip_address: string | null;
+  name: string;
 };
