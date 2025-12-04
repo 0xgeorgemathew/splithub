@@ -11850,6 +11850,28 @@ __metadata:
   languageName: node
   linkType: hard
 
+"framer-motion@npm:^12.23.25":
+  version: 12.23.25
+  resolution: "framer-motion@npm:12.23.25"
+  dependencies:
+    motion-dom: ^12.23.23
+    motion-utils: ^12.23.6
+    tslib: ^2.4.0
+  peerDependencies:
+    "@emotion/is-prop-valid": "*"
+    react: ^18.0.0 || ^19.0.0
+    react-dom: ^18.0.0 || ^19.0.0
+  peerDependenciesMeta:
+    "@emotion/is-prop-valid":
+      optional: true
+    react:
+      optional: true
+    react-dom:
+      optional: true
+  checksum: 031dde18d0831505a0870f62f43b8fc56ce11ca8a7464caffac41d623978bc418b3bb1a2377302b52ba9c901159a26e1709c8952ffdfe2ab469606d71f0c2282
+  languageName: node
+  linkType: hard
+
 "fs-extra@npm:11.1.0":
   version: 11.1.0
   resolution: "fs-extra@npm:11.1.0"
@@ -14776,6 +14798,22 @@ __metadata:
   languageName: node
   linkType: hard
 
+"motion-dom@npm:^12.23.23":
+  version: 12.23.23
+  resolution: "motion-dom@npm:12.23.23"
+  dependencies:
+    motion-utils: ^12.23.6
+  checksum: c065c85eae9424c3e44a76da975784b17e2eb0554dc155452dc6622b62df5b7fffa8a963f4a049a4095f209a68016d3f24b011a3d51417bb23db14398fe208eb
+  languageName: node
+  linkType: hard
+
+"motion-utils@npm:^12.23.6":
+  version: 12.23.6
+  resolution: "motion-utils@npm:12.23.6"
+  checksum: e7c0b1d7a893c5979eab529f2bd269031f71f8d23cbf8be2ec8785558544ee45b9ba7b23390f9a46f2f0a493903b6adc0666229de3b05e977a0bfc3c5fb13d8b
+  languageName: node
+  linkType: hard
+
 "mri@npm:1.2.0, mri@npm:^1.1.0":
   version: 1.2.0
   resolution: "mri@npm:1.2.0"
@@ -17396,6 +17434,7 @@ __metadata:
   resolution: "se-2@workspace:."
   dependencies:
     "@supabase/supabase-js": ^2.86.0
+    framer-motion: ^12.23.25
     husky: ~9.1.6
     lint-staged: ~13.2.2
   languageName: unknown

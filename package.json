@@ -67,6 +67,7 @@
     "node": ">=20.18.3"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.86.0"
+    "@supabase/supabase-js": "^2.86.0",
+    "framer-motion": "^12.23.25"
   }
 }
