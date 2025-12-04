@@ -31,7 +31,11 @@ export const FriendSelector = ({
     const fetchUsers = async () => {
       setLoading(true);
       try {
-        const { data, error } = await supabase.from("users").select("*").order("name");
+        const { data, error } = await supabase
+          .from("users")
+          .select("*")
+          .not("chip_address", "is", null) // Only show users with registered chips
+          .order("twitter_handle");
 
         if (error) throw error;
         setUsers(data || []);
@@ -54,7 +58,6 @@ export const FriendSelector = ({
     if (isOpen) {
       document.addEventListener("keydown", handleEscape);
       document.body.style.overflow = "hidden";
-      // Prevent zoom on iOS
       document.body.style.touchAction = "none";
     }
 
@@ -67,7 +70,12 @@ export const FriendSelector = ({
 
   if (!isOpen) return null;
 
-  const filteredUsers = users.filter(user => user.name?.toLowerCase().includes(searchQuery.toLowerCase()));
+  // Filter by Twitter handle OR name
+  const filteredUsers = users.filter(
+    user =>
+      user.twitter_handle?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.name?.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
 
   const isFriendSelected = (address: string) => {
     return selectedFriends.some(f => f.address === address);
@@ -76,13 +84,16 @@ export const FriendSelector = ({
   const handleSelectUser = (user: User) => {
     const isSelected = isFriendSelected(user.wallet_address);
     if (isSelected) {
-      // If already selected, remove the friend
       if (onRemoveFriend) {
         onRemoveFriend(user.wallet_address);
       }
     } else {
-      // If not selected, add the friend
-      onSelectFriend({ address: user.wallet_address, name: user.name });
+      onSelectFriend({
+        address: user.wallet_address,
+        name: user.twitter_handle || user.name,
+        twitterHandle: user.twitter_handle ?? undefined,
+        twitterProfileUrl: user.twitter_profile_url ?? undefined,
+      });
     }
   };
 
@@ -112,7 +123,7 @@ export const FriendSelector = ({
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search by name..."
+              placeholder="Search by @handle or name..."
               autoFocus
               className="w-full h-11 pl-9 pr-3 bg-base-100 rounded-xl text-sm text-base-content placeholder:text-base-content/40 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
             />
@@ -140,15 +151,25 @@ export const FriendSelector = ({
                     }`}
                   >
                     {/* Avatar */}
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center flex-shrink-0">
-                      <span className="text-sm font-bold text-primary">{user.name.charAt(0).toUpperCase()}</span>
-                    </div>
+                    {user.twitter_profile_url ? (
+                      <img
+                        src={user.twitter_profile_url}
+                        alt={user.twitter_handle || user.name}
+                        className="w-10 h-10 rounded-full flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center flex-shrink-0">
+                        <span className="text-sm font-bold text-primary">
+                          {(user.twitter_handle || user.name).charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                    )}
 
                     {/* User info */}
                     <div className="flex-1 text-left min-w-0">
                       <div className="font-medium text-sm text-base-content truncate">{user.name}</div>
-                      <div className="text-xs font-mono text-base-content/50 truncate">
-                        {user.wallet_address.slice(0, 6)}...{user.wallet_address.slice(-4)}
+                      <div className="text-xs text-base-content/60 truncate">
+                        {user.twitter_handle ? `@${user.twitter_handle}` : user.wallet_address.slice(0, 10)}
                       </div>
                     </div>
 

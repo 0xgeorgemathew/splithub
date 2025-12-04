@@ -2,7 +2,9 @@ import { useCallback, useMemo, useState } from "react";
 
 export interface Friend {
   address: string;
-  name?: string;
+  name: string; // Make required (not optional)
+  twitterHandle?: string;
+  twitterProfileUrl?: string;
 }
 
 export interface ExpenseFormData {
