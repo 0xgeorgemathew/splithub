@@ -1,3 +1,4 @@
+import withPWA from "@ducanh2912/next-pwa";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
@@ -26,4 +27,8 @@ if (isIpfs) {
   };
 }
 
-module.exports = nextConfig;
+module.exports = withPWA({
+  dest: "public",
+  disable: false,
+  register: true,
+})(nextConfig);
