@@ -10,6 +10,18 @@ export const UserSyncWrapper = ({ children }: { children: React.ReactNode }) => 
   const router = useRouter();
   const pathname = usePathname();
   const hasSynced = useRef(false);
+  const hasPrefetched = useRef(false);
+
+  // Prefetch onboarding routes as soon as user is authenticated
+  useEffect(() => {
+    if (ready && authenticated && !hasPrefetched.current) {
+      // Prefetch all possible routes to warm up compilation
+      router.prefetch("/register");
+      router.prefetch("/approve");
+      router.prefetch("/splits");
+      hasPrefetched.current = true;
+    }
+  }, [ready, authenticated, router]);
 
   useEffect(() => {
     const checkAndSyncUser = async () => {
