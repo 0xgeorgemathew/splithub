@@ -1093,44 +1093,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  transition: all 0.3s ease;
-}
-
-.pos-led-ready {
-  background: #22c55e;
-  box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
-}
-
-.pos-led-processing {
-  background: #f2a900;
-  box-shadow: 0 0 8px rgba(242, 169, 0, 0.6);
-  animation: led-blink 0.8s ease-in-out infinite;
-}
-
-.pos-led-success {
-  background: #22c55e;
-  box-shadow: 0 0 12px rgba(34, 197, 94, 0.8);
-  animation: led-pulse 1.5s ease-in-out infinite;
-}
-
-@keyframes led-blink {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.4;
-  }
-}
-
-@keyframes led-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
-  }
-  50% {
-    box-shadow: 0 0 16px rgba(34, 197, 94, 1);
-  }
+  /* Animations handled by Framer Motion in POSLed.tsx */
 }
 
 /* Screen area */
@@ -1414,25 +1377,7 @@
   transform-origin: top center;
 }
 
-/* Print animation */
-.pos-receipt-printing {
-  animation: receipt-unroll 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-@keyframes receipt-unroll {
-  0% {
-    clip-path: inset(0 0 100% 0);
-    transform: translateY(-15px);
-    opacity: 0;
-  }
-  15% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  100% {
-    clip-path: inset(0 0 0% 0);
-  }
-}
+/* Print animation handled by Framer Motion in POSReceiptPrinter.tsx */
 
 /* Serrated top edge */
 .pos-receipt-serrated-edge {
@@ -1481,18 +1426,13 @@
   line-height: 1.5;
 }
 
-/* Receipt line animations */
+/* Receipt line animations handled by Framer Motion variants */
 .pos-receipt-line {
-  opacity: 0;
-  transform: translateY(-2px);
-  transition:
-    opacity 0.1s ease-out,
-    transform 0.1s ease-out;
+  /* Base styles - animations controlled by Framer Motion in POSReceiptPrinter.tsx */
 }
 
 .pos-receipt-line.visible {
-  opacity: 1;
-  transform: translateY(0);
+  /* Visibility handled by Framer Motion */
 }
 
 .pos-receipt-header {
@@ -1649,13 +1589,12 @@
   .pos-pulse-ring,
   .pos-processing-ring,
   .pos-tap-btn-processing,
-  .pos-receipt-printing,
   .pos-success-circle,
-  .pos-check-draw,
-  .pos-led-processing,
-  .pos-led-success {
+  .pos-check-draw {
     animation: none;
   }
+  /* Note: pos-led animations are now handled by Framer Motion
+     which respects prefers-reduced-motion automatically */
 
   .pos-tap-btn {
     transition: none;

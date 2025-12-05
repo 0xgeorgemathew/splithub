@@ -201,14 +201,15 @@ export function useCreditSpend({ onSuccess, onError }: UseCreditSpendOptions = {
         // Wait for transaction confirmation
         setFlowState("confirming");
         setStatusMessage("Confirming...");
-        await publicClient.waitForTransactionReceipt({ hash: result.txHash as `0x${string}` });
+        const receipt = await publicClient.waitForTransactionReceipt({ hash: result.txHash as `0x${string}` });
 
-        // Fetch remaining balance AFTER confirmation
+        // Fetch remaining balance AFTER confirmation at the confirmed block
         const balance = (await publicClient.readContract({
           address: creditTokenAddress,
           abi: CREDIT_TOKEN_ABI,
           functionName: "balanceOf",
           args: [owner],
+          blockNumber: receipt.blockNumber,
         })) as bigint;
 
         setRemainingBalance(balance.toString());

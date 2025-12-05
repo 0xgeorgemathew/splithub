@@ -1,18 +1,62 @@
 "use client";
 
-import { ReactNode } from "react";
-import { POSState } from "./POSFullScreen";
+import { ReactNode, useEffect, useState } from "react";
+import { LedState, POSLed } from "./POSLed";
+import { AnimatePresence, motion, useAnimationControls } from "framer-motion";
+import { CreditFlowState } from "~~/hooks/credits/useCreditPurchase";
 
 interface POSHardwareFrameProps {
   children: ReactNode;
-  state: POSState;
+  flowState: CreditFlowState;
 }
 
-export function POSHardwareFrame({ children, state }: POSHardwareFrameProps) {
-  const isProcessing = state === "sending" || state === "confirming";
+// Map flow state to LED state
+function mapToLedState(flowState: CreditFlowState): LedState {
+  switch (flowState) {
+    case "tapping":
+    case "signing":
+    case "submitting":
+    case "confirming":
+      return "processing";
+    case "success":
+      return "success";
+    case "error":
+    case "idle":
+    default:
+      return "idle";
+  }
+}
+
+// Shake animation keyframes for error state
+const shakeAnimation = {
+  x: [0, -10, 10, -10, 10, -5, 5, -2, 2, 0],
+};
+
+export function POSHardwareFrame({ children, flowState }: POSHardwareFrameProps) {
+  const controls = useAnimationControls();
+  const [mousePosition, setMousePosition] = useState({ x: 0.5, y: 0.5 });
+  const ledState = mapToLedState(flowState);
+
+  // Trigger shake animation on error
+  useEffect(() => {
+    if (flowState === "error") {
+      controls.start({
+        ...shakeAnimation,
+        transition: { duration: 0.5, ease: "easeOut" },
+      });
+    }
+  }, [flowState, controls]);
+
+  // Track mouse position for glass reflection effect
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width;
+    const y = (e.clientY - rect.top) / rect.height;
+    setMousePosition({ x, y });
+  };
 
   return (
-    <div className="pos-hardware-frame">
+    <motion.div className="pos-hardware-frame" animate={controls} onMouseMove={handleMouseMove}>
       {/* Top speaker grille */}
       <div className="pos-speaker-grille">
         <div className="pos-speaker-slot" />
@@ -20,13 +64,9 @@ export function POSHardwareFrame({ children, state }: POSHardwareFrameProps) {
         <div className="pos-speaker-slot" />
       </div>
 
-      {/* Status LED */}
+      {/* Status LED - using Framer Motion component */}
       <div className="pos-led-container">
-        <div
-          className={`pos-led ${
-            state === "success" ? "pos-led-success" : isProcessing ? "pos-led-processing" : "pos-led-ready"
-          }`}
-        />
+        <POSLed state={ledState} />
       </div>
 
       {/* Main screen area */}
@@ -34,8 +74,52 @@ export function POSHardwareFrame({ children, state }: POSHardwareFrameProps) {
         {/* Screen bezel highlight */}
         <div className="pos-screen-bezel" />
 
-        {/* Content */}
-        <div className="pos-screen-content">{children}</div>
+        {/* Glass reflection effect - parallax based on mouse */}
+        <motion.div
+          className="pos-screen-reflection"
+          style={{
+            position: "absolute",
+            inset: 0,
+            pointerEvents: "none",
+            zIndex: 10,
+            borderRadius: "inherit",
+            background: `linear-gradient(
+              ${135 + (mousePosition.x - 0.5) * 30}deg,
+              rgba(255, 255, 255, 0.08) 0%,
+              rgba(255, 255, 255, 0.02) 30%,
+              transparent 50%,
+              rgba(255, 255, 255, 0.01) 80%,
+              rgba(255, 255, 255, 0.04) 100%
+            )`,
+          }}
+          animate={{
+            background: `linear-gradient(
+              ${135 + (mousePosition.x - 0.5) * 30}deg,
+              rgba(255, 255, 255, 0.08) 0%,
+              rgba(255, 255, 255, 0.02) 30%,
+              transparent 50%,
+              rgba(255, 255, 255, 0.01) 80%,
+              rgba(255, 255, 255, 0.04) 100%
+            )`,
+          }}
+          transition={{ duration: 0.1 }}
+        />
+
+        {/* Content with AnimatePresence for crossfade */}
+        <div className="pos-screen-content">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={flowState === "idle" || flowState === "error" ? "entry" : "receipt"}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              style={{ width: "100%", height: "100%" }}
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
+        </div>
       </div>
 
       {/* Bottom branding area */}
@@ -44,10 +128,15 @@ export function POSHardwareFrame({ children, state }: POSHardwareFrameProps) {
         <div className="pos-brand-accent" />
       </div>
 
-      {/* Card slot indicator */}
+      {/* Card slot indicator with inner shadow for receipt emergence */}
       <div className="pos-card-slot">
-        <div className="pos-card-slot-inner" />
+        <div
+          className="pos-card-slot-inner"
+          style={{
+            boxShadow: "inset 0 4px 8px rgba(0, 0, 0, 0.6)",
+          }}
+        />
       </div>
-    </div>
+    </motion.div>
   );
 }

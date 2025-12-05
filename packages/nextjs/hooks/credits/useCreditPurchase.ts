@@ -195,9 +195,9 @@ export function useCreditPurchase({ onSuccess, onError }: UseCreditPurchaseOptio
         // Wait for transaction confirmation
         setFlowState("confirming");
         setStatusMessage("Confirming...");
-        await publicClient.waitForTransactionReceipt({ hash: result.txHash as `0x${string}` });
+        const receipt = await publicClient.waitForTransactionReceipt({ hash: result.txHash as `0x${string}` });
 
-        // Fetch new balance AFTER confirmation
+        // Fetch new balance AFTER confirmation at the confirmed block
         const balance = (await publicClient.readContract({
           address: creditTokenAddress,
           abi: [
@@ -211,6 +211,7 @@ export function useCreditPurchase({ onSuccess, onError }: UseCreditPurchaseOptio
           ] as const,
           functionName: "balanceOf",
           args: [owner],
+          blockNumber: receipt.blockNumber,
         })) as bigint;
 
         setNewBalance(balance.toString());

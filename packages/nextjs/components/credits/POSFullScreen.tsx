@@ -12,7 +12,13 @@ import { CreditFlowState } from "~~/hooks/credits/useCreditPurchase";
 import { useCreditSpend } from "~~/hooks/credits/useCreditSpend";
 import { useTargetNetwork } from "~~/hooks/scaffold-eth";
 
-export type POSState = "idle" | "sending" | "confirming" | "printing" | "success";
+// Shared physics configurations
+const devicePhysics = {
+  type: "spring" as const,
+  stiffness: 300,
+  damping: 30,
+  mass: 1.2,
+};
 
 // View state for the hub navigation
 type ViewState = "pos-active" | "menu-open" | "activity-open";
@@ -35,34 +41,11 @@ interface POSFullScreenProps {
   chainId: number;
 }
 
-// Map hook flow states to POS states
-function mapFlowState(flowState: CreditFlowState): POSState {
-  switch (flowState) {
-    case "tapping":
-    case "signing":
-    case "submitting":
-      return "sending";
-    case "confirming":
-      return "confirming";
-    case "success":
-      return "success";
-    default:
-      return "idle";
-  }
-}
-
 // Haptic feedback helper
 const triggerHaptic = (pattern: number | number[] = 10) => {
   if (typeof window !== "undefined" && window.navigator?.vibrate) {
     window.navigator.vibrate(pattern);
   }
-};
-
-// Spring animation config
-const springConfig = {
-  type: "spring" as const,
-  stiffness: 300,
-  damping: 30,
 };
 
 // Radial Menu Component
@@ -119,7 +102,7 @@ function RadialMenu({ activities, onSelectActivity, onClose }: RadialMenuProps) 
               }}
               exit={{ scale: 0, x: 0, y: 0, opacity: 0 }}
               transition={{
-                ...springConfig,
+                ...devicePhysics,
                 delay: index * 0.05,
               }}
               onClick={() => onSelectActivity(activity)}
@@ -139,7 +122,7 @@ function RadialMenu({ activities, onSelectActivity, onClose }: RadialMenuProps) 
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.8, opacity: 0 }}
-          transition={springConfig}
+          transition={devicePhysics}
           onClick={onClose}
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
@@ -201,7 +184,7 @@ function ActivityTerminal({ activity, onClose }: ActivityTerminalProps) {
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.8, opacity: 0 }}
-        transition={springConfig}
+        transition={devicePhysics}
         onClick={(e: React.MouseEvent) => e.stopPropagation()}
       >
         {/* Back button */}
@@ -284,7 +267,6 @@ export function POSFullScreen({
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
 
   const activities = getAllActivities();
-  const posState = mapFlowState(flowState);
   const isProcessing = flowState !== "idle" && flowState !== "error";
   const isIdle = flowState === "idle" || flowState === "error";
 
@@ -358,85 +340,121 @@ export function POSFullScreen({
     setSelectedActivity(null);
   }, []);
 
-  if (!isOpen) return null;
-
   const isPOSBlurred = viewState !== "pos-active";
 
   return (
-    <div className="pos-fullscreen" role="dialog" aria-modal="true" aria-label="Payment Terminal">
-      {/* Dark backdrop - clicking closes when idle and POS is active */}
-      {isIdle && !isProcessing && viewState === "pos-active" && (
-        <button className="absolute inset-0 z-0" onClick={handleDismiss} aria-label="Close terminal" />
-      )}
-
-      {/* Main POS Container with blur effect */}
-      <motion.div
-        className="pos-terminal-wrapper"
-        animate={{
-          scale: isPOSBlurred ? 0.95 : 1,
-          filter: isPOSBlurred ? "blur(8px)" : "blur(0px)",
-        }}
-        transition={springConfig}
-      >
-        {/* Power Off Button */}
-        <motion.button
-          className="pos-power-btn"
-          onClick={handleDismiss}
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          aria-label="Close terminal"
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          className="pos-fullscreen"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Payment Terminal"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
         >
-          <Power className="w-5 h-5" />
-        </motion.button>
-
-        <POSHardwareFrame state={posState}>
-          {isIdle ? (
-            <POSAmountEntry
-              amount={amount}
-              onAmountChange={onAmountChange}
-              onSubmit={handleTap}
-              disabled={isProcessing}
-            />
-          ) : (
-            <POSReceiptPrinter
-              flowState={flowState}
-              txHash={txHash || null}
-              chainId={chainId}
-              creditsMinted={creditsMinted}
-              newBalance={newBalance}
-              amount={amount}
-              error={error || null}
-              onRetry={handleRetry}
-              onDismiss={handleDismiss}
-            />
+          {/* Dark backdrop - clicking closes when idle and POS is active */}
+          {isIdle && !isProcessing && viewState === "pos-active" && (
+            <button className="absolute inset-0 z-0" onClick={handleDismiss} aria-label="Close terminal" />
           )}
-        </POSHardwareFrame>
 
-        {/* Activities Navigation Button - Below Terminal */}
-        <motion.button
-          className="activities-nav-btn-inline"
-          onClick={handleOpenMenu}
-          aria-label="View Activities"
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-        >
-          <Gamepad2 className="w-6 h-6" />
-        </motion.button>
-      </motion.div>
+          {/* Main POS Container with blur effect */}
+          <motion.div
+            className="pos-terminal-wrapper"
+            initial={{ y: "100%", opacity: 0, scale: 0.9 }}
+            animate={{
+              y: 0,
+              opacity: 1,
+              scale: isPOSBlurred ? 0.95 : 1,
+              filter: isPOSBlurred ? "blur(8px)" : "blur(0px)",
+            }}
+            exit={{ y: "20%", opacity: 0 }}
+            transition={devicePhysics}
+          >
+            {/* Power Off Button */}
+            <motion.button
+              className="pos-power-btn"
+              onClick={handleDismiss}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              aria-label="Close terminal"
+            >
+              <Power className="w-5 h-5" />
+            </motion.button>
 
-      {/* Radial Menu Overlay */}
-      <AnimatePresence>
-        {viewState === "menu-open" && (
-          <RadialMenu activities={activities} onSelectActivity={handleSelectActivity} onClose={handleCloseMenu} />
-        )}
-      </AnimatePresence>
+            {/* Hardware Frame - now receives flowState for LED and shake animations */}
+            <POSHardwareFrame flowState={flowState}>
+              <AnimatePresence mode="wait">
+                {isIdle ? (
+                  <motion.div
+                    key="amount-entry"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    transition={{ duration: 0.2 }}
+                    style={{ width: "100%", height: "100%" }}
+                  >
+                    <POSAmountEntry
+                      amount={amount}
+                      onAmountChange={onAmountChange}
+                      onSubmit={handleTap}
+                      disabled={isProcessing}
+                    />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="receipt-printer"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.2 }}
+                    style={{ width: "100%", height: "100%" }}
+                  >
+                    <POSReceiptPrinter
+                      flowState={flowState}
+                      txHash={txHash || null}
+                      chainId={chainId}
+                      creditsMinted={creditsMinted}
+                      newBalance={newBalance}
+                      amount={amount}
+                      error={error || null}
+                      onRetry={handleRetry}
+                      onDismiss={handleDismiss}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </POSHardwareFrame>
 
-      {/* Activity Terminal Overlay */}
-      <AnimatePresence>
-        {viewState === "activity-open" && selectedActivity && (
-          <ActivityTerminal activity={selectedActivity} onClose={handleCloseActivity} />
-        )}
-      </AnimatePresence>
-    </div>
+            {/* Activities Navigation Button - Below Terminal */}
+            <motion.button
+              className="activities-nav-btn-inline"
+              onClick={handleOpenMenu}
+              aria-label="View Activities"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <Gamepad2 className="w-6 h-6" />
+            </motion.button>
+          </motion.div>
+
+          {/* Radial Menu Overlay */}
+          <AnimatePresence>
+            {viewState === "menu-open" && (
+              <RadialMenu activities={activities} onSelectActivity={handleSelectActivity} onClose={handleCloseMenu} />
+            )}
+          </AnimatePresence>
+
+          {/* Activity Terminal Overlay */}
+          <AnimatePresence>
+            {viewState === "activity-open" && selectedActivity && (
+              <ActivityTerminal activity={selectedActivity} onClose={handleCloseActivity} />
+            )}
+          </AnimatePresence>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
