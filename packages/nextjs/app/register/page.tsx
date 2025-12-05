@@ -159,13 +159,12 @@ export default function RegisterPage() {
     }
   };
 
-  // Determine if we should dim the bottom nav
-  const isProcessing = flowState !== "idle" && flowState !== "error";
+  // Determine if we should dim the bottom nav (only during active tapping/processing, not on idle screen)
+  const isProcessing = flowState === "tapping" || flowState === "registering" || flowState === "saving";
 
   return (
     <div className="min-h-[calc(100vh-64px)] flex flex-col bg-base-300 relative">
-      {/* Dim overlay for bottom nav when processing */}
-      {isProcessing && <div className="fixed inset-0 bg-base-300/60 backdrop-blur-sm z-30 pointer-events-none" />}
+      {/* No overlay - removed to prevent blurring the entire screen */}
 
       <div className="flex-1 flex flex-col items-center justify-center px-4 pb-24 pt-4 relative z-10">
         <div className="w-full max-w-md space-y-6">
