@@ -1,7 +1,8 @@
 import { useCallback, useMemo, useState } from "react";
 import { ERC20_ABI, FlowState, PaymentParams, SPLIT_HUB_PAYMENTS_ABI, SPLIT_HUB_REGISTRY_ABI } from "../types";
+import { usePrivy } from "@privy-io/react-auth";
 import { createPublicClient, http, parseUnits } from "viem";
-import { useAccount, useReadContract } from "wagmi";
+import { useReadContract } from "wagmi";
 import deployedContracts from "~~/contracts/deployedContracts";
 import { useHaloChip } from "~~/hooks/halochip-arx/useHaloChip";
 import { useTargetNetwork } from "~~/hooks/scaffold-eth";
@@ -27,9 +28,11 @@ interface UseSettleFlowReturn {
 }
 
 export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptions): UseSettleFlowReturn {
-  const { isConnected } = useAccount();
+  const { authenticated, user } = usePrivy();
   const { targetNetwork } = useTargetNetwork();
   const { signTypedData } = useHaloChip();
+
+  const isConnected = authenticated && !!user?.wallet?.address;
 
   const [flowState, setFlowState] = useState<FlowState>("idle");
   const [statusMessage, setStatusMessage] = useState("");

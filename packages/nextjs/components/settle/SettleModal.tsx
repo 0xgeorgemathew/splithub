@@ -28,13 +28,13 @@ export function SettleModal({ isOpen, onClose, params, onSuccess, onError }: Set
 
   // Handle success with auto-dismiss
   const handleSuccess = useCallback(
-    (txHash: string) => {
-      // Call parent success handler
+    async (txHash: string) => {
+      // Call parent success handler and wait for it to complete
       if (onSuccess) {
-        onSuccess(txHash);
+        await onSuccess(txHash);
       }
 
-      // Auto-dismiss after 2 seconds
+      // Auto-dismiss after 2 seconds (after data refresh completes)
       setTimeout(() => {
         onClose();
       }, 2000);
@@ -62,8 +62,10 @@ export function SettleModal({ isOpen, onClose, params, onSuccess, onError }: Set
 
         {/* Header */}
         <div className="pt-6 pb-2 px-6 text-center">
-          <h2 className="text-lg font-semibold text-base-content">Payment Request</h2>
-          {params.memo && <p className="text-sm text-base-content/60 mt-1">{params.memo}</p>}
+          <p className="text-sm text-base-content/60 mb-1">You&apos;re paying</p>
+          <h2 className="text-xl font-bold text-base-content">
+            {params.memo ? params.memo.replace("Settlement with ", "") : "Recipient"}
+          </h2>
         </div>
 
         {/* Content */}
