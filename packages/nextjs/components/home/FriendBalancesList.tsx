@@ -58,12 +58,17 @@ export const FriendBalancesList = () => {
     return "settled up";
   };
 
+  const canSettle = (balance: number): boolean => {
+    // Can only settle if you owe them (negative balance)
+    return balance < 0;
+  };
+
   const handleFriendClick = async (friend: FriendBalance) => {
     if (!walletAddress) return;
 
-    // Only allow settlement if friend owes the user (positive balance)
-    if (friend.net_balance <= 0) {
-      console.log("Cannot settle - you owe this friend");
+    // Only allow settlement if user owes the friend (negative balance)
+    if (!canSettle(friend.net_balance)) {
+      console.log("Cannot settle - friend owes you, not vice versa");
       return;
     }
 
@@ -81,9 +86,9 @@ export const FriendBalancesList = () => {
       }
 
       const params: PaymentParams = {
-        recipient: walletAddress as `0x${string}`,
+        recipient: friend.friend_wallet as `0x${string}`, // Friend receives payment
         token: data.tokenAddress as `0x${string}`,
-        amount: formatAmount(friend.net_balance),
+        amount: formatAmount(Math.abs(friend.net_balance)), // Use absolute value since balance is negative
         memo: `Settlement with ${friend.friend_name}`,
       };
 
@@ -106,8 +111,8 @@ export const FriendBalancesList = () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          payerWallet: selectedFriend.friend_wallet,
-          payeeWallet: walletAddress,
+          payerWallet: walletAddress, // Current user is paying
+          payeeWallet: selectedFriend.friend_wallet, // Friend is receiving
           amount: settlementParams.amount,
           tokenAddress: settlementParams.token,
           txHash,
@@ -116,7 +121,13 @@ export const FriendBalancesList = () => {
 
       if (!response.ok) {
         console.error("Failed to record settlement");
+        throw new Error("Failed to record settlement");
       }
+
+      console.log("Settlement recorded successfully, refreshing balances...");
+
+      // Small delay to ensure database consistency
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       // Refresh balances to show updated amounts
       const [friendBalances, overall] = await Promise.all([
@@ -126,8 +137,21 @@ export const FriendBalancesList = () => {
 
       setBalances(friendBalances);
       setOverallBalance(overall);
+
+      console.log("Balances refreshed:", { friendBalances, overall });
     } catch (err) {
       console.error("Error handling settlement success:", err);
+      // Still refresh balances even if there's an error
+      try {
+        const [friendBalances, overall] = await Promise.all([
+          getFriendBalances(walletAddress),
+          getOverallBalance(walletAddress),
+        ]);
+        setBalances(friendBalances);
+        setOverallBalance(overall);
+      } catch (refreshErr) {
+        console.error("Failed to refresh balances:", refreshErr);
+      }
     }
   };
 
@@ -194,48 +218,58 @@ export const FriendBalancesList = () => {
 
       {/* Friend List */}
       <div className="space-y-0">
-        {balances.map((balance, index) => (
-          <div key={balance.friend_wallet}>
-            <div
-              className="flex items-center py-4 hover:bg-base-200/50 active:bg-base-200 transition-colors cursor-pointer"
-              onClick={() => handleFriendClick(balance)}
-            >
-              {/* Avatar */}
-              {balance.friend_twitter_profile_url ? (
-                <Image
-                  src={balance.friend_twitter_profile_url}
-                  alt={balance.friend_twitter_handle || balance.friend_name}
-                  width={40}
-                  height={40}
-                  className="w-10 h-10 rounded-full"
-                />
-              ) : (
-                <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                  <span className="text-sm font-semibold text-primary">
-                    {balance.friend_name.charAt(0).toUpperCase()}
-                  </span>
+        {balances.map((balance, index) => {
+          const isSettleable = canSettle(balance.net_balance);
+          return (
+            <div key={balance.friend_wallet}>
+              <div
+                className={`flex items-center py-4 transition-colors ${
+                  isSettleable ? "cursor-pointer hover:bg-base-200/50 active:bg-base-200" : "cursor-default opacity-60"
+                }`}
+                onClick={() => isSettleable && handleFriendClick(balance)}
+              >
+                {/* Avatar */}
+                {balance.friend_twitter_profile_url ? (
+                  <Image
+                    src={balance.friend_twitter_profile_url}
+                    alt={balance.friend_twitter_handle || balance.friend_name}
+                    width={40}
+                    height={40}
+                    className="w-10 h-10 rounded-full"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                    <span className="text-sm font-semibold text-primary">
+                      {balance.friend_name.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                )}
+
+                {/* Name */}
+                <div className="flex-1 ml-3 min-w-0">
+                  <p className="text-base font-medium text-base-content truncate">{balance.friend_name}</p>
                 </div>
-              )}
 
-              {/* Name */}
-              <div className="flex-1 ml-3 min-w-0">
-                <p className="text-base font-medium text-base-content truncate">{balance.friend_name}</p>
+                {/* Amount and Status */}
+                <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className={`text-sm font-medium ${balance.net_balance > 0 ? "text-success" : "text-error"}`}>
+                      {getBalanceText(balance.net_balance)}
+                    </span>
+                    <span
+                      className={`text-base font-semibold ${balance.net_balance > 0 ? "text-success" : "text-error"}`}
+                    >
+                      ${formatAmount(balance.net_balance)}
+                    </span>
+                  </div>
+                  {isSettleable && <span className="text-xs text-primary font-medium">Tap to pay →</span>}
+                </div>
               </div>
-
-              {/* Amount and Status */}
-              <div className="flex items-center gap-1.5 flex-shrink-0">
-                <span className={`text-sm font-medium ${balance.net_balance > 0 ? "text-success" : "text-error"}`}>
-                  {getBalanceText(balance.net_balance)}
-                </span>
-                <span className={`text-base font-semibold ${balance.net_balance > 0 ? "text-success" : "text-error"}`}>
-                  ${formatAmount(balance.net_balance)}
-                </span>
-              </div>
+              {/* Divider */}
+              {index < balances.length - 1 && <div className="h-px bg-base-content/10" />}
             </div>
-            {/* Divider */}
-            {index < balances.length - 1 && <div className="h-px bg-base-content/10" />}
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Settlement Modal */}

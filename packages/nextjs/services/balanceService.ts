@@ -92,10 +92,10 @@ export async function getFriendBalances(userWallet: string): Promise<FriendBalan
   settlementsData?.forEach(settlement => {
     const amount = Number(settlement.amount);
     if (settlement.payer_wallet === normalizedUserWallet) {
-      // User paid someone → reduces what user owes
-      balances[settlement.payee_wallet] = (balances[settlement.payee_wallet] || 0) - amount;
+      // User paid someone → reduces what user owes (adds to negative balance)
+      balances[settlement.payee_wallet] = (balances[settlement.payee_wallet] || 0) + amount;
     } else if (settlement.payee_wallet === normalizedUserWallet) {
-      // Someone paid user → reduces what they owe user
+      // Someone paid user → reduces what they owe user (subtracts from positive balance)
       balances[settlement.payer_wallet] = (balances[settlement.payer_wallet] || 0) - amount;
     }
   });
