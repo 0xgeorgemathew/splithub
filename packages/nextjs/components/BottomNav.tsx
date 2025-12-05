@@ -2,12 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Coins, RefreshCw, ShieldCheck, Split } from "lucide-react";
+import { Coins, RefreshCw, Split } from "lucide-react";
 
 const navItems = [
   { label: "Splits", href: "/splits", icon: Split },
   { label: "Credits", href: "/credits", icon: Coins },
-  { label: "Approve", href: "/approve", icon: ShieldCheck },
   { label: "Re-register", href: "/re-register", icon: RefreshCw },
 ];
 
