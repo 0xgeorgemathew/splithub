@@ -63,9 +63,9 @@ export const AddExpenseForm = () => {
 
       setIsSuccess(true);
 
-      // Navigate back to home after success
+      // Navigate to splits page after success
       setTimeout(() => {
-        router.push("/");
+        router.push("/splits");
       }, 1500);
     } catch (err) {
       console.error("Error creating expense:", err);
