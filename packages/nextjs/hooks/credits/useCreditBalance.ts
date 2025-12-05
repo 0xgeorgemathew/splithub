@@ -37,7 +37,7 @@ export function useCreditBalance() {
     | undefined;
   const creditTokenAddress = chainContracts?.CreditToken?.address as `0x${string}` | undefined;
 
-  // Read credit balance
+  // Read credit balance with minimal caching for real-time accuracy
   const {
     data: balance,
     refetch: refetchBalance,
@@ -49,6 +49,10 @@ export function useCreditBalance() {
     args: address ? [address] : undefined,
     query: {
       enabled: !!address && !!creditTokenAddress,
+      staleTime: 0,
+      gcTime: 0,
+      refetchOnMount: true,
+      refetchOnWindowFocus: true,
     },
   });
 

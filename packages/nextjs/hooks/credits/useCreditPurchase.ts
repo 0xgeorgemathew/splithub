@@ -197,8 +197,16 @@ export function useCreditPurchase({ onSuccess, onError }: UseCreditPurchaseOptio
         setStatusMessage("Confirming...");
         const receipt = await publicClient.waitForTransactionReceipt({ hash: result.txHash as `0x${string}` });
 
+        // Create a fresh client with cache disabled to get accurate post-tx balance
+        const freshClient = createPublicClient({
+          chain: targetNetwork,
+          transport: http(undefined, {
+            fetchOptions: { cache: "no-store" },
+          }),
+        });
+
         // Fetch new balance AFTER confirmation at the confirmed block
-        const balance = (await publicClient.readContract({
+        const balance = (await freshClient.readContract({
           address: creditTokenAddress,
           abi: [
             {
