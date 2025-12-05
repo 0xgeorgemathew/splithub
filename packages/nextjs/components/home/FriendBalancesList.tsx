@@ -245,78 +245,57 @@ export const FriendBalancesList = () => {
       </div>
 
       {/* Friend Expense Cards */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         {balances.map(balance => {
           const isSettleable = canSettle(balance.net_balance);
           return (
             <div
               key={balance.friend_wallet}
-              className={`bg-base-300/30 rounded-xl p-4 border border-base-content/5 transition-all ${
+              className={`bg-base-300/30 rounded-xl p-3 border border-base-content/5 transition-all ${
                 isSettleable
                   ? "cursor-pointer hover:bg-base-300/50 hover:border-primary/20 active:scale-[0.99]"
                   : "cursor-default opacity-75"
               }`}
               onClick={() => isSettleable && handleFriendClick(balance)}
             >
-              <div className="flex items-start gap-3">
+              <div className="flex items-center gap-3">
                 {/* Avatar */}
                 {balance.friend_twitter_profile_url ? (
                   <Image
                     src={balance.friend_twitter_profile_url}
                     alt={balance.friend_twitter_handle || balance.friend_name}
-                    width={48}
-                    height={48}
-                    className="w-12 h-12 rounded-full flex-shrink-0"
+                    width={44}
+                    height={44}
+                    className="w-11 h-11 rounded-full flex-shrink-0"
                   />
                 ) : (
-                  <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                    <span className="text-base font-semibold text-primary">
+                  <div className="w-11 h-11 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                    <span className="text-sm font-semibold text-primary">
                       {balance.friend_name.charAt(0).toUpperCase()}
                     </span>
                   </div>
                 )}
 
-                {/* Middle: Name and Context */}
+                {/* Name */}
                 <div className="flex-1 min-w-0">
                   <p className="text-base font-semibold text-base-content truncate">{balance.friend_name}</p>
-                  <p className="text-xs text-base-content/50 mt-0.5">
-                    {balance.net_balance > 0 && "Owes you — tap to settle up"}
-                    {balance.net_balance < 0 && "You owe them — tap to pay now"}
-                    {balance.net_balance === 0 && "All settled up"}
-                  </p>
                 </div>
 
-                {/* Right: Amount and Status */}
-                <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                  <p className={`text-lg font-bold ${balance.net_balance > 0 ? "text-[#00C46A]" : "text-[#FF4D4F]"}`}>
-                    ${formatAmount(balance.net_balance)}
-                  </p>
-                  <span
-                    className={`text-[10px] font-medium uppercase tracking-wider ${
-                      balance.net_balance > 0 ? "text-[#00C46A]" : "text-[#FF4D4F]"
-                    }`}
-                  >
-                    {getBalanceText(balance.net_balance)}
-                  </span>
-                </div>
+                {/* Amount */}
+                <p
+                  className={`text-lg font-bold flex-shrink-0 ${balance.net_balance > 0 ? "text-[#00C46A]" : "text-[#FF4D4F]"}`}
+                >
+                  ${formatAmount(balance.net_balance)}
+                </p>
 
-                {/* Receipt Icon */}
-                <div className="flex-shrink-0 ml-1">
-                  {isSettleable ? (
-                    <svg className="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  ) : (
-                    <svg className="w-5 h-5 text-base-content/30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                      />
-                    </svg>
-                  )}
-                </div>
+                {/* Status Label */}
+                <span
+                  className={`text-[10px] font-medium uppercase tracking-wider flex-shrink-0 ${
+                    balance.net_balance > 0 ? "text-[#00C46A]" : "text-[#FF4D4F]"
+                  }`}
+                >
+                  {getBalanceText(balance.net_balance)}
+                </span>
               </div>
             </div>
           );
