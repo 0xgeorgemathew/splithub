@@ -48,12 +48,8 @@ export const UserSyncWrapper = ({ children }: { children: React.ReactNode }) => 
         if (dbUser && !dbUser.chip_address) {
           // No chip registered → go to register immediately
           router.replace("/register");
-        } else if (dbUser?.chip_address) {
-          // User has chip → redirect to splits from landing page
-          if (pathname === "/") {
-            router.replace("/splits");
-          }
         }
+        // User with chip can access all pages including home page
       } catch (error) {
         console.error("User sync error:", error);
       }
