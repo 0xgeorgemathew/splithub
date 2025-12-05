@@ -21,6 +21,13 @@ SplitHub is a tap-to-pay bill splitting app. Users tap their NFC chip to pay fri
 
 ## User Flows
 
+### Landing Page (`/`)
+Marketing page for new visitors:
+- Hero section with value proposition
+- Feature cards highlighting key benefits
+- How it works section for both Friends and Venues use cases
+- Footer with links
+
 ### Onboarding (`/register`)
 New user setup in 2 steps:
 1. Enter name and email to create profile
@@ -33,7 +40,7 @@ Dev mode utility to re-register an NFC chip:
 3. Sign EIP-712 registration
 4. Chip linked to wallet via relayer
 
-### Home Dashboard (`/`)
+### Splits Dashboard (`/splits`)
 - See all friends and balances at a glance
 - Green = money owed to you, Red = you owe them
 - Tap a friend card to settle the debt instantly
@@ -158,8 +165,8 @@ Located in `packages/nextjs/hooks/`:
 |-----------|---------|
 | `scaffold-eth/` | Contract interaction (read, write, events) |
 | `halochip-arx/` | NFC chip signing (`useHaloChip`) |
-| `credits/` | Credit balance, purchase, spend hooks |
-| `activity/` | Activity transaction events |
+| `credits/` | Credit hooks (`useCreditBalance`, `useCreditPurchase`, `useCreditSpend`) |
+| `activity/` | Activity transaction events (`useTxEvents`) |
 
 ### Frontend Components
 
@@ -167,10 +174,11 @@ Located in `packages/nextjs/components/`:
 
 | Directory | Purpose |
 |-----------|---------|
+| `landing/` | Landing page UI (HeroSection, FeatureCards, DualHowItWorks, LandingFooter, Animations) |
 | `settle/` | Settlement flow UI (SettleFlow, SettleModal, MultiSettleFlow) |
-| `credits/` | POS terminal UI (POSHardwareFrame, POSAmountEntry, POSReceiptPrinter) |
-| `activity/` | Activity UI (ActivityDeviceFrame, ActivityReceiptPrinter, DotMatrixDisplay) |
-| `expense/` | Expense form (AddExpenseForm, AmountInput, FriendSelector) |
+| `credits/` | POS terminal UI (POSHardwareFrame, POSAmountEntry, POSReceiptPrinter, POSFullScreen) |
+| `activity/` | Activity UI (ActivityDeviceFrame, ActivityReceiptPrinter, DotMatrixDisplay, ActivitySelector) |
+| `expense/` | Expense form (AddExpenseForm, AmountInput, FriendSelector, SplitSummary) |
 | `home/` | Dashboard components (FriendBalancesList) |
 | `scaffold-eth/` | Wallet connection, address display |
 
@@ -197,7 +205,8 @@ Located in `packages/nextjs/services/`:
 
 | Route | User Action |
 |-------|-------------|
-| `/` | View balances, tap friend to settle |
+| `/` | Landing page for new visitors |
+| `/splits` | View balances, tap friend to settle |
 | `/register` | Create profile, register NFC chip |
 | `/re-register` | Dev mode: re-link chip to wallet |
 | `/expense/add` | Create new expense split |

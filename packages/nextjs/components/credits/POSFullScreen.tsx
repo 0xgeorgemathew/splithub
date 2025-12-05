@@ -1,14 +1,21 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import { POSAmountEntry } from "./POSAmountEntry";
 import { POSHardwareFrame } from "./POSHardwareFrame";
 import { POSReceiptPrinter } from "./POSReceiptPrinter";
-import { Gamepad2 } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { AlertCircle, ArrowLeft, Gamepad2, Nfc, Power } from "lucide-react";
+import { ActivityDeviceFrame, ActivityReceiptPrinter } from "~~/components/activity";
+import { Activity, getAllActivities } from "~~/config/activities";
 import { CreditFlowState } from "~~/hooks/credits/useCreditPurchase";
+import { useCreditSpend } from "~~/hooks/credits/useCreditSpend";
+import { useTargetNetwork } from "~~/hooks/scaffold-eth";
 
 export type POSState = "idle" | "sending" | "confirming" | "printing" | "success";
+
+// View state for the hub navigation
+type ViewState = "pos-active" | "menu-open" | "activity-open";
 
 interface POSFullScreenProps {
   isOpen: boolean;
@@ -51,6 +58,213 @@ const triggerHaptic = (pattern: number | number[] = 10) => {
   }
 };
 
+// Spring animation config
+const springConfig = {
+  type: "spring" as const,
+  stiffness: 300,
+  damping: 30,
+};
+
+// Radial Menu Component
+interface RadialMenuProps {
+  activities: Activity[];
+  onSelectActivity: (activity: Activity) => void;
+  onClose: () => void;
+}
+
+function RadialMenu({ activities, onSelectActivity, onClose }: RadialMenuProps) {
+  // Calculate positions in a semi-circle above the button
+  const getPosition = (index: number, total: number) => {
+    // Spread activities in a 180° arc (from -90° to +90°, i.e., above the button)
+    const startAngle = -Math.PI; // -180° (left)
+    const endAngle = 0; // 0° (right)
+    const angleStep = (endAngle - startAngle) / (total + 1);
+    const angle = startAngle + angleStep * (index + 1);
+
+    const radius = 120; // Distance from center
+    const x = Math.cos(angle) * radius;
+    const y = Math.sin(angle) * radius;
+
+    return { x, y };
+  };
+
+  return (
+    <>
+      {/* Backdrop */}
+      <motion.div
+        className="radial-menu-backdrop"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+      />
+
+      {/* Menu items */}
+      <div className="radial-menu-container">
+        {activities.map((activity, index) => {
+          const { x, y } = getPosition(index, activities.length);
+          const ActivityIcon = activity.icon;
+          const colorClass = `radial-menu-item-${activity.color}`;
+
+          return (
+            <motion.button
+              key={activity.id}
+              className={`radial-menu-item ${colorClass}`}
+              initial={{ scale: 0, x: 0, y: 0, opacity: 0 }}
+              animate={{
+                scale: 1,
+                x,
+                y,
+                opacity: 1,
+              }}
+              exit={{ scale: 0, x: 0, y: 0, opacity: 0 }}
+              transition={{
+                ...springConfig,
+                delay: index * 0.05,
+              }}
+              onClick={() => onSelectActivity(activity)}
+              whileHover={{ scale: 1.15 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <ActivityIcon className="w-6 h-6" />
+              <span className="radial-menu-item-label">{activity.name}</span>
+              <span className="radial-menu-item-credits">{activity.credits} CR</span>
+            </motion.button>
+          );
+        })}
+
+        {/* Center close button */}
+        <motion.button
+          className="radial-menu-center"
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.8, opacity: 0 }}
+          transition={springConfig}
+          onClick={onClose}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+        >
+          <Gamepad2 className="w-6 h-6" />
+        </motion.button>
+      </div>
+    </>
+  );
+}
+
+// Activity Terminal Overlay Component
+interface ActivityTerminalProps {
+  activity: Activity;
+  onClose: () => void;
+}
+
+function ActivityTerminal({ activity, onClose }: ActivityTerminalProps) {
+  const { targetNetwork } = useTargetNetwork();
+  const { flowState, error, txHash, remainingBalance, spendCredits, reset } = useCreditSpend({});
+
+  const handleTap = useCallback(() => {
+    if (flowState !== "idle") return;
+    spendCredits(activity.credits, activity.id);
+  }, [activity, flowState, spendCredits]);
+
+  const handleReset = useCallback(() => {
+    reset();
+  }, [reset]);
+
+  const handleDismissAndClose = useCallback(() => {
+    reset();
+    onClose();
+  }, [reset, onClose]);
+
+  // Determine LED state
+  const getLedState = () => {
+    if (flowState === "success") return "success";
+    if (flowState !== "idle" && flowState !== "error") return "processing";
+    if (flowState === "error") return "idle";
+    return "ready";
+  };
+
+  const ActivityIcon = activity.icon;
+  const isIdle = flowState === "idle";
+  const showReceipt = flowState !== "idle";
+
+  return (
+    <motion.div
+      className="activity-terminal-backdrop"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={isIdle ? onClose : undefined}
+    >
+      {/* Activity Terminal - nested inside backdrop for flexbox centering */}
+      <motion.div
+        className="activity-terminal-overlay"
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.8, opacity: 0 }}
+        transition={springConfig}
+        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+      >
+        {/* Back button */}
+        <motion.button
+          className="activity-terminal-back-btn"
+          onClick={onClose}
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.2 }}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>BACK</span>
+        </motion.button>
+
+        <ActivityDeviceFrame ledState={getLedState()} onClose={onClose}>
+          {showReceipt ? (
+            <ActivityReceiptPrinter
+              flowState={flowState}
+              activity={activity}
+              txHash={txHash}
+              chainId={targetNetwork.id}
+              remainingBalance={remainingBalance}
+              error={error}
+              onRetry={handleReset}
+              onDismiss={handleDismissAndClose}
+            />
+          ) : (
+            <>
+              {/* Activity Info */}
+              <div className="activity-info-display">
+                <div className="activity-info-icon">
+                  <ActivityIcon className="w-8 h-8" />
+                </div>
+                <div className="activity-info-name">{activity.name}</div>
+                <div className="activity-info-cost">{activity.credits} CREDITS</div>
+              </div>
+
+              {/* Error Display */}
+              {error && (
+                <div className="activity-error-display">
+                  <AlertCircle className="w-4 h-4" />
+                  <span className="activity-error-text">{error}</span>
+                </div>
+              )}
+
+              {/* Tap Button */}
+              <button onClick={handleTap} disabled={!isIdle} className="activity-tap-btn">
+                <div className="activity-tap-btn-content">
+                  <Nfc className="w-8 h-8 activity-tap-btn-icon" />
+                  <span className="activity-tap-btn-text">TAP TO ACCESS</span>
+                  <span className="activity-tap-btn-subtext">DEDUCTS {activity.credits} CR</span>
+                </div>
+              </button>
+            </>
+          )}
+        </ActivityDeviceFrame>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 export function POSFullScreen({
   isOpen,
   onClose,
@@ -66,7 +280,10 @@ export function POSFullScreen({
   chainId,
 }: POSFullScreenProps) {
   const [prevFlowState, setPrevFlowState] = useState<CreditFlowState>("idle");
+  const [viewState, setViewState] = useState<ViewState>("pos-active");
+  const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
 
+  const activities = getAllActivities();
   const posState = mapFlowState(flowState);
   const isProcessing = flowState !== "idle" && flowState !== "error";
   const isIdle = flowState === "idle" || flowState === "error";
@@ -95,6 +312,14 @@ export function POSFullScreen({
     }
   }, [isOpen]);
 
+  // Reset view state when closing
+  useEffect(() => {
+    if (!isOpen) {
+      setViewState("pos-active");
+      setSelectedActivity(null);
+    }
+  }, [isOpen]);
+
   const handleTap = useCallback(() => {
     if (isProcessing) return;
     triggerHaptic(10);
@@ -111,16 +336,59 @@ export function POSFullScreen({
     onClose();
   }, [onReset, onClose]);
 
+  const handleOpenMenu = useCallback(() => {
+    triggerHaptic(10);
+    setViewState("menu-open");
+  }, []);
+
+  const handleCloseMenu = useCallback(() => {
+    triggerHaptic(10);
+    setViewState("pos-active");
+  }, []);
+
+  const handleSelectActivity = useCallback((activity: Activity) => {
+    triggerHaptic(10);
+    setSelectedActivity(activity);
+    setViewState("activity-open");
+  }, []);
+
+  const handleCloseActivity = useCallback(() => {
+    triggerHaptic(10);
+    setViewState("menu-open");
+    setSelectedActivity(null);
+  }, []);
+
   if (!isOpen) return null;
+
+  const isPOSBlurred = viewState !== "pos-active";
 
   return (
     <div className="pos-fullscreen" role="dialog" aria-modal="true" aria-label="Payment Terminal">
-      {/* Dark backdrop - clicking closes when idle */}
-      {isIdle && !isProcessing && (
+      {/* Dark backdrop - clicking closes when idle and POS is active */}
+      {isIdle && !isProcessing && viewState === "pos-active" && (
         <button className="absolute inset-0 z-0" onClick={handleDismiss} aria-label="Close terminal" />
       )}
 
-      <div className="pos-terminal-wrapper">
+      {/* Main POS Container with blur effect */}
+      <motion.div
+        className="pos-terminal-wrapper"
+        animate={{
+          scale: isPOSBlurred ? 0.95 : 1,
+          filter: isPOSBlurred ? "blur(8px)" : "blur(0px)",
+        }}
+        transition={springConfig}
+      >
+        {/* Power Off Button */}
+        <motion.button
+          className="pos-power-btn"
+          onClick={handleDismiss}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          aria-label="Close terminal"
+        >
+          <Power className="w-5 h-5" />
+        </motion.button>
+
         <POSHardwareFrame state={posState}>
           {isIdle ? (
             <POSAmountEntry
@@ -145,10 +413,30 @@ export function POSFullScreen({
         </POSHardwareFrame>
 
         {/* Activities Navigation Button - Below Terminal */}
-        <Link href="/activities" className="activities-nav-btn-inline" aria-label="View Activities">
+        <motion.button
+          className="activities-nav-btn-inline"
+          onClick={handleOpenMenu}
+          aria-label="View Activities"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
           <Gamepad2 className="w-6 h-6" />
-        </Link>
-      </div>
+        </motion.button>
+      </motion.div>
+
+      {/* Radial Menu Overlay */}
+      <AnimatePresence>
+        {viewState === "menu-open" && (
+          <RadialMenu activities={activities} onSelectActivity={handleSelectActivity} onClose={handleCloseMenu} />
+        )}
+      </AnimatePresence>
+
+      {/* Activity Terminal Overlay */}
+      <AnimatePresence>
+        {viewState === "activity-open" && selectedActivity && (
+          <ActivityTerminal activity={selectedActivity} onClose={handleCloseActivity} />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -1,0 +1,1357 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SplitHub: Web3 Settlement Layer</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&family=Syne:wght@400;700;800&display=swap"
+      rel="stylesheet"
+    />
+
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              void: "#0A0A0A", // Slightly softer black
+              gold: "#F5B32E", // The "hub" color
+              "split-grey": "#333333", // The "Split" color
+              concrete: "#1a1a1a",
+              mist: "rgba(255, 255, 255, 0.6)",
+              "off-white": "#e0e0e0",
+            },
+            fontFamily: {
+              display: ["Syne", "sans-serif"],
+              mono: ["JetBrains Mono", "monospace"],
+            },
+            backgroundImage: {
+              noise:
+                "url('data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22 opacity=%220.04%22/%3E%3C/svg%3E')",
+            },
+          },
+        },
+      };
+    </script>
+
+    <style>
+      /* Custom Styles for Presentation Flow */
+      body {
+        background-color: #0a0a0a;
+        color: #f0f0f0;
+        overflow: hidden; /* Prevent scrolling, handle via JS */
+      }
+
+      .slide-container {
+        display: flex;
+        transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+        height: 100vh;
+        width: 100vw;
+      }
+
+      .slide {
+        min-width: 100vw;
+        height: 100vh;
+        padding: 4rem;
+        box-sizing: border-box;
+        opacity: 0.3;
+        transition: opacity 0.5s ease;
+        position: relative;
+        overflow-y: auto; /* Allow internal scrolling if content overflows */
+      }
+
+      .slide.active {
+        opacity: 1;
+      }
+
+      /* Aesthetics */
+      .text-stroke {
+        -webkit-text-stroke: 1px rgba(255, 255, 255, 0.2);
+        color: transparent;
+      }
+
+      .glass-panel {
+        background: rgba(30, 30, 30, 0.4);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .gold-glow {
+        box-shadow: 0 0 30px rgba(245, 179, 46, 0.15);
+      }
+
+      /* Hide scrollbar for slides */
+      .slide::-webkit-scrollbar {
+        display: none;
+      }
+      .slide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+
+      @media (max-width: 768px) {
+        .slide {
+          padding: 1.5rem;
+        }
+      }
+    </style>
+  </head>
+  <body
+    class="font-mono bg-void bg-noise selection:bg-gold selection:text-black"
+  >
+    <div
+      class="fixed top-[-20%] right-[-10%] w-[600px] h-[600px] bg-gold rounded-full opacity-[0.03] blur-[120px] pointer-events-none"
+    ></div>
+    <div
+      class="fixed bottom-[-10%] left-[-10%] w-[400px] h-[400px] bg-white rounded-full opacity-[0.02] blur-[100px] pointer-events-none"
+    ></div>
+
+    <div
+      class="fixed bottom-8 right-8 z-50 flex gap-4 items-center mix-blend-difference"
+    >
+      <button
+        onclick="prevSlide()"
+        class="p-3 border border-white/20 rounded-full hover:bg-white hover:text-black transition-all"
+      >
+        <i data-lucide="arrow-left" class="w-5 h-5"></i>
+      </button>
+      <span id="slide-counter" class="text-sm font-bold tracking-widest"
+        >01 / 09</span
+      >
+      <button
+        onclick="nextSlide()"
+        class="p-3 border border-white/20 rounded-full hover:bg-white hover:text-black transition-all"
+      >
+        <i data-lucide="arrow-right" class="w-5 h-5"></i>
+      </button>
+    </div>
+
+    <div class="fixed bottom-0 left-0 h-1 bg-concrete w-full z-50">
+      <div
+        id="progress"
+        class="h-full bg-gold w-[12.5%] transition-all duration-300"
+      ></div>
+    </div>
+
+    <div class="slide-container" id="deck">
+      <section class="slide active flex flex-col justify-between">
+        <div
+          class="flex justify-between items-start border-b border-white/10 pb-6"
+        >
+          <div class="flex items-center gap-2">
+            <div class="w-4 h-4 bg-gold rounded-full"></div>
+            <span class="tracking-widest text-xs uppercase text-mist"
+              >SplitHub</span
+            >
+          </div>
+          <div class="text-xs text-mist text-right">
+            Web3 Native<br />Settlement Layer
+          </div>
+        </div>
+
+        <div class="flex-grow flex flex-col justify-center max-w-5xl">
+          <h1
+            class="font-display font-extrabold text-6xl md:text-9xl tracking-tighter leading-[0.9] text-white mb-8"
+          >
+            LIQUIDITY <br />
+            <span class="text-stroke">WITHOUT</span> <br />
+            FRICTION.
+          </h1>
+          <p class="text-xl md:text-2xl text-mist max-w-2xl leading-relaxed">
+            The Splitwise for the crypto-native. <br />
+            Tap-to-pay. Instant settlement.
+            <span class="text-gold">Zero gas.</span>
+          </p>
+        </div>
+
+        <div
+          class="flex gap-12 text-xs text-mist uppercase tracking-widest border-t border-white/10 pt-6"
+        >
+          <div>// NFC Enabled</div>
+          <div>// USDC Native</div>
+          <div>// Non-Custodial</div>
+        </div>
+      </section>
+
+      <section class="slide flex flex-col md:flex-row gap-12 items-center">
+        <div class="w-full md:w-1/2 flex flex-col justify-center h-full">
+          <span class="text-gold text-sm font-bold tracking-widest mb-4"
+            >// THE DISCONNECT</span
+          >
+          <h2
+            class="font-display text-5xl md:text-6xl font-bold mb-8 leading-tight"
+          >
+            Great Tech. <br />
+            <span class="text-stroke text-white/10">Broken UX.</span>
+          </h2>
+
+          <div class="space-y-6">
+            <div
+              class="border-l-2 border-gold/20 pl-6 hover:border-gold transition-colors duration-300"
+            >
+              <h3
+                class="text-xl text-white font-bold mb-1 flex items-center gap-2"
+              >
+                <i data-lucide="activity" class="w-4 h-4 text-gold"></i>
+                Transaction Fatigue
+              </h3>
+              <p class="text-mist text-sm leading-relaxed max-w-md">
+                Sending one payment requires <strong>5+ interactions</strong>:
+                Network switching, Token Approvals, Gas estimation, and Signing.
+                It's too heavy for a dinner bill.
+              </p>
+            </div>
+
+            <div
+              class="border-l-2 border-gold/20 pl-6 hover:border-gold transition-colors duration-300"
+            >
+              <h3
+                class="text-xl text-white font-bold mb-1 flex items-center gap-2"
+              >
+                <i data-lucide="split" class="w-4 h-4 text-gold"></i>
+                The Settlement Void
+              </h3>
+              <p class="text-mist text-sm leading-relaxed max-w-md">
+                <strong>Splitwise</strong> tracks debt but cannot move money.
+                <br />
+                <strong>Metamask</strong> moves money but cannot track debt.<br />
+                Currently, nothing does both.
+              </p>
+            </div>
+
+            <div
+              class="border-l-2 border-gold/20 pl-6 hover:border-gold transition-colors duration-300"
+            >
+              <h3
+                class="text-xl text-white font-bold mb-1 flex items-center gap-2"
+              >
+                <i data-lucide="landmark" class="w-4 h-4 text-gold"></i>
+                The Off-Ramp Tax
+              </h3>
+              <p class="text-mist text-sm leading-relaxed max-w-md">
+                Users exit to fiat to pay friends, incurring
+                <strong>1-3% fees</strong> and <strong>3-day waits</strong>. Why
+                leave the ecosystem just to settle up?
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div
+          class="w-full md:w-1/2 h-[50vh] md:h-full relative flex items-center justify-center"
+        >
+          <div class="relative w-full max-w-sm">
+            <div
+              class="absolute inset-0 bg-red-500/5 blur-[80px] rounded-full"
+            ></div>
+
+            <div class="relative z-10 space-y-3">
+              <div
+                class="text-xs uppercase tracking-widest text-red-400 mb-2 font-bold text-center"
+              >
+                /// Current UX Reality
+              </div>
+
+              <div
+                class="glass-panel p-4 rounded-lg flex items-center justify-between border-red-500/20 opacity-40"
+              >
+                <span class="text-xs text-red-300">01. Switch Network</span>
+                <i data-lucide="refresh-cw" class="w-4 h-4 text-red-400"></i>
+              </div>
+
+              <div
+                class="glass-panel p-4 rounded-lg flex items-center justify-between border-red-500/20 opacity-60"
+              >
+                <span class="text-xs text-red-300"
+                  >02. Approve Spending Cap</span
+                >
+                <i data-lucide="lock" class="w-4 h-4 text-red-400"></i>
+              </div>
+
+              <div
+                class="glass-panel p-4 rounded-lg flex items-center justify-between border-red-500/30 opacity-80"
+              >
+                <span class="text-xs text-red-300">03. Estimate Gas</span>
+                <i data-lucide="fuel" class="w-4 h-4 text-red-400"></i>
+              </div>
+
+              <div
+                class="glass-panel p-4 rounded-lg flex items-center justify-between border-red-500/50 bg-red-900/10"
+              >
+                <span class="text-sm font-bold text-red-200"
+                  >04. Sign Transaction</span
+                >
+                <i data-lucide="fingerprint" class="w-4 h-4 text-red-400"></i>
+              </div>
+
+              <div
+                class="absolute -right-8 top-8 bottom-8 w-[1px] bg-gradient-to-b from-transparent via-red-500/50 to-transparent"
+              ></div>
+              <div
+                class="absolute -right-[42px] top-1/2 -rotate-90 text-[10px] text-red-400 tracking-widest uppercase"
+              >
+                High Friction
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide flex flex-col justify-center">
+        <h2 class="font-display text-4xl md:text-5xl mb-16">
+          <span class="text-gold">///</span> BRIDGING THE GAP
+        </h2>
+
+        <div
+          class="grid grid-cols-1 md:grid-cols-3 gap-0 border border-white/10"
+        >
+          <div
+            class="p-6 border-b md:border-b-0 md:border-r border-white/10 bg-white/5"
+          >
+            <div class="h-8"></div>
+            <div class="mt-8 space-y-8 font-bold text-mist text-sm">
+              <div class="h-12 flex items-center">ASSET CLASS</div>
+              <div class="h-12 flex items-center">SETTLEMENT</div>
+              <div class="h-12 flex items-center">ACCESS</div>
+              <div class="h-12 flex items-center">UX</div>
+            </div>
+          </div>
+
+          <div
+            class="p-6 border-b md:border-b-0 md:border-r border-white/10 opacity-50 grayscale hover:grayscale-0 transition-all duration-500"
+          >
+            <h3 class="text-xl font-display mb-8">Legacy Apps</h3>
+            <div class="mt-8 space-y-8 text-sm">
+              <div class="h-12 flex items-center border-b border-white/5">
+                Fiat Only
+              </div>
+              <div class="h-12 flex items-center border-b border-white/5">
+                3-5 Days (ACH)
+              </div>
+              <div class="h-12 flex items-center border-b border-white/5">
+                Region Locked
+              </div>
+              <div class="h-12 flex items-center border-b border-white/5">
+                Fragmented
+              </div>
+            </div>
+          </div>
+
+          <div class="p-6 relative bg-split-grey overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-1 bg-gold"></div>
+            <h3 class="text-xl font-display mb-8 flex items-center gap-2">
+              SplitHub
+              <span
+                class="bg-gold text-black text-[10px] px-2 py-0.5 rounded-full font-bold"
+                >NATIVE</span
+              >
+            </h3>
+            <div class="mt-8 space-y-8 text-sm font-bold text-white">
+              <div
+                class="h-12 flex items-center border-b border-white/10 text-gold"
+              >
+                USDC / Stablecoins
+              </div>
+              <div class="h-12 flex items-center border-b border-white/10">
+                Instant (On-Chain)
+              </div>
+              <div class="h-12 flex items-center border-b border-white/10">
+                Borderless
+              </div>
+              <div class="h-12 flex items-center border-b border-white/10">
+                Gasless Tap-to-Pay
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide flex flex-col justify-center">
+        <div class="mb-12">
+          <span class="text-gold text-xs tracking-[0.3em] uppercase"
+            >Architecture</span
+          >
+          <h2 class="font-display text-5xl mt-2">HOW IT FIXES THIS</h2>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div
+            class="glass-panel p-8 flex flex-col justify-between h-80 hover:border-gold/50 transition-colors group rounded-xl"
+          >
+            <div
+              class="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center text-gold mb-4 group-hover:bg-gold group-hover:text-black transition-all"
+            >
+              <i data-lucide="wifi" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <h3 class="text-xl font-bold mb-2">Tap to Pay</h3>
+              <p class="text-sm text-mist">
+                NFC chip handles authentication and signing. Physical
+                interaction, digital settlement.
+              </p>
+            </div>
+          </div>
+
+          <div
+            class="glass-panel p-8 flex flex-col justify-between h-80 hover:border-gold/50 transition-colors group rounded-xl"
+          >
+            <div
+              class="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center text-gold mb-4 group-hover:bg-gold group-hover:text-black transition-all"
+            >
+              <i data-lucide="fuel" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <h3 class="text-xl font-bold mb-2">Gasless</h3>
+              <p class="text-sm text-mist">
+                Relayers handle gas fees. Users pay nothing but the split
+                amount. Zero friction.
+              </p>
+            </div>
+          </div>
+
+          <div
+            class="glass-panel p-8 flex flex-col justify-between h-80 hover:border-gold/50 transition-colors group rounded-xl"
+          >
+            <div
+              class="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center text-gold mb-4 group-hover:bg-gold group-hover:text-black transition-all"
+            >
+              <i data-lucide="zap" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <h3 class="text-xl font-bold mb-2">Instant</h3>
+              <p class="text-sm text-mist">
+                No pending transactions. No banking delays. Settlement happens
+                at block speed.
+              </p>
+            </div>
+          </div>
+
+          <div
+            class="glass-panel p-8 flex flex-col justify-between h-80 hover:border-gold/50 transition-colors group rounded-xl"
+          >
+            <div
+              class="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center text-gold mb-4 group-hover:bg-gold group-hover:text-black transition-all"
+            >
+              <i data-lucide="shield-check" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <h3 class="text-xl font-bold mb-2">Abstracted</h3>
+              <p class="text-sm text-mist">
+                All blockchain complexity is hidden. No seed phrases popping up
+                at dinner.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section
+        class="slide flex flex-col items-center justify-center text-center"
+      >
+        <h2 class="font-display text-4xl mb-20">SIMPLE WORKFLOW</h2>
+
+        <div
+          class="flex flex-col md:flex-row items-center gap-4 w-full max-w-6xl"
+        >
+          <div class="flex-1 relative group">
+            <div
+              class="absolute -inset-4 bg-gradient-to-r from-gold to-orange-500 opacity-0 group-hover:opacity-10 blur-xl transition-opacity"
+            ></div>
+            <div
+              class="border border-white/20 p-8 bg-concrete rounded-2xl relative z-10"
+            >
+              <div
+                class="text-6xl font-display font-bold text-white/5 absolute top-2 right-4"
+              >
+                01
+              </div>
+              <h3 class="text-2xl font-bold mb-2 text-gold">TRACK</h3>
+              <p class="text-sm text-mist">
+                Add expense.<br />Select friends.<br />Auto-calculate.
+              </p>
+            </div>
+          </div>
+
+          <div class="h-16 w-0.5 md:h-0.5 md:w-16 bg-white/20 relative">
+            <div
+              class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-gold rounded-full"
+            ></div>
+          </div>
+
+          <div class="flex-1 relative group">
+            <div
+              class="absolute -inset-4 bg-gradient-to-r from-gold to-orange-500 opacity-0 group-hover:opacity-10 blur-xl transition-opacity"
+            ></div>
+            <div
+              class="border border-white/20 p-8 bg-concrete rounded-2xl relative z-10"
+            >
+              <div
+                class="text-6xl font-display font-bold text-white/5 absolute top-2 right-4"
+              >
+                02
+              </div>
+              <h3 class="text-2xl font-bold mb-2 text-white">SPLIT</h3>
+              <p class="text-sm text-mist">
+                Debts visualized.<br />USD conversion.<br />Ledger updated.
+              </p>
+            </div>
+          </div>
+
+          <div class="h-16 w-0.5 md:h-0.5 md:w-16 bg-white/20 relative">
+            <div
+              class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-gold rounded-full"
+            ></div>
+          </div>
+
+          <div class="flex-1 relative group">
+            <div
+              class="absolute -inset-4 bg-gradient-to-r from-gold to-orange-500 opacity-0 group-hover:opacity-10 blur-xl transition-opacity"
+            ></div>
+            <div
+              class="border border-gold p-8 bg-concrete rounded-2xl relative z-10 gold-glow"
+            >
+              <div
+                class="text-6xl font-display font-bold text-white/5 absolute top-2 right-4"
+              >
+                03
+              </div>
+              <h3 class="text-2xl font-bold mb-2 text-gold">SETTLE</h3>
+              <p class="text-sm text-mist">
+                Tap phone.<br />USDC transfer.<br />Debt cleared.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide flex flex-col md:flex-row p-0">
+        <div
+          class="w-full md:w-1/2 border-b md:border-b-0 md:border-r border-white/10 p-12 flex flex-col justify-center hover:bg-white/5 transition-colors"
+        >
+          <div
+            class="mb-auto text-gold text-xs font-bold uppercase tracking-widest"
+          >
+            Case Study 01
+          </div>
+
+          <h2 class="font-display text-4xl font-bold mb-6">
+            Social<br />Settlements
+          </h2>
+          <p class="text-mist mb-8 leading-relaxed">
+            Perfect for DAOs, hackathons, and digital nomads. When your group
+            already lives on-chain, why go back to fiat just to split an Uber?
+          </p>
+          <ul class="space-y-3 text-sm font-mono">
+            <li class="flex items-center gap-3">
+              <i data-lucide="check" class="w-4 h-4 text-gold"></i> Final and
+              instant
+            </li>
+            <li class="flex items-center gap-3">
+              <i data-lucide="check" class="w-4 h-4 text-gold"></i> No
+              cross-border fees
+            </li>
+            <li class="flex items-center gap-3">
+              <i data-lucide="check" class="w-4 h-4 text-gold"></i> Keeps
+              liquidity on-chain
+            </li>
+          </ul>
+        </div>
+
+        <div
+          class="w-full md:w-1/2 p-12 flex flex-col justify-center hover:bg-white/5 transition-colors relative overflow-hidden"
+        >
+          <div
+            class="mb-auto text-white/50 text-xs font-bold uppercase tracking-widest"
+          >
+            Case Study 02
+          </div>
+
+          <h2 class="font-display text-4xl font-bold mb-6">
+            Venue<br />Credits
+          </h2>
+
+          <div
+            class="bg-concrete p-6 rounded-xl border border-white/10 mb-6 relative z-10 shadow-xl"
+          >
+            <div
+              class="flex justify-between items-center mb-4 border-b border-white/10 pb-2"
+            >
+              <span class="text-xs text-mist">ACTION</span>
+              <span class="text-xs text-mist">RESULT</span>
+            </div>
+            <div class="flex justify-between items-center mb-4">
+              <span class="font-bold">Load</span>
+              <span class="text-xs text-gold text-right"
+                >Mints "Venue Credits"</span
+              >
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="font-bold">Spend</span>
+              <span class="text-xs text-gold text-right"
+                >Instant & Gasless Play</span
+              >
+            </div>
+          </div>
+
+          <p class="text-mist leading-relaxed relative z-10">
+            Closed-loop economy. Users get seamless play; venues avoid credit
+            card fees on small transactions.
+          </p>
+
+          <div
+            class="absolute bottom-0 right-0 w-64 h-64 bg-gold rounded-full opacity-5 blur-[80px]"
+          ></div>
+        </div>
+      </section>
+
+      <section
+        class="slide flex flex-col justify-between relative overflow-hidden"
+      >
+        <style>
+          @keyframes flow-line {
+            0% {
+              background-position: 0% 50%;
+            }
+            100% {
+              background-position: 100% 50%;
+            }
+          }
+          .animate-flow-gradient {
+            background: linear-gradient(
+              90deg,
+              rgba(255, 255, 255, 0.1),
+              #f5b32e,
+              rgba(255, 255, 255, 0.1)
+            );
+            background-size: 200% 100%;
+            animation: flow-line 2s linear infinite;
+          }
+          @keyframes ping-slow {
+            75%,
+            100% {
+              transform: scale(1.5);
+              opacity: 0;
+            }
+          }
+          .animate-ping-slow {
+            animation: ping-slow 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+          }
+          @keyframes float-card {
+            0%,
+            100% {
+              transform: translateY(0);
+            }
+            50% {
+              transform: translateY(-5px);
+            }
+          }
+          .animate-float-1 {
+            animation: float-card 4s ease-in-out infinite;
+          }
+          .animate-float-2 {
+            animation: float-card 4s ease-in-out infinite 1s;
+          }
+          .animate-float-3 {
+            animation: float-card 4s ease-in-out infinite 2s;
+          }
+
+          @keyframes data-travel {
+            0% {
+              left: 0%;
+              opacity: 0;
+            }
+            10% {
+              opacity: 1;
+            }
+            90% {
+              opacity: 1;
+            }
+            100% {
+              left: 100%;
+              opacity: 0;
+            }
+          }
+          .data-dot {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 6px;
+            height: 6px;
+            background-color: #f5b32e;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #f5b32e;
+            animation: data-travel 2s linear infinite;
+          }
+        </style>
+
+        <div class="mb-8 z-10">
+          <div class="flex items-center gap-3 mb-2">
+            <div class="w-2 h-2 bg-gold rounded-full animate-pulse"></div>
+            <span class="text-gold text-xs tracking-[0.3em] uppercase"
+              >Ecosystem</span
+            >
+          </div>
+          <h2 class="font-display text-4xl md:text-5xl">
+            VENUE CREDITS <span class="text-white/20">///</span> FLOW
+          </h2>
+        </div>
+
+        <div
+          class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[400px] bg-gold/5 blur-[100px] rounded-full pointer-events-none"
+        ></div>
+
+        <div
+          class="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-grow mb-8 z-10 relative"
+        >
+          <div
+            class="hidden lg:block absolute top-1/2 left-0 w-full h-[1px] -z-10"
+          >
+            <div class="w-full h-full bg-white/10"></div>
+          </div>
+
+          <div
+            class="glass-panel p-6 flex flex-col relative overflow-hidden group rounded-xl border-t-2 border-t-transparent hover:border-t-gold transition-all duration-500 animate-float-1"
+          >
+            <div
+              class="absolute -right-6 -top-6 p-4 opacity-5 group-hover:opacity-10 transition-opacity duration-500"
+            >
+              <i
+                data-lucide="credit-card"
+                class="w-32 h-32 text-gold transform rotate-12"
+              ></i>
+            </div>
+
+            <div class="flex items-center justify-between mb-6">
+              <h3 class="text-xl font-bold text-gold">1. BUY CREDITS</h3>
+              <div
+                class="w-8 h-8 rounded-full bg-gold/10 flex items-center justify-center border border-gold/20"
+              >
+                <i
+                  data-lucide="arrow-down-to-line"
+                  class="w-4 h-4 text-gold"
+                ></i>
+              </div>
+            </div>
+
+            <div class="space-y-4 text-sm font-mono flex-grow relative">
+              <div
+                class="flex justify-between border-b border-white/10 pb-2 group-hover:border-gold/30 transition-colors"
+              >
+                <span class="text-mist">Input</span>
+                <span class="font-bold">USDC (Fiat Stable)</span>
+              </div>
+              <div
+                class="flex justify-between border-b border-white/10 pb-2 group-hover:border-gold/30 transition-colors"
+              >
+                <span class="text-mist">Rate</span>
+                <span class="font-bold">1 USDC = 10 Credits</span>
+              </div>
+
+              <div
+                class="bg-black/40 p-3 rounded border border-white/10 mt-4 relative overflow-hidden"
+              >
+                <div
+                  class="absolute top-0 left-0 h-[1px] w-full animate-flow-gradient"
+                ></div>
+                <div
+                  class="text-xs text-gold mb-2 font-bold flex items-center gap-2"
+                >
+                  <i data-lucide="cpu" class="w-3 h-3"></i> PROCESS:
+                </div>
+                <div class="text-xs text-mist space-y-1">
+                  <div class="flex items-center gap-2">
+                    <span class="w-1 h-1 bg-gold rounded-full"></span> Tap NFC
+                    (Read Chip)
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="w-1 h-1 bg-gold rounded-full"></span> Sign
+                    EIP-712 (Off-chain)
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="w-1 h-1 bg-gold rounded-full"></span> Relayer
+                    Mints (Gasless)
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="lg:hidden flex justify-center mt-4">
+              <i data-lucide="arrow-down" class="text-white/20"></i>
+            </div>
+          </div>
+
+          <div
+            class="glass-panel p-6 flex flex-col rounded-xl border-t-2 border-t-transparent hover:border-t-white transition-all duration-500 animate-float-2 bg-gradient-to-b from-white/5 to-transparent"
+          >
+            <div class="flex items-center justify-between mb-6">
+              <h3 class="text-xl font-bold text-white">2. BROWSE & PLAY</h3>
+              <div
+                class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center border border-white/20"
+              >
+                <i data-lucide="gamepad-2" class="w-4 h-4 text-white"></i>
+              </div>
+            </div>
+
+            <div class="space-y-3 flex-grow">
+              <div
+                class="group/item flex items-center justify-between bg-split-grey p-4 rounded border border-white/10 hover:border-gold hover:bg-void transition-all cursor-pointer relative overflow-hidden"
+              >
+                <div
+                  class="absolute inset-0 bg-gold/10 translate-x-[-100%] group-hover/item:translate-x-0 transition-transform duration-300"
+                ></div>
+                <div class="flex items-center gap-3 relative z-10">
+                  <div class="p-1.5 bg-gold/20 rounded text-gold">
+                    <i data-lucide="crosshair" class="w-4 h-4"></i>
+                  </div>
+                  <span class="font-bold text-sm">Laser Tag</span>
+                </div>
+                <span
+                  class="text-xs font-mono bg-black/50 px-2 py-1 rounded border border-white/10 relative z-10 group-hover/item:border-gold/50 group-hover/item:text-gold"
+                  >50 CR</span
+                >
+              </div>
+
+              <div
+                class="group/item flex items-center justify-between bg-split-grey p-4 rounded border border-white/10 hover:border-white hover:bg-void transition-all cursor-pointer relative overflow-hidden"
+              >
+                <div
+                  class="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover/item:translate-x-0 transition-transform duration-300"
+                ></div>
+                <div class="flex items-center gap-3 relative z-10">
+                  <div class="p-1.5 bg-white/10 rounded text-white">
+                    <i data-lucide="circle-dot" class="w-4 h-4"></i>
+                  </div>
+                  <span class="font-bold text-sm">Bowling</span>
+                </div>
+                <span
+                  class="text-xs font-mono bg-black/50 px-2 py-1 rounded border border-white/10 relative z-10"
+                  >30 CR</span
+                >
+              </div>
+
+              <div
+                class="group/item flex items-center justify-between bg-split-grey p-4 rounded border border-white/10 hover:border-white hover:bg-void transition-all cursor-pointer relative overflow-hidden"
+              >
+                <div
+                  class="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover/item:translate-x-0 transition-transform duration-300"
+                ></div>
+                <div class="flex items-center gap-3 relative z-10">
+                  <div class="p-1.5 bg-white/10 rounded text-white">
+                    <i data-lucide="wind" class="w-4 h-4"></i>
+                  </div>
+                  <span class="font-bold text-sm">Air Hockey</span>
+                </div>
+                <span
+                  class="text-xs font-mono bg-black/50 px-2 py-1 rounded border border-white/10 relative z-10"
+                  >20 CR</span
+                >
+              </div>
+            </div>
+            <div class="lg:hidden flex justify-center mt-4">
+              <i data-lucide="arrow-down" class="text-white/20"></i>
+            </div>
+          </div>
+
+          <div
+            class="glass-panel p-6 flex flex-col relative overflow-hidden rounded-xl border-t-2 border-t-transparent hover:border-t-gold transition-all duration-500 animate-float-3"
+          >
+            <div
+              class="absolute -right-6 -top-6 p-4 opacity-5 group-hover:opacity-10 transition-opacity duration-500"
+            >
+              <i
+                data-lucide="ticket"
+                class="w-32 h-32 text-gold transform -rotate-12"
+              ></i>
+            </div>
+
+            <div class="flex items-center justify-between mb-6">
+              <h3 class="text-xl font-bold text-white">3. SETTLEMENT</h3>
+              <div
+                class="w-8 h-8 rounded-full bg-gold/10 flex items-center justify-center border border-gold/20 relative"
+              >
+                <div
+                  class="absolute inset-0 bg-gold rounded-full animate-ping-slow opacity-20"
+                ></div>
+                <i data-lucide="check" class="w-4 h-4 text-gold"></i>
+              </div>
+            </div>
+
+            <div class="space-y-4 text-sm font-mono flex-grow relative">
+              <div
+                class="flex justify-between border-b border-white/10 pb-2 group-hover:border-gold/30 transition-colors"
+              >
+                <span class="text-mist">Action</span>
+                <span class="font-bold text-gold">Tap to Access</span>
+              </div>
+              <div
+                class="flex justify-between border-b border-white/10 pb-2 group-hover:border-gold/30 transition-colors"
+              >
+                <span class="text-mist">Latency</span>
+                <span class="font-bold text-green-400">Instant (<1s)</span>
+              </div>
+
+              <div
+                class="bg-black/40 p-3 rounded border border-white/10 mt-4 relative overflow-hidden group-hover:border-gold/50 transition-colors"
+              >
+                <div
+                  class="absolute bottom-0 left-0 h-[1px] w-full animate-flow-gradient"
+                ></div>
+                <div
+                  class="text-xs text-gold mb-2 font-bold flex items-center gap-2"
+                >
+                  <i data-lucide="zap" class="w-3 h-3"></i> EXECUTION:
+                </div>
+                <div class="text-xs text-mist space-y-1">
+                  <div class="flex items-center gap-2">
+                    <span class="w-1 h-1 bg-gold rounded-full"></span> Verify
+                    Ownership
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="w-1 h-1 bg-gold rounded-full"></span> Relayer
+                    Burns Credits
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="w-1 h-1 bg-gold rounded-full"></span> Unlock
+                    Turnstile
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="border-t border-white/10 pt-6 relative z-10">
+          <div class="flex items-center justify-between mb-4">
+            <div class="text-xs text-mist uppercase tracking-widest">
+              Technical Architecture
+            </div>
+            <div class="flex items-center gap-2 text-[10px] text-gold/50">
+              <span class="w-1 h-1 bg-gold rounded-full animate-pulse"></span>
+              LIVE DATA FLOW
+            </div>
+          </div>
+
+          <div
+            class="flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-left"
+          >
+            <div
+              class="bg-concrete px-4 py-3 rounded border border-white/20 flex items-center gap-3 min-w-[140px] shadow-[0_0_15px_rgba(0,0,0,0.5)] z-10"
+            >
+              <i data-lucide="nfc" class="text-gold"></i>
+              <div class="text-xs">
+                <div class="font-bold text-white">USER CHIP</div>
+                <div class="text-mist text-[10px]">Signs EIP-712</div>
+              </div>
+            </div>
+
+            <div
+              class="hidden md:block h-[1px] flex-grow bg-white/10 relative overflow-visible"
+            >
+              <div class="data-dot"></div>
+            </div>
+            <i data-lucide="arrow-down" class="md:hidden text-white/20"></i>
+
+            <div
+              class="bg-concrete px-4 py-3 rounded border border-white/20 flex items-center gap-3 min-w-[140px] shadow-[0_0_15px_rgba(0,0,0,0.5)] z-10"
+            >
+              <i data-lucide="monitor" class="text-white"></i>
+              <div class="text-xs">
+                <div class="font-bold text-white">FRONTEND</div>
+                <div class="text-mist text-[10px]">Next.js App</div>
+              </div>
+            </div>
+
+            <div
+              class="hidden md:block h-[1px] flex-grow bg-white/10 relative overflow-visible"
+            >
+              <div class="data-dot" style="animation-delay: 0.6s"></div>
+            </div>
+            <i data-lucide="arrow-down" class="md:hidden text-white/20"></i>
+
+            <div
+              class="bg-concrete px-4 py-3 rounded border border-white/20 flex items-center gap-3 min-w-[140px] shadow-[0_0_15px_rgba(0,0,0,0.5)] z-10"
+            >
+              <i data-lucide="server" class="text-white"></i>
+              <div class="text-xs">
+                <div class="font-bold text-white">RELAYER</div>
+                <div class="text-mist text-[10px]">Pays Gas</div>
+              </div>
+            </div>
+
+            <div
+              class="hidden md:block h-[1px] flex-grow bg-white/10 relative overflow-visible"
+            >
+              <div class="data-dot" style="animation-delay: 1.2s"></div>
+            </div>
+            <i data-lucide="arrow-down" class="md:hidden text-white/20"></i>
+
+            <div
+              class="bg-concrete px-4 py-3 rounded border border-white/20 flex items-center gap-3 min-w-[140px] shadow-[0_0_15px_rgba(0,0,0,0.5)] z-10 border-gold/30"
+            >
+              <i data-lucide="blocks" class="text-gold animate-pulse"></i>
+              <div class="text-xs">
+                <div class="font-bold text-gold">CONTRACT</div>
+                <div class="text-mist text-[10px]">Solidity Logic</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section
+        class="slide flex flex-col justify-center relative overflow-hidden"
+      >
+        <style>
+          /* 1. The Data Packet Animation - Adjusted for 4 Stops */
+          @keyframes packet-travel-4 {
+            0% {
+              left: 10%;
+              opacity: 0;
+              transform: scale(0.5);
+              background-color: #fff;
+            }
+            5% {
+              opacity: 1;
+              transform: scale(1);
+            }
+
+            /* Arrive Node 2 (Chip) */
+            25% {
+              left: 35%;
+              background-color: #fff;
+              box-shadow: 0 0 10px white;
+            }
+
+            /* Arrive Node 3 (Relayer) - Turns Gold (Gas) */
+            50% {
+              left: 60%;
+              background-color: #f5b32e;
+              box-shadow: 0 0 15px #f5b32e;
+            }
+
+            /* Arrive Node 4 (Chain) - Turns Green (Settled) */
+            75% {
+              left: 85%;
+              background-color: #4ade80;
+              box-shadow: 0 0 15px #4ade80;
+            }
+
+            95% {
+              opacity: 0;
+              transform: scale(0.5);
+            }
+            100% {
+              left: 90%;
+              opacity: 0;
+            }
+          }
+
+          .data-packet {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            z-index: 50;
+            animation: packet-travel-4 5s linear infinite;
+          }
+
+          /* Pulse Animations */
+          .pulse-white {
+            animation: pulse-white 5s infinite 1.25s;
+          }
+          .pulse-gold {
+            animation: pulse-gold 5s infinite 2.5s;
+          }
+          .pulse-green {
+            animation: pulse-green 5s infinite 3.75s;
+          }
+
+          @keyframes pulse-white {
+            0%,
+            100% {
+              border-color: rgba(255, 255, 255, 0.1);
+            }
+            50% {
+              border-color: rgba(255, 255, 255, 0.8);
+              box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+            }
+          }
+          @keyframes pulse-gold {
+            0%,
+            100% {
+              border-color: rgba(255, 255, 255, 0.1);
+            }
+            50% {
+              border-color: #f5b32e;
+              box-shadow: 0 0 20px rgba(245, 179, 46, 0.2);
+            }
+          }
+          @keyframes pulse-green {
+            0%,
+            100% {
+              border-color: rgba(255, 255, 255, 0.1);
+            }
+            50% {
+              border-color: #4ade80;
+              box-shadow: 0 0 20px rgba(74, 222, 128, 0.2);
+            }
+          }
+        </style>
+
+        <div class="mb-12 text-center z-10">
+          <span class="text-gold text-xs tracking-[0.3em] uppercase block mb-4"
+            >Under the Hood</span
+          >
+          <h2 class="font-display text-4xl md:text-5xl font-bold">
+            HOW TAP-TO-PAY <span class="text-stroke text-white/10">WORKS</span>
+          </h2>
+        </div>
+
+        <div class="w-full max-w-[1400px] mx-auto relative px-8">
+          <div
+            class="absolute top-1/2 left-[10%] w-[80%] h-[2px] bg-white/5 -translate-y-1/2 z-0"
+          ></div>
+
+          <div class="data-packet"></div>
+
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4 relative z-10">
+            <div class="flex flex-col items-center group">
+              <div
+                class="glass-panel w-full aspect-[4/5] rounded-xl p-6 flex flex-col items-center justify-center text-center border border-white/10 bg-[#0a0a0a] transition-transform hover:-translate-y-2 duration-300"
+              >
+                <div
+                  class="relative w-16 h-16 mb-6 flex items-center justify-center"
+                >
+                  <i
+                    data-lucide="smartphone"
+                    class="w-10 h-10 text-white relative z-10"
+                  ></i>
+                  <i
+                    data-lucide="nfc"
+                    class="w-6 h-6 text-gold absolute -right-2 top-0 animate-pulse"
+                  ></i>
+                </div>
+                <h3 class="text-lg font-bold mb-2">1. The Tap</h3>
+                <p class="text-xs text-mist font-mono leading-relaxed">
+                  User taps phone on NFC tag. <br />
+                  <span class="text-white/50 italic">Intent Initiated.</span>
+                </p>
+              </div>
+            </div>
+
+            <div class="flex flex-col items-center">
+              <div
+                class="glass-panel w-full aspect-[4/5] rounded-xl p-6 flex flex-col items-center justify-center text-center border border-white/10 bg-[#0a0a0a] pulse-white transition-transform hover:-translate-y-2 duration-300"
+              >
+                <div
+                  class="relative w-16 h-16 mb-6 flex items-center justify-center"
+                >
+                  <div
+                    class="w-12 h-12 border-2 border-white rounded flex items-center justify-center relative bg-white/5"
+                  >
+                    <div
+                      class="absolute -top-1 w-1 h-2 bg-white/50 left-2"
+                    ></div>
+                    <div
+                      class="absolute -top-1 w-1 h-2 bg-white/50 left-5"
+                    ></div>
+                    <div
+                      class="absolute -top-1 w-1 h-2 bg-white/50 left-8"
+                    ></div>
+                    <div
+                      class="absolute -bottom-1 w-1 h-2 bg-white/50 left-2"
+                    ></div>
+                    <div
+                      class="absolute -bottom-1 w-1 h-2 bg-white/50 left-5"
+                    ></div>
+                    <div
+                      class="absolute -bottom-1 w-1 h-2 bg-white/50 left-8"
+                    ></div>
+                    <i data-lucide="fingerprint" class="w-6 h-6 text-white"></i>
+                  </div>
+                  <div
+                    class="absolute -bottom-2 -right-2 bg-black border border-white p-1 rounded-full"
+                  >
+                    <i data-lucide="lock" class="w-3 h-3 text-white"></i>
+                  </div>
+                </div>
+                <h3 class="text-lg font-bold mb-2">2. Chip Signing</h3>
+                <p class="text-xs text-mist font-mono leading-relaxed">
+                  Chip signs message:<br />
+                  <span class="text-gold">[Amount, To, Nonce]</span><br />
+                  <span class="text-[10px] text-white/40 mt-1 block"
+                    >Private Key never leaves chip.</span
+                  >
+                </p>
+              </div>
+            </div>
+
+            <div class="flex flex-col items-center">
+              <div
+                class="glass-panel w-full aspect-[4/5] rounded-xl p-6 flex flex-col items-center justify-center text-center border border-white/10 bg-[#0a0a0a] pulse-gold transition-transform hover:-translate-y-2 duration-300"
+              >
+                <div
+                  class="relative w-16 h-16 mb-6 flex items-center justify-center"
+                >
+                  <i
+                    data-lucide="server"
+                    class="w-12 h-12 text-white/20 absolute"
+                  ></i>
+                  <i
+                    data-lucide="fuel"
+                    class="w-8 h-8 text-gold relative z-10 fill-gold/20"
+                  ></i>
+                </div>
+                <h3 class="text-lg font-bold mb-2 text-gold">3. Relayer</h3>
+                <p class="text-xs text-mist font-mono leading-relaxed">
+                  Wraps signature into TX.<br />
+                  <span
+                    class="text-white font-bold bg-white/10 px-2 py-1 rounded my-1 inline-block"
+                    >Pays Gas Fees</span
+                  ><br />
+                  <span class="text-[10px] text-white/40"
+                    >User wallet not exposed.</span
+                  >
+                </p>
+              </div>
+            </div>
+
+            <div class="flex flex-col items-center">
+              <div
+                class="glass-panel w-full aspect-[4/5] rounded-xl p-6 flex flex-col items-center justify-center text-center border border-white/10 bg-[#0a0a0a] pulse-green transition-transform hover:-translate-y-2 duration-300"
+              >
+                <div
+                  class="relative w-16 h-16 mb-6 flex items-center justify-center"
+                >
+                  <i data-lucide="boxes" class="w-10 h-10 text-white/50"></i>
+                  <div
+                    class="absolute -bottom-1 -right-1 bg-green-500/20 p-1 rounded-full border border-green-500"
+                  >
+                    <i data-lucide="check" class="w-4 h-4 text-green-400"></i>
+                  </div>
+                </div>
+                <h3 class="text-lg font-bold mb-2">4. Settlement</h3>
+                <p class="text-xs text-mist font-mono leading-relaxed">
+                  Contract verifies signature.<br />
+                  Executes transfer.<br />
+                  <span class="text-green-400 mt-1 block font-bold"
+                    >Instant & On-Chain</span
+                  >
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div
+          class="absolute inset-0 pointer-events-none opacity-20"
+          style="
+            background-image: radial-gradient(
+              circle at 50% 50%,
+              rgba(245, 179, 46, 0.05) 0%,
+              transparent 70%
+            );
+          "
+        ></div>
+      </section>
+
+      <section
+        class="slide flex flex-col items-center justify-center text-center relative"
+      >
+        <div class="max-w-4xl z-10">
+          <h2 class="font-display text-5xl md:text-7xl font-bold mb-8">
+            WE SERVE THE <br />
+            <span class="text-gold">ALREADY ON-CHAIN.</span>
+          </h2>
+
+          <p class="text-xl md:text-2xl text-mist mb-12 max-w-2xl mx-auto">
+            We aren't trying to onboard the entire world today. We are building
+            tools for the
+            <span class="text-white font-bold">420 Million+</span> existing
+            crypto users.
+          </p>
+
+          <div
+            class="inline-flex items-center gap-4 px-8 py-4 border border-gold text-gold rounded-full hover:bg-gold hover:text-black transition-all cursor-pointer group"
+          >
+            <span class="font-bold tracking-widest">SPLITHUB.SPACE</span>
+            <i
+              data-lucide="arrow-right"
+              class="group-hover:translate-x-1 transition-transform"
+            ></i>
+          </div>
+        </div>
+
+        <div
+          class="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:100px_100px] pointer-events-none"
+        ></div>
+      </section>
+    </div>
+
+    <script>
+      // Initialize Icons
+      lucide.createIcons();
+
+      // Slide Logic
+      let currentSlide = 0;
+      const slides = document.querySelectorAll(".slide");
+      const progressBar = document.getElementById("progress");
+      const slideCounter = document.getElementById("slide-counter");
+      const deck = document.getElementById("deck");
+      const totalSlides = slides.length;
+
+      function updateSlide() {
+        // Update Horizontal Position
+        deck.style.transform = `translateX(-${currentSlide * 100}vw)`;
+
+        // Update Active Class for specific animations
+        slides.forEach((slide, index) => {
+          if (index === currentSlide) {
+            slide.classList.add("active");
+          } else {
+            slide.classList.remove("active");
+          }
+        });
+
+        // Update Progress Bar
+        const progress = ((currentSlide + 1) / totalSlides) * 100;
+        progressBar.style.width = `${progress}%`;
+
+        // Update Counter
+        slideCounter.textContent = `0${currentSlide + 1} / 0${totalSlides}`;
+      }
+
+      function nextSlide() {
+        if (currentSlide < totalSlides - 1) {
+          currentSlide++;
+          updateSlide();
+        }
+      }
+
+      function prevSlide() {
+        if (currentSlide > 0) {
+          currentSlide--;
+          updateSlide();
+        }
+      }
+
+      // Keyboard Navigation
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowRight") nextSlide();
+        if (e.key === "ArrowLeft") prevSlide();
+      });
+
+      // Initialize
+      updateSlide();
+    </script>
+  </body>
+</html>

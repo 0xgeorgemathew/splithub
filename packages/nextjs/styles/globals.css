@@ -1008,6 +1008,7 @@
 
 /* Wrapper for terminal + activities button */
 .pos-terminal-wrapper {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2730,6 +2731,253 @@
   letter-spacing: 1px;
   color: rgba(255, 255, 255, 0.1);
   margin-top: 2px;
+}
+
+/* Activity device close button */
+.activity-device-close-btn {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.activity-device-close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* ========================================
+   RADIAL MENU STYLES
+   ======================================== */
+
+/* Radial menu backdrop */
+.radial-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  z-index: 200;
+}
+
+/* Radial menu container - positioned at center bottom */
+.radial-menu-container {
+  position: fixed;
+  bottom: 120px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 210;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Radial menu center button */
+.radial-menu-center {
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #2a2a2a 0%, #1a1a1a 100%);
+  border: 2px solid rgba(242, 169, 0, 0.4);
+  border-radius: 50%;
+  cursor: pointer;
+  color: #f2a900;
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.5),
+    0 0 20px rgba(242, 169, 0, 0.2);
+  z-index: 1;
+}
+
+.radial-menu-center:hover {
+  border-color: rgba(242, 169, 0, 0.6);
+  box-shadow:
+    0 6px 25px rgba(0, 0, 0, 0.6),
+    0 0 30px rgba(242, 169, 0, 0.3);
+}
+
+.radial-menu-center svg {
+  filter: drop-shadow(0 0 4px rgba(242, 169, 0, 0.5));
+}
+
+/* Radial menu items */
+.radial-menu-item {
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.radial-menu-item-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.radial-menu-item-credits {
+  font-size: 8px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Radial menu item color variants */
+.radial-menu-item-red {
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.radial-menu-item-red:hover {
+  border-color: rgba(239, 68, 68, 0.6);
+  box-shadow:
+    0 6px 25px rgba(0, 0, 0, 0.6),
+    0 0 25px rgba(239, 68, 68, 0.2);
+}
+
+.radial-menu-item-red svg {
+  color: #ef4444;
+  filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.5));
+}
+
+.radial-menu-item-blue {
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.radial-menu-item-blue:hover {
+  border-color: rgba(59, 130, 246, 0.6);
+  box-shadow:
+    0 6px 25px rgba(0, 0, 0, 0.6),
+    0 0 25px rgba(59, 130, 246, 0.2);
+}
+
+.radial-menu-item-blue svg {
+  color: #3b82f6;
+  filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.5));
+}
+
+.radial-menu-item-cyan {
+  border-color: rgba(6, 182, 212, 0.3);
+}
+
+.radial-menu-item-cyan:hover {
+  border-color: rgba(6, 182, 212, 0.6);
+  box-shadow:
+    0 6px 25px rgba(0, 0, 0, 0.6),
+    0 0 25px rgba(6, 182, 212, 0.2);
+}
+
+.radial-menu-item-cyan svg {
+  color: #06b6d4;
+  filter: drop-shadow(0 0 6px rgba(6, 182, 212, 0.5));
+}
+
+/* ========================================
+   ACTIVITY TERMINAL OVERLAY STYLES
+   ======================================== */
+
+/* Activity terminal backdrop - handles centering via flexbox */
+.activity-terminal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
+  z-index: 220;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+/* Activity terminal overlay container */
+.activity-terminal-overlay {
+  position: relative;
+  z-index: 230;
+  width: clamp(300px, 85vw, 380px);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* Activity terminal back button */
+.activity-terminal-back-btn {
+  position: absolute;
+  top: -48px;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+.activity-terminal-back-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* ========================================
+   POS POWER BUTTON STYLES
+   ======================================== */
+
+.pos-power-btn {
+  position: absolute;
+  top: -48px;
+  right: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #ef4444;
+}
+
+.pos-power-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.5);
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.2);
+}
+
+.pos-power-btn svg {
+  filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.5));
 }
 
 /* Activity info display - dot matrix style */
