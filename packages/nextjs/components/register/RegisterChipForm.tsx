@@ -152,21 +152,9 @@ export function RegisterChipForm({
   }
 
   return (
-    <div className="space-y-6">
-      {/* Title Section */}
-      <div className="text-center space-y-2">
-        <h1 className="text-3xl font-bold text-base-content">
-          {flowState === "idle" ? "Register your chip" : "Registering your chip"}
-        </h1>
-        <p className="text-sm text-base-content/60 max-w-xs mx-auto">
-          {flowState === "idle"
-            ? "Link your NFC chip to your wallet to enable tap-to-pay"
-            : "We're linking your NFC chip to your wallet on-chain"}
-        </p>
-      </div>
-
-      {/* NFC Icon Centerpiece with Animation */}
-      <div className="relative flex items-center justify-center py-8">
+    <div className="space-y-5">
+      {/* NFC Icon with Animation */}
+      <div className="relative flex items-center justify-center py-6">
         {/* Animated ring effect when processing */}
         {isProcessing && (
           <>
@@ -177,19 +165,19 @@ export function RegisterChipForm({
 
         {/* Main NFC Icon */}
         <div
-          className={`relative inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-primary/20 via-primary/10 to-secondary/20 border-2 border-primary/30 shadow-lg transition-all duration-500 ${
+          className={`relative inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-primary/20 via-primary/10 to-secondary/20 border-2 border-primary/30 shadow-lg transition-all duration-500 ${
             flowState === "idle" ? "animate-pulse" : ""
           } ${isProcessing ? "scale-110" : "scale-100"}`}
         >
-          <Nfc className="w-12 h-12 text-primary" strokeWidth={2} />
+          <Nfc className="w-10 h-10 text-primary" strokeWidth={2} />
         </div>
       </div>
 
-      {/* Status Text */}
-      <div className="text-center space-y-1">
-        <p className="text-base font-semibold text-base-content">
+      {/* Title & Status */}
+      <div className="text-center space-y-2">
+        <h1 className="text-2xl font-bold text-base-content">
           {flowState === "idle"
-            ? "Ready to register"
+            ? "Register your chip"
             : flowState === "tapping"
               ? "Reading chip..."
               : flowState === "registering"
@@ -197,13 +185,16 @@ export function RegisterChipForm({
                 : flowState === "saving"
                   ? "Saving..."
                   : "Processing..."}
-        </p>
+        </h1>
         {statusMessage && flowState !== "idle" && (
-          <p className="text-xs text-base-content/60 animate-pulse">{statusMessage}</p>
+          <p className="text-sm text-base-content/60 animate-pulse">{statusMessage}</p>
+        )}
+        {flowState === "idle" && (
+          <p className="text-sm text-base-content/60">Link your NFC chip to your wallet to enable tap-to-pay</p>
         )}
       </div>
 
-      {/* Chip Address Card - Compact & Elegant */}
+      {/* Chip Address Card - Higher in hierarchy */}
       {chipAddress && (
         <div className="bg-base-200/50 backdrop-blur-sm rounded-xl p-4 border border-base-300/50 shadow-sm">
           <p className="text-[10px] text-base-content/50 mb-2 uppercase tracking-wider font-semibold">Chip Address</p>
@@ -219,8 +210,8 @@ export function RegisterChipForm({
         </div>
       )}
 
-      {/* Register Button */}
-      {flowState === "idle" || flowState === "error" ? (
+      {/* Register Button - Only show when idle or error */}
+      {(flowState === "idle" || flowState === "error") && (
         <button
           onClick={handleChipRegistration}
           className="w-full py-4 px-6 bg-primary hover:bg-primary/90 active:scale-[0.98] text-primary-content font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-3"
@@ -228,16 +219,11 @@ export function RegisterChipForm({
           <Nfc className="w-5 h-5" />
           Tap chip to register
         </button>
-      ) : (
-        <div className="w-full py-4 px-6 bg-base-200/50 text-base-content/60 font-semibold rounded-xl flex items-center justify-center gap-3 cursor-not-allowed">
-          <Loader2 className="w-5 h-5 animate-spin" />
-          {flowState === "tapping" ? "Reading..." : flowState === "registering" ? "Registering..." : "Saving..."}
-        </div>
       )}
 
-      {/* Info Footer */}
+      {/* Info Footer - Only show when idle */}
       {flowState === "idle" && (
-        <p className="text-center text-xs text-base-content/40 pt-2">
+        <p className="text-center text-xs text-base-content/40 pt-1">
           This will securely link your NFC chip to your wallet
         </p>
       )}
