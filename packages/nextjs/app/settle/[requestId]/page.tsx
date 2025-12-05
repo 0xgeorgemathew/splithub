@@ -54,59 +54,186 @@ export default function SettleRequestPage({ params }: { params: Promise<{ reques
     setError(null);
 
     try {
-      // Step 1: Sign payment with NFC chip
-      const signature = await signTypedData({
-        domain: {
-          name: "SplitHubPayments",
-          version: "1",
-          chainId: 84532,
-          verifyingContract: "0x...", // Your SplitHubPayments contract address
-        },
-        types: {
-          Payment: [
-            { name: "from", type: "address" },
-            { name: "to", type: "address" },
-            { name: "token", type: "address" },
-            { name: "amount", type: "uint256" },
-          ],
-        },
-        primaryType: "Payment",
-        message: {
-          from: user.wallet.address,
-          to: request.recipient,
-          token: request.token,
-          amount: request.amount,
-        },
+      // Import dependencies
+      const { parseUnits, createPublicClient, http } = await import("viem");
+      const deployedContracts = (await import("~~/contracts/deployedContracts")).default;
+      const { baseSepolia } = await import("viem/chains");
+
+      const chainId = 84532; // Base Sepolia
+      const chainContracts = deployedContracts[chainId as keyof typeof deployedContracts] as
+        | Record<string, { address: string; abi: any }>
+        | undefined;
+
+      const paymentsAddress = chainContracts?.SplitHubPayments?.address as `0x${string}`;
+      const registryAddress = chainContracts?.SplitHubRegistry?.address as `0x${string}`;
+      const registryABI = chainContracts?.SplitHubRegistry?.abi;
+      const paymentsABI = chainContracts?.SplitHubPayments?.abi;
+
+      if (!paymentsAddress || !registryAddress) {
+        throw new Error("Contracts not deployed on this network");
+      }
+
+      // Create public client for contract reads
+      const publicClient = createPublicClient({
+        chain: baseSepolia,
+        transport: http(),
       });
 
-      // Step 2: Submit to relayer
+      // Parse amount to wei (assuming USDC with 6 decimals)
+      const amountInWei = parseUnits(request.amount, 6);
+      const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600); // 1 hour from now
+
+      // EIP-712 domain and types matching SplitHubPayments.sol
+      const domain = {
+        name: "SplitHubPayments",
+        version: "1",
+        chainId: BigInt(chainId),
+        verifyingContract: paymentsAddress,
+      };
+
+      const types = {
+        PaymentAuth: [
+          { name: "payer", type: "address" },
+          { name: "recipient", type: "address" },
+          { name: "token", type: "address" },
+          { name: "amount", type: "uint256" },
+          { name: "nonce", type: "uint256" },
+          { name: "deadline", type: "uint256" },
+        ],
+      };
+
+      // FIRST TAP: Sign with placeholder payer to get chip address
+      const placeholderAuth = {
+        payer: "0x0000000000000000000000000000000000000000" as `0x${string}`,
+        recipient: request.recipient as `0x${string}`,
+        token: request.token as `0x${string}`,
+        amount: amountInWei,
+        nonce: BigInt(0),
+        deadline,
+      };
+
+      const firstTapResult = await signTypedData({
+        domain,
+        types,
+        primaryType: "PaymentAuth",
+        message: placeholderAuth,
+      });
+
+      const chipAddress = firstTapResult.address as `0x${string}`;
+
+      // Look up chip owner from registry
+      const owner = (await publicClient.readContract({
+        address: registryAddress,
+        abi: registryABI,
+        functionName: "ownerOf",
+        args: [chipAddress],
+      })) as `0x${string}`;
+
+      if (!owner || owner === "0x0000000000000000000000000000000000000000") {
+        throw new Error("Chip not registered. Please register your chip first.");
+      }
+
+      // Verify the chip owner matches the expected payer
+      if (owner.toLowerCase() !== request.payer.toLowerCase()) {
+        throw new Error(
+          `This chip is registered to ${owner.slice(0, 6)}...${owner.slice(-4)}, but the payment request expects ${request.payer.slice(0, 6)}...${request.payer.slice(-4)}. Please use the correct chip or wallet.`,
+        );
+      }
+
+      // Get the correct nonce for this payer
+      const nonce = (await publicClient.readContract({
+        address: paymentsAddress,
+        abi: paymentsABI,
+        functionName: "nonces",
+        args: [owner],
+      })) as bigint;
+
+      // SECOND TAP: Sign with correct payer
+      const realPaymentAuth = {
+        payer: owner,
+        recipient: request.recipient as `0x${string}`,
+        token: request.token as `0x${string}`,
+        amount: amountInWei,
+        nonce,
+        deadline,
+      };
+
+      // Sign with NFC chip
+      const chipResult = await signTypedData({
+        domain,
+        types,
+        primaryType: "PaymentAuth",
+        message: realPaymentAuth,
+      });
+
+      // Submit to relay API
+      console.log("Submitting payment to relay API...", {
+        payer: realPaymentAuth.payer,
+        recipient: realPaymentAuth.recipient,
+        amount: realPaymentAuth.amount.toString(),
+        contractAddress: paymentsAddress,
+      });
+
       const relayResponse = await fetch("/api/relay/payment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          from: user.wallet.address,
-          to: request.recipient,
-          token: request.token,
-          amount: request.amount,
-          signature: signature.signature,
+          auth: {
+            payer: realPaymentAuth.payer,
+            recipient: realPaymentAuth.recipient,
+            token: realPaymentAuth.token,
+            amount: realPaymentAuth.amount.toString(),
+            nonce: realPaymentAuth.nonce.toString(),
+            deadline: realPaymentAuth.deadline.toString(),
+          },
+          signature: chipResult.signature,
+          contractAddress: paymentsAddress,
         }),
       });
 
       const relayData = await relayResponse.json();
 
       if (!relayResponse.ok) {
+        console.error("Relay API error:", relayData);
         throw new Error(relayData.error || "Payment failed");
       }
 
-      // Step 3: Mark request as completed
-      await fetch(`/api/payment-requests/${requestId}/complete`, {
+      console.log("Payment successful! Transaction hash:", relayData.txHash);
+
+      // Mark request as completed
+      const completeResponse = await fetch(`/api/payment-requests/${requestId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ txHash: relayData.txHash }),
       });
 
+      if (!completeResponse.ok) {
+        console.error("Failed to mark request as completed");
+      }
+
+      // Record settlement in database to update balances
+      const settlementResponse = await fetch("/api/settlements", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          payerWallet: realPaymentAuth.payer,
+          payeeWallet: request.recipient,
+          amount: request.amount,
+          tokenAddress: request.token,
+          txHash: relayData.txHash,
+        }),
+      });
+
+      if (!settlementResponse.ok) {
+        console.error("Failed to record settlement");
+      }
+
+      // Trigger notification badge and balance refresh
+      window.dispatchEvent(new Event("refreshPaymentRequests"));
+      window.dispatchEvent(new Event("refreshBalances"));
+
       setSuccess(true);
-      setTimeout(() => router.push("/"), 2000);
+      setTimeout(() => router.push("/splits"), 2000);
     } catch (err) {
       console.error("Payment error:", err);
       setError(err instanceof Error ? err.message : "Payment failed");

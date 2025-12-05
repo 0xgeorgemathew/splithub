@@ -2,6 +2,79 @@ import { NextRequest, NextResponse } from "next/server";
 import { isAddress } from "viem";
 import { supabase } from "~~/lib/supabase";
 
+// GET /api/payment-requests - Fetch payment requests for a user
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const wallet = searchParams.get("wallet");
+    const type = searchParams.get("type"); // 'incoming' or 'outgoing'
+
+    if (!wallet) {
+      return NextResponse.json({ error: "Wallet address required" }, { status: 400 });
+    }
+
+    if (!isAddress(wallet)) {
+      return NextResponse.json({ error: "Invalid wallet address" }, { status: 400 });
+    }
+
+    const walletLower = wallet.toLowerCase();
+    let query = supabase.from("payment_requests").select(
+      `
+        *,
+        payer_user:users!payment_requests_payer_fkey(
+          name,
+          twitter_handle,
+          twitter_profile_url
+        ),
+        recipient_user:users!payment_requests_recipient_fkey(
+          name,
+          twitter_handle,
+          twitter_profile_url
+        )
+      `,
+    );
+
+    // Filter by type
+    if (type === "incoming") {
+      // Requests where this wallet needs to pay
+      query = query.eq("payer", walletLower);
+    } else if (type === "outgoing") {
+      // Requests where this wallet is waiting for payment
+      query = query.eq("recipient", walletLower);
+    } else {
+      // All requests involving this wallet
+      query = query.or(`payer.eq.${walletLower},recipient.eq.${walletLower}`);
+    }
+
+    // Order by creation date, newest first
+    query = query.order("created_at", { ascending: false });
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error("Supabase error:", error);
+      return NextResponse.json({ error: "Failed to fetch payment requests" }, { status: 500 });
+    }
+
+    // Update expired requests
+    const now = new Date();
+    const updatedData = await Promise.all(
+      data.map(async request => {
+        if (request.status === "pending" && new Date(request.expires_at) < now) {
+          await supabase.from("payment_requests").update({ status: "expired" }).eq("id", request.id);
+          return { ...request, status: "expired" };
+        }
+        return request;
+      }),
+    );
+
+    return NextResponse.json({ data: updatedData });
+  } catch (err) {
+    console.error("Payment request fetch error:", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
 // POST /api/payment-requests - Create a new payment request
 export async function POST(request: NextRequest) {
   try {
@@ -33,6 +106,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
     }
 
+    const payerLower = payer.toLowerCase();
+    const recipientLower = recipient.toLowerCase();
+
+    // Check if there's already a pending request for this payer-recipient pair
+    const { data: existingRequest, error: checkError } = await supabase
+      .from("payment_requests")
+      .select("id, amount")
+      .eq("payer", payerLower)
+      .eq("recipient", recipientLower)
+      .eq("status", "pending")
+      .single();
+
+    // If a pending request already exists, return it instead of creating a duplicate
+    if (existingRequest && !checkError) {
+      return NextResponse.json({
+        requestId: existingRequest.id,
+        settleUrl: `/settle/${existingRequest.id}`,
+        message: "A pending payment request already exists for this user",
+        isExisting: true,
+      });
+    }
+
     // Set expiration to 24 hours from now
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
@@ -40,8 +135,8 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from("payment_requests")
       .insert({
-        payer: payer.toLowerCase(),
-        recipient: recipient.toLowerCase(),
+        payer: payerLower,
+        recipient: recipientLower,
         token: token.toLowerCase(),
         amount: amount.toString(),
         memo: memo || null,
@@ -61,6 +156,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       requestId: data.id,
       settleUrl: `/settle/${data.id}`,
+      isExisting: false,
     });
   } catch (err) {
     console.error("Payment request creation error:", err);

@@ -20,6 +20,9 @@ export const FriendBalancesList = () => {
   const [isSettleModalOpen, setIsSettleModalOpen] = useState(false);
   const [selectedFriend, setSelectedFriend] = useState<FriendBalance | null>(null);
   const [settlementParams, setSettlementParams] = useState<PaymentParams | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isCreatingRequest, setIsCreatingRequest] = useState(false);
+  const [requestSuccess, setRequestSuccess] = useState(false);
 
   const walletAddress = user?.wallet?.address;
 
@@ -50,6 +53,17 @@ export const FriendBalancesList = () => {
     };
 
     fetchBalances();
+
+    // Listen for refresh events (e.g., when a payment request is completed)
+    const handleRefresh = () => {
+      console.log("Balance refresh event received, reloading balances...");
+      fetchBalances();
+    };
+    window.addEventListener("refreshBalances", handleRefresh);
+
+    return () => {
+      window.removeEventListener("refreshBalances", handleRefresh);
+    };
   }, [walletAddress]);
 
   const formatAmount = (amount: number): string => {
@@ -67,14 +81,91 @@ export const FriendBalancesList = () => {
     return balance < 0;
   };
 
+  const canRequestPayment = (balance: number): boolean => {
+    // Can request payment if they owe you (positive balance)
+    return balance > 0;
+  };
+
   const handleFriendClick = async (friend: FriendBalance) => {
     if (!walletAddress) return;
 
-    // Only allow settlement if user owes the friend (negative balance)
-    if (!canSettle(friend.net_balance)) {
-      console.log("Cannot settle - friend owes you, not vice versa");
+    // Case 1: They owe you - create a payment request
+    if (canRequestPayment(friend.net_balance)) {
+      await handleCreateRequest(friend);
       return;
     }
+
+    // Case 2: You owe them - open settlement modal
+    if (canSettle(friend.net_balance)) {
+      await handleSettlement(friend);
+      return;
+    }
+  };
+
+  const handleCreateRequest = async (friend: FriendBalance) => {
+    if (!walletAddress || isCreatingRequest) return;
+
+    setSelectedFriend(friend);
+    setIsCreatingRequest(true);
+    setError(null);
+
+    try {
+      // Fetch token address from their expenses
+      const tokenResponse = await fetch(
+        `/api/balances/token?userWallet=${walletAddress}&friendWallet=${friend.friend_wallet}`,
+      );
+      const tokenData = await tokenResponse.json();
+
+      if (!tokenResponse.ok) {
+        throw new Error(tokenData.error || "Failed to fetch token address");
+      }
+
+      // Create payment request
+      const requestResponse = await fetch("/api/payment-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          payer: friend.friend_wallet,
+          recipient: walletAddress,
+          token: tokenData.tokenAddress,
+          amount: formatAmount(friend.net_balance),
+          memo: `Settlement request from ${user?.twitter?.username || "you"}`,
+          payerTwitter: friend.friend_twitter_handle,
+          requesterTwitter: user?.twitter?.username,
+        }),
+      });
+
+      const requestData = await requestResponse.json();
+
+      if (!requestResponse.ok) {
+        throw new Error(requestData.error || "Failed to create request");
+      }
+
+      // Show success state in modal
+      setRequestSuccess(true);
+
+      // Show success message for existing requests
+      if (requestData.isExisting) {
+        setSuccessMessage(`A payment request for ${friend.friend_name} already exists and is still pending.`);
+        setTimeout(() => setSuccessMessage(null), 5000);
+      }
+
+      // Auto-close after showing success
+      setTimeout(() => {
+        setIsCreatingRequest(false);
+        setRequestSuccess(false);
+        setSelectedFriend(null);
+      }, 2000);
+    } catch (err) {
+      console.error("Error creating request:", err);
+      setError(err instanceof Error ? err.message : "Failed to create payment request");
+      setIsCreatingRequest(false);
+      setRequestSuccess(false);
+    }
+  };
+
+  const handleSettlement = async (friend: FriendBalance) => {
+    if (!walletAddress) return;
 
     setSelectedFriend(friend);
 
@@ -129,6 +220,9 @@ export const FriendBalancesList = () => {
       }
 
       console.log("Settlement recorded successfully, refreshing balances...");
+
+      // Trigger global balance refresh event
+      window.dispatchEvent(new Event("refreshBalances"));
 
       // Small delay to ensure database consistency
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -228,7 +322,7 @@ export const FriendBalancesList = () => {
             <div className="flex items-baseline gap-2">
               <span className="text-xs text-base-content/40 min-w-[52px]">Wallet</span>
               <span className="text-base font-bold text-base-content">
-                {isWalletBalanceLoading ? "..." : `$${walletBalance.toFixed(2)} USDC`}
+                {isWalletBalanceLoading ? "..." : `$${walletBalance.toFixed(2)} USDT`}
               </span>
             </div>
             {/* Friends Balance Row */}
@@ -237,7 +331,7 @@ export const FriendBalancesList = () => {
               <span
                 className={`text-base font-bold ${overallBalance > 0 ? "text-[#00C46A]" : overallBalance < 0 ? "text-[#FF4D4F]" : "text-base-content/60"}`}
               >
-                ${formatAmount(overallBalance)} USDC
+                ${formatAmount(overallBalance)} USDT
               </span>
             </div>
           </div>
@@ -269,15 +363,17 @@ export const FriendBalancesList = () => {
       <div className="space-y-2">
         {balances.map(balance => {
           const isSettleable = canSettle(balance.net_balance);
+          const isRequestable = canRequestPayment(balance.net_balance);
+          const isClickable = isSettleable || isRequestable;
           return (
             <div
               key={balance.friend_wallet}
               className={`bg-base-300/30 rounded-xl p-3 border border-base-content/5 transition-all ${
-                isSettleable
+                isClickable
                   ? "cursor-pointer hover:bg-base-300/50 hover:border-primary/20 active:scale-[0.99]"
                   : "cursor-default opacity-75"
               }`}
-              onClick={() => isSettleable && handleFriendClick(balance)}
+              onClick={() => isClickable && handleFriendClick(balance)}
             >
               <div className="flex items-center gap-3">
                 {/* Avatar */}
@@ -331,6 +427,48 @@ export const FriendBalancesList = () => {
           params={settlementParams}
           onSuccess={handleSettlementSuccess}
         />
+      )}
+
+      {/* Loading/Success Overlay */}
+      {isCreatingRequest && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-base-100 rounded-2xl p-8 shadow-2xl flex flex-col items-center gap-4 max-w-sm mx-4">
+            {requestSuccess ? (
+              <>
+                {/* Success State */}
+                <div className="w-16 h-16 rounded-full bg-success/20 flex items-center justify-center">
+                  <svg className="w-8 h-8 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <p className="text-lg font-semibold text-success">Payment request sent!</p>
+              </>
+            ) : (
+              <>
+                {/* Loading State */}
+                <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+                <div className="text-center">
+                  <p className="text-lg font-semibold text-base-content mb-1">Sending Request</p>
+                  <p className="text-sm text-base-content/60">
+                    {selectedFriend ? `To ${selectedFriend.friend_name}...` : "Please wait..."}
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Success Toast */}
+      {successMessage && (
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="bg-success text-success-content px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 max-w-md">
+            <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <span className="font-medium text-sm">{successMessage}</span>
+          </div>
+        </div>
       )}
     </>
   );
