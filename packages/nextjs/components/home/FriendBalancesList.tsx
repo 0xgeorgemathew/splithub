@@ -5,6 +5,7 @@ import Image from "next/image";
 import { usePrivy } from "@privy-io/react-auth";
 import { SettleModal } from "~~/components/settle/SettleModal";
 import { type PaymentParams } from "~~/components/settle/types";
+import { useUSDCBalance } from "~~/hooks/useUSDCBalance";
 import { type FriendBalance } from "~~/lib/supabase";
 import { getFriendBalances, getOverallBalance } from "~~/services/balanceService";
 
@@ -21,6 +22,9 @@ export const FriendBalancesList = () => {
   const [settlementParams, setSettlementParams] = useState<PaymentParams | null>(null);
 
   const walletAddress = user?.wallet?.address;
+
+  // Fetch actual USDC wallet balance
+  const { formattedBalance: walletBalance, isLoading: isWalletBalanceLoading } = useUSDCBalance();
 
   useEffect(() => {
     const fetchBalances = async () => {
@@ -215,32 +219,49 @@ export const FriendBalancesList = () => {
 
   return (
     <>
-      {/* Total Balance Summary Card */}
-      <div className="mb-6 bg-base-300/50 rounded-2xl p-4 border border-base-content/5">
-        <div className="flex items-center justify-between">
-          <div className="flex-1">
-            <p className="text-xs text-base-content/50 mb-1">Total balance</p>
-            {overallBalance === 0 ? (
-              <p className="text-2xl font-bold text-base-content">$0.00 USDC</p>
-            ) : (
-              <p className={`text-2xl font-bold ${overallBalance > 0 ? "text-[#00C46A]" : "text-[#FF4D4F]"}`}>
-                ${formatAmount(overallBalance)} USDC
-              </p>
-            )}
-            <p className="text-xs text-base-content/40 mt-1">
-              {overallBalance > 0 && "Friends owe you overall"}
-              {overallBalance < 0 && "You owe friends overall"}
-              {overallBalance === 0 && "All settled up"}
-            </p>
-          </div>
-          {overallBalance > 0 && (
-            <div className="px-3 py-1.5 bg-[#00C46A]/10 text-[#00C46A] rounded-full text-xs font-semibold">
-              You&apos;re owed
+      {/* Combined Wallet + Owed Balance Card */}
+      <div className="mb-4 bg-base-300/30 rounded-xl p-3 border border-base-content/5">
+        <div className="flex items-stretch justify-between gap-3">
+          {/* Left: Labels + Amounts */}
+          <div className="flex-1 flex flex-col justify-center gap-1.5">
+            {/* Wallet Balance Row */}
+            <div className="flex items-baseline gap-2">
+              <span className="text-xs text-base-content/40 min-w-[52px]">Wallet</span>
+              <span className="text-base font-bold text-base-content">
+                {isWalletBalanceLoading ? "..." : `$${walletBalance.toFixed(2)} USDC`}
+              </span>
             </div>
-          )}
-          {overallBalance < 0 && (
-            <div className="px-3 py-1.5 bg-[#FF4D4F]/10 text-[#FF4D4F] rounded-full text-xs font-semibold">You owe</div>
-          )}
+            {/* Friends Balance Row */}
+            <div className="flex items-baseline gap-2">
+              <span className="text-xs text-base-content/40 min-w-[52px]">Friends</span>
+              <span
+                className={`text-base font-bold ${overallBalance > 0 ? "text-[#00C46A]" : overallBalance < 0 ? "text-[#FF4D4F]" : "text-base-content/60"}`}
+              >
+                ${formatAmount(overallBalance)} USDC
+              </span>
+            </div>
+          </div>
+
+          {/* Right: Icon + Status Pill */}
+          <div className="flex flex-col items-end justify-between py-0.5">
+            {/* Wallet Icon */}
+            <div className="text-base-content/30 text-lg">💳</div>
+            {/* Status Pill */}
+            {overallBalance !== 0 && (
+              <div
+                className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                  overallBalance > 0 ? "bg-[#00C46A]/10 text-[#00C46A]" : "bg-[#FF4D4F]/10 text-[#FF4D4F]"
+                }`}
+              >
+                {overallBalance > 0 ? "You're owed" : "You owe"}
+              </div>
+            )}
+            {overallBalance === 0 && (
+              <div className="px-2 py-0.5 bg-base-content/5 text-base-content/40 rounded-full text-[10px] font-semibold">
+                Settled
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
