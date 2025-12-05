@@ -204,6 +204,9 @@ export default function SettlePage() {
       // Refetch nonce for next payment
       await refetchNonce();
 
+      // Trigger balance refresh across the app
+      window.dispatchEvent(new Event("refreshBalances"));
+
       setFlowState("success");
       setStatusMessage("Complete!");
     } catch (err: any) {

@@ -122,6 +122,14 @@ export async function POST(request: NextRequest) {
     };
 
     // Submit transaction
+    console.log("Submitting transaction to SplitHubPayments contract:", paymentsAddress);
+    console.log("Payment details:", {
+      payer: authTuple.payer,
+      recipient: authTuple.recipient,
+      token: authTuple.token,
+      amount: authTuple.amount.toString(),
+    });
+
     const hash = await walletClient.writeContract({
       address: paymentsAddress as `0x${string}`,
       abi: SPLIT_HUB_PAYMENTS_ABI,
@@ -129,8 +137,12 @@ export async function POST(request: NextRequest) {
       args: [authTuple, signature],
     });
 
+    console.log("Transaction submitted! Hash:", hash);
+
     // Wait for confirmation
     const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
+    console.log("Transaction confirmed! Block:", receipt.blockNumber.toString());
 
     return NextResponse.json({
       success: true,

@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useAccount, useReadContract } from "wagmi";
 
 // USDC token address on Base Sepolia
@@ -69,6 +70,19 @@ export function useUSDCBalance() {
   // Format balance for display (USDC has 6 decimals)
   const formattedBalance =
     balance !== undefined && decimals !== undefined ? Number(balance) / Math.pow(10, decimals) : 0;
+
+  // Listen for balance refresh events
+  useEffect(() => {
+    const handleRefresh = () => {
+      console.log("USDC balance refresh event received, refetching...");
+      refetchBalance();
+    };
+    window.addEventListener("refreshBalances", handleRefresh);
+
+    return () => {
+      window.removeEventListener("refreshBalances", handleRefresh);
+    };
+  }, [refetchBalance]);
 
   return {
     balance, // Raw balance in wei
