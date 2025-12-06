@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, Loader2, Nfc } from "lucide-react";
+import { AlertCircle, Nfc } from "lucide-react";
+import { OnboardingFinalizer } from "~~/components/onboarding/OnboardingFinalizer";
 import { useHaloChip } from "~~/hooks/halochip-arx/useHaloChip";
 import { useDeployedContractInfo } from "~~/hooks/scaffold-eth";
 import { supabase } from "~~/lib/supabase";
 
-type FlowState = "idle" | "tapping" | "registering" | "saving" | "success" | "error";
+type FlowState = "idle" | "tapping" | "registering" | "saving" | "finalizing" | "error";
 
 interface RegisterChipFormProps {
   userId: string;
@@ -30,6 +31,68 @@ export function RegisterChipForm({
   const [error, setError] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
   const [chipAddress, setChipAddress] = useState<string | null>(null);
+
+  // Prevent duplicate finalize calls
+  const isFinalizingRef = useRef(false);
+
+  /**
+   * Single source of truth for finalizing onboarding.
+   * Calls backend to run all checks and returns the next route.
+   * Prevents race conditions with in-flight flag.
+   */
+  const finalizeOnboarding = async (action: "skip" | "register", detectedChipAddress?: string) => {
+    // Prevent duplicate calls
+    if (isFinalizingRef.current) {
+      console.warn("Finalize already in progress, ignoring duplicate call");
+      return;
+    }
+
+    isFinalizingRef.current = true;
+    setFlowState("finalizing");
+    setError("");
+
+    try {
+      // Start minimum display time and API call in parallel
+      const startTime = Date.now();
+      const MIN_DISPLAY_TIME = 1200; // Ensure loader shows for at least 1.2s
+
+      const response = await fetch("/api/onboarding/finalize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          action,
+          chipAddress: detectedChipAddress,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to finalize onboarding");
+      }
+
+      // Calculate remaining time to meet minimum display duration
+      const elapsed = Date.now() - startTime;
+      const remainingTime = Math.max(0, MIN_DISPLAY_TIME - elapsed);
+
+      // Wait for remaining time if needed
+      if (remainingTime > 0) {
+        await new Promise(resolve => setTimeout(resolve, remainingTime));
+      }
+
+      // Set flag to skip redundant loading states on destination page
+      sessionStorage.setItem("skipLoadingStates", "true");
+
+      // Navigate to the route returned by backend
+      router.replace(data.nextRoute);
+    } catch (err: any) {
+      console.error("Finalize onboarding error:", err);
+      setFlowState("error");
+      setError(err.message || "Failed to finalize onboarding");
+      isFinalizingRef.current = false;
+    }
+  };
 
   const handleChipRegistration = async () => {
     if (!registryContract?.address) {
@@ -108,27 +171,8 @@ export function RegisterChipForm({
         throw new Error(relayData.error || "Registration failed");
       }
 
-      // Step 5: Update user record
-      setFlowState("saving");
-      setStatusMessage("Saving...");
-
-      const { error: updateError } = await supabase
-        .from("users")
-        .update({ chip_address: detectedChipAddress.toLowerCase() })
-        .eq("privy_user_id", userId);
-
-      if (updateError) {
-        throw updateError;
-      }
-
-      // Success!
-      setFlowState("success");
-      setStatusMessage("Complete! Redirecting...");
-
-      // Redirect to approve page
-      setTimeout(() => {
-        router.replace("/approve");
-      }, 300);
+      // Step 5: Finalize onboarding (updates DB, checks approvals, returns next route)
+      await finalizeOnboarding("register", detectedChipAddress);
     } catch (err: any) {
       console.error("Registration error:", err);
       setFlowState("error");
@@ -137,96 +181,108 @@ export function RegisterChipForm({
     }
   };
 
+  const handleSkipRegistration = async () => {
+    // Finalize onboarding with skip action
+    await finalizeOnboarding("skip");
+  };
+
   // Determine if we should show processing state
   const isProcessing = flowState === "tapping" || flowState === "registering" || flowState === "saving";
 
-  if (flowState === "success") {
-    return (
-      <div className="text-center py-16">
-        <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-primary/10 mb-6 animate-pulse">
-          <Loader2 className="w-12 h-12 animate-spin text-primary" />
-        </div>
-        <p className="text-base-content/70 text-sm">Complete! Redirecting...</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-5">
-      {/* NFC Icon with Animation */}
-      <div className="relative flex items-center justify-center py-6">
-        {/* Animated ring effect when processing */}
-        {isProcessing && (
+    <>
+      {/* Onboarding Finalizer - Full screen loader */}
+      <OnboardingFinalizer isOpen={flowState === "finalizing"} />
+
+      <div className="space-y-5">
+        {/* NFC Icon with Animation */}
+        <div className="relative flex items-center justify-center py-6">
+          {/* Animated ring effect when processing */}
+          {isProcessing && (
+            <>
+              <div className="absolute w-32 h-32 rounded-full bg-primary/5 animate-ping" />
+              <div className="absolute w-28 h-28 rounded-full bg-primary/10 animate-pulse" />
+            </>
+          )}
+
+          {/* Main NFC Icon */}
+          <div
+            className={`relative inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-primary/20 via-primary/10 to-secondary/20 border-2 border-primary/30 shadow-lg transition-all duration-500 ${
+              flowState === "idle" ? "animate-pulse" : ""
+            } ${isProcessing ? "scale-110" : "scale-100"}`}
+          >
+            <Nfc className="w-10 h-10 text-primary" strokeWidth={2} />
+          </div>
+        </div>
+
+        {/* Title & Status */}
+        <div className="text-center space-y-2">
+          <h1 className="text-2xl font-bold text-base-content">
+            {flowState === "idle"
+              ? "Register your chip"
+              : flowState === "tapping"
+                ? "Reading chip..."
+                : flowState === "registering"
+                  ? "Registering..."
+                  : flowState === "saving"
+                    ? "Saving..."
+                    : "Processing..."}
+          </h1>
+          {statusMessage && flowState !== "idle" && (
+            <p className="text-sm text-base-content/60 animate-pulse">{statusMessage}</p>
+          )}
+          {flowState === "idle" && (
+            <p className="text-sm text-base-content/60">Link your NFC chip to your wallet to enable tap-to-pay</p>
+          )}
+        </div>
+
+        {/* Chip Address Card - Higher in hierarchy */}
+        {chipAddress && (
+          <div className="bg-base-200/50 backdrop-blur-sm rounded-xl p-4 border border-base-300/50 shadow-sm">
+            <p className="text-[10px] text-base-content/50 mb-2 uppercase tracking-wider font-semibold">Chip Address</p>
+            <p className="font-mono text-xs text-base-content/90 break-all leading-relaxed">{chipAddress}</p>
+          </div>
+        )}
+
+        {/* Error Message */}
+        {error && (
+          <div className="flex items-center gap-3 p-4 bg-error/10 border border-error/30 rounded-xl animate-in slide-in-from-top-2">
+            <AlertCircle className="w-5 h-5 text-error flex-shrink-0" />
+            <span className="text-error text-sm font-medium">{error}</span>
+          </div>
+        )}
+
+        {/* Register Button - Only show when idle or error */}
+        {(flowState === "idle" || flowState === "error") && (
           <>
-            <div className="absolute w-32 h-32 rounded-full bg-primary/5 animate-ping" />
-            <div className="absolute w-28 h-28 rounded-full bg-primary/10 animate-pulse" />
+            <button
+              onClick={handleChipRegistration}
+              className="w-full py-4 px-6 bg-primary hover:bg-primary/90 active:scale-[0.98] text-primary-content font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-3"
+            >
+              <Nfc className="w-5 h-5" />
+              Tap chip to register
+            </button>
+
+            {/* Skip Button */}
+            <button
+              onClick={handleSkipRegistration}
+              className="w-full py-3 px-6 bg-base-200 hover:bg-base-300 active:scale-[0.98] text-base-content font-medium rounded-xl transition-all duration-200"
+            >
+              Skip and continue
+            </button>
           </>
         )}
 
-        {/* Main NFC Icon */}
-        <div
-          className={`relative inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-primary/20 via-primary/10 to-secondary/20 border-2 border-primary/30 shadow-lg transition-all duration-500 ${
-            flowState === "idle" ? "animate-pulse" : ""
-          } ${isProcessing ? "scale-110" : "scale-100"}`}
-        >
-          <Nfc className="w-10 h-10 text-primary" strokeWidth={2} />
-        </div>
-      </div>
-
-      {/* Title & Status */}
-      <div className="text-center space-y-2">
-        <h1 className="text-2xl font-bold text-base-content">
-          {flowState === "idle"
-            ? "Register your chip"
-            : flowState === "tapping"
-              ? "Reading chip..."
-              : flowState === "registering"
-                ? "Registering..."
-                : flowState === "saving"
-                  ? "Saving..."
-                  : "Processing..."}
-        </h1>
-        {statusMessage && flowState !== "idle" && (
-          <p className="text-sm text-base-content/60 animate-pulse">{statusMessage}</p>
-        )}
+        {/* Info Footer - Only show when idle */}
         {flowState === "idle" && (
-          <p className="text-sm text-base-content/60">Link your NFC chip to your wallet to enable tap-to-pay</p>
+          <div className="space-y-2">
+            <p className="text-center text-xs text-base-content/40">
+              This will securely link your NFC chip to your wallet
+            </p>
+            <p className="text-center text-xs text-base-content/30">You can register your chip later from settings</p>
+          </div>
         )}
       </div>
-
-      {/* Chip Address Card - Higher in hierarchy */}
-      {chipAddress && (
-        <div className="bg-base-200/50 backdrop-blur-sm rounded-xl p-4 border border-base-300/50 shadow-sm">
-          <p className="text-[10px] text-base-content/50 mb-2 uppercase tracking-wider font-semibold">Chip Address</p>
-          <p className="font-mono text-xs text-base-content/90 break-all leading-relaxed">{chipAddress}</p>
-        </div>
-      )}
-
-      {/* Error Message */}
-      {error && (
-        <div className="flex items-center gap-3 p-4 bg-error/10 border border-error/30 rounded-xl animate-in slide-in-from-top-2">
-          <AlertCircle className="w-5 h-5 text-error flex-shrink-0" />
-          <span className="text-error text-sm font-medium">{error}</span>
-        </div>
-      )}
-
-      {/* Register Button - Only show when idle or error */}
-      {(flowState === "idle" || flowState === "error") && (
-        <button
-          onClick={handleChipRegistration}
-          className="w-full py-4 px-6 bg-primary hover:bg-primary/90 active:scale-[0.98] text-primary-content font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-3"
-        >
-          <Nfc className="w-5 h-5" />
-          Tap chip to register
-        </button>
-      )}
-
-      {/* Info Footer - Only show when idle */}
-      {flowState === "idle" && (
-        <p className="text-center text-xs text-base-content/40 pt-1">
-          This will securely link your NFC chip to your wallet
-        </p>
-      )}
-    </div>
+    </>
   );
 }
