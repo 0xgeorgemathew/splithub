@@ -35,21 +35,36 @@ export const UserSyncWrapper = ({ children }: { children: React.ReactNode }) => 
         await syncPrivyUser(user);
         hasSynced.current = true;
 
-        // Check if user has registered their chip
+        // Check user's onboarding status
         const dbUser = await getUserByPrivyId(user.id);
 
-        // Don't redirect from these pages (they're part of the onboarding flow)
-        const excludedPaths = ["/register", "/approve", "/re-register"];
-        const shouldSkipRedirect = excludedPaths.some(path => pathname.startsWith(path));
+        if (!dbUser) return;
 
-        if (shouldSkipRedirect) return;
+        // Determine the correct page based on onboarding state
+        const hasChip = dbUser.chip_address || dbUser.chip_registration_status === "skipped";
+        const hasApprovals = dbUser.approval_status === "completed";
 
-        // Redirect logic based on user state
-        if (dbUser && !dbUser.chip_address) {
-          // No chip registered → go to register immediately
-          router.replace("/register");
+        // Define onboarding route based on completion state
+        let targetRoute: string | null = null;
+
+        if (!hasChip) {
+          targetRoute = "/register";
+        } else if (!hasApprovals) {
+          targetRoute = "/approve";
         }
-        // User with chip can access all pages including home page
+        // If both complete, no redirect needed (user can access all pages)
+
+        // Only redirect if:
+        // 1. We determined a target route
+        // 2. User is not already on that route or a later step
+        if (targetRoute) {
+          const isOnOnboardingPath = pathname === "/register" || pathname === "/approve";
+
+          // If user is on home page or wrong onboarding step, redirect to correct step
+          if (pathname === "/" || (isOnOnboardingPath && pathname !== targetRoute)) {
+            router.replace(targetRoute);
+          }
+        }
       } catch (error) {
         console.error("User sync error:", error);
       }
