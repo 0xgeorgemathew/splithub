@@ -110,7 +110,7 @@ export async function getFriendBalances(userWallet: string): Promise<FriendBalan
 
   const { data: usersData, error: usersError } = await supabase
     .from("users")
-    .select("wallet_address, name, email")
+    .select("wallet_address, name, email, twitter_handle, twitter_profile_url")
     .in("wallet_address", friendWallets);
 
   if (usersError) {
@@ -123,6 +123,8 @@ export async function getFriendBalances(userWallet: string): Promise<FriendBalan
       friend_wallet: user.wallet_address,
       friend_name: user.name,
       friend_email: user.email,
+      friend_twitter_handle: user.twitter_handle,
+      friend_twitter_profile_url: user.twitter_profile_url,
       net_balance: balances[user.wallet_address],
     })) || [];
 

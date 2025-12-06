@@ -368,19 +368,18 @@ export const FriendBalancesList = () => {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="mb-4 rounded-3xl p-6 relative overflow-hidden"
+        className="mb-6 rounded-3xl p-6 relative overflow-hidden border border-white/[0.05]"
         style={{
-          background:
-            "linear-gradient(135deg, rgba(242, 169, 0, 0.08) 0%, rgba(242, 169, 0, 0.02) 50%, transparent 100%)",
-          boxShadow: "0 4px 24px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.05)",
+          background: "linear-gradient(145deg, #1a1a1a 0%, #0d0d0d 100%)",
+          boxShadow: "0 4px 20px -5px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.03)",
         }}
       >
         {/* Subtle mesh gradient overlay */}
         <div
-          className="absolute inset-0 opacity-30"
+          className="absolute inset-0 opacity-40"
           style={{
             backgroundImage:
-              "radial-gradient(at 20% 30%, rgba(242, 169, 0, 0.15) 0%, transparent 50%), radial-gradient(at 80% 70%, rgba(242, 169, 0, 0.1) 0%, transparent 50%)",
+              "radial-gradient(at 20% 30%, rgba(242, 169, 0, 0.12) 0%, transparent 50%), radial-gradient(at 80% 70%, rgba(242, 169, 0, 0.08) 0%, transparent 50%)",
           }}
         />
 
@@ -400,7 +399,7 @@ export const FriendBalancesList = () => {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.1 }}
-                className="text-5xl font-bold text-white font-mono tracking-tight"
+                className="text-5xl font-bold text-white tracking-tight font-mono"
               >
                 ${walletBalance.toFixed(2)}
               </motion.span>
@@ -412,20 +411,18 @@ export const FriendBalancesList = () => {
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
-            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full ${
-              overallBalance > 0 ? "bg-emerald-500/15" : overallBalance < 0 ? "bg-rose-500/15" : "bg-base-300/50"
-            }`}
+            className={`inline-flex items-center gap-2 ${overallBalance === 0 ? "opacity-60" : ""}`}
           >
             {overallBalance > 0 ? (
-              <ArrowDownRight className="w-4 h-4 text-emerald-500" />
+              <ArrowDownRight className="w-4 h-4 text-[#00E0B8]" />
             ) : overallBalance < 0 ? (
               <ArrowUpRight className="w-4 h-4 text-rose-500" />
             ) : (
-              <TrendingUp className="w-4 h-4 text-base-content/60" />
+              <TrendingUp className="w-4 h-4 text-base-content/50" />
             )}
             <span
-              className={`text-sm font-semibold ${
-                overallBalance > 0 ? "text-emerald-500" : overallBalance < 0 ? "text-rose-500" : "text-base-content/60"
+              className={`text-sm font-medium ${
+                overallBalance > 0 ? "text-[#00E0B8]" : overallBalance < 0 ? "text-rose-500" : "text-base-content/50"
               }`}
             >
               {overallBalance > 0
@@ -447,7 +444,18 @@ export const FriendBalancesList = () => {
       </div>
 
       {/* Friend List Tiles */}
-      <div className="rounded-2xl overflow-hidden bg-base-100/50">
+      <motion.div
+        className="space-y-0"
+        variants={{
+          hidden: { opacity: 0 },
+          show: {
+            opacity: 1,
+            transition: { staggerChildren: 0.1 },
+          },
+        }}
+        initial="hidden"
+        animate="show"
+      >
         {balances.map((balance, index) => {
           const isSettleable = canSettle(balance.net_balance);
           const isRequestable = canRequestPayment(balance.net_balance);
@@ -458,60 +466,68 @@ export const FriendBalancesList = () => {
           return (
             <motion.div
               key={balance.friend_wallet}
+              variants={{
+                hidden: { opacity: 0, y: 20 },
+                show: { opacity: 1, y: 0 },
+              }}
               whileTap={isClickable ? { scale: 0.98 } : {}}
-              className={`group flex items-center justify-between px-4 py-3 transition-colors ${
-                isClickable ? "cursor-pointer hover:bg-base-200/50 active:bg-base-200" : "cursor-default opacity-60"
-              } ${!isLast ? "border-b border-base-content/10" : ""}`}
+              className={`group flex items-center justify-between px-4 py-5 transition-colors ${
+                isClickable
+                  ? "cursor-pointer hover:bg-white/[0.02] active:bg-white/[0.04]"
+                  : "cursor-default opacity-60"
+              } ${!isLast ? "border-b border-white/5" : ""}`}
               onClick={() => isClickable && handleFriendClick(balance)}
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-4">
                 {/* Avatar */}
                 {balance.friend_twitter_profile_url ? (
                   <Image
                     src={balance.friend_twitter_profile_url}
                     alt={balance.friend_twitter_handle || balance.friend_name}
-                    width={44}
-                    height={44}
-                    className="w-11 h-11 rounded-full flex-shrink-0"
+                    width={48}
+                    height={48}
+                    className="w-12 h-12 rounded-full flex-shrink-0"
                   />
                 ) : (
-                  <div className="w-11 h-11 rounded-full bg-neutral flex items-center justify-center flex-shrink-0">
-                    <span className="text-lg font-bold text-neutral-content">
+                  <div className="w-12 h-12 rounded-full bg-[#2a2a2a] border border-white/10 flex items-center justify-center flex-shrink-0">
+                    <span className="text-lg font-bold text-white/80">
                       {balance.friend_name.charAt(0).toUpperCase()}
                     </span>
                   </div>
                 )}
 
                 {/* Name & Status */}
-                <div className="min-w-0">
-                  <p className="font-bold text-white truncate">{balance.friend_name}</p>
-                  <p className={`text-xs font-medium ${isPositive ? "text-emerald-500" : "text-rose-500"}`}>
+                <div className="flex flex-col min-w-0">
+                  <span className="font-semibold text-white truncate">{balance.friend_name}</span>
+                  <span className={`text-xs ${isPositive ? "text-[#00E0B8]/70" : "text-rose-500/70"}`}>
                     {getBalanceText(balance.net_balance)}
-                  </p>
+                  </span>
                 </div>
               </div>
 
               {/* Amount & Action */}
-              <div className="flex items-center gap-3">
-                <span className={`font-mono font-bold text-lg ${isPositive ? "text-emerald-500" : "text-rose-500"}`}>
+              <div className="flex items-center gap-4">
+                <span
+                  className={`font-mono text-lg font-bold tracking-wide ${isPositive ? "text-[#00E0B8]" : "text-rose-500"}`}
+                >
                   ${formatAmount(balance.net_balance)}
                 </span>
 
-                {/* Notify button - prominent clickable */}
+                {/* Notify button - ghost style */}
                 {isClickable && (
                   <motion.button
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
-                    className="w-9 h-9 rounded-full bg-warning/20 hover:bg-warning/30 flex items-center justify-center transition-colors"
+                    className="btn btn-circle btn-sm btn-ghost text-warning hover:bg-warning/20"
                   >
-                    <Bell className="w-4 h-4 text-warning" />
+                    <Bell className="w-5 h-5" />
                   </motion.button>
                 )}
               </div>
             </motion.div>
           );
         })}
-      </div>
+      </motion.div>
 
       {/* Settlement Modal */}
       {settlementParams && (
