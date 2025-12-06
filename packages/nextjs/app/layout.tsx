@@ -28,7 +28,7 @@ export const viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: "#2563eb",
+  themeColor: "#1b1b1b",
 };
 
 const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {

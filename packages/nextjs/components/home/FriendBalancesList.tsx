@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { usePrivy } from "@privy-io/react-auth";
+import { motion } from "framer-motion";
+import { ArrowDownRight, ArrowUpRight, Bell, Sparkles, TrendingUp, Wallet } from "lucide-react";
 import { SettleModal } from "~~/components/settle/SettleModal";
 import { type PaymentParams } from "~~/components/settle/types";
 import { useUSDCBalance } from "~~/hooks/useUSDCBalance";
@@ -261,18 +263,47 @@ export const FriendBalancesList = () => {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-20">
-        <div className="w-10 h-10 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-        <p className="text-base-content/50 text-sm mt-4">Loading your balances...</p>
-      </div>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="flex flex-col items-center justify-center py-20"
+      >
+        <div className="relative">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+            className="w-12 h-12 rounded-full border-2 border-primary/20 border-t-primary"
+          />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Sparkles className="w-5 h-5 text-primary/50" />
+          </div>
+        </div>
+        <motion.p
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="text-base-content/50 text-sm mt-4 font-medium"
+        >
+          Loading your balances...
+        </motion.p>
+      </motion.div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 px-4">
-        <div className="w-12 h-12 rounded-full bg-error/10 flex items-center justify-center mb-4">
-          <svg className="w-6 h-6 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="flex flex-col items-center justify-center py-20 px-4"
+      >
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ type: "spring", stiffness: 400, damping: 20 }}
+          className="w-14 h-14 rounded-2xl bg-error/10 flex items-center justify-center mb-4"
+        >
+          <svg className="w-7 h-7 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -280,99 +311,157 @@ export const FriendBalancesList = () => {
               d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
             />
           </svg>
-        </div>
-        <p className="text-error text-sm mb-4">{error}</p>
-        <button
+        </motion.div>
+        <p className="text-error text-sm font-medium mb-4">{error}</p>
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
           onClick={() => window.location.reload()}
-          className="px-4 py-2 bg-primary text-primary-content rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+          className="px-5 py-2.5 bg-primary text-primary-content rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
         >
-          Retry
-        </button>
-      </div>
+          Try Again
+        </motion.button>
+      </motion.div>
     );
   }
 
   if (balances.length === 0) {
     return (
-      <div className="text-center py-12 px-4">
-        <div className="w-16 h-16 rounded-full bg-base-300 flex items-center justify-center mx-auto mb-4">
-          <svg className="w-8 h-8 text-base-content/30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-            />
-          </svg>
-        </div>
-        <p className="text-base-content/50 font-medium">No balances yet</p>
-        <p className="text-sm text-base-content/40 mt-2">Use &apos;Add Expense&apos; to start splitting with friends</p>
-      </div>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="text-center py-16 px-4"
+      >
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.1 }}
+          className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center mx-auto mb-5"
+        >
+          <TrendingUp className="w-10 h-10 text-primary/40" />
+        </motion.div>
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="text-base-content/70 font-semibold text-lg"
+        >
+          No balances yet
+        </motion.p>
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="text-sm text-base-content/40 mt-2 max-w-xs mx-auto"
+        >
+          Tap &quot;Add Expense&quot; below to start splitting with friends
+        </motion.p>
+      </motion.div>
     );
   }
 
   return (
-    <>
-      {/* Combined Wallet + Owed Balance Card */}
-      <div className="mb-4 bg-base-300/30 rounded-xl p-3 border border-base-content/5">
-        <div className="flex items-stretch justify-between gap-3">
-          {/* Left: Labels + Amounts */}
-          <div className="flex-1 flex flex-col justify-center gap-1.5">
-            {/* Wallet Balance Row */}
-            <div className="flex items-baseline gap-2">
-              <span className="text-xs text-base-content/40 min-w-[52px]">Wallet</span>
-              <span className="text-base font-bold text-base-content">
-                {isWalletBalanceLoading ? "..." : `$${walletBalance.toFixed(2)} USDT`}
-              </span>
-            </div>
-            {/* Friends Balance Row */}
-            <div className="flex items-baseline gap-2">
-              <span className="text-xs text-base-content/40 min-w-[52px]">Friends</span>
-              <span
-                className={`text-base font-bold ${overallBalance > 0 ? "text-[#00C46A]" : overallBalance < 0 ? "text-[#FF4D4F]" : "text-base-content/60"}`}
-              >
-                ${formatAmount(overallBalance)} USDT
-              </span>
-            </div>
+    <div>
+      {/* Hero Wallet Balance Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="mb-4 rounded-3xl p-6 relative overflow-hidden"
+        style={{
+          background:
+            "linear-gradient(135deg, rgba(242, 169, 0, 0.08) 0%, rgba(242, 169, 0, 0.02) 50%, transparent 100%)",
+          boxShadow: "0 4px 24px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.05)",
+        }}
+      >
+        {/* Subtle mesh gradient overlay */}
+        <div
+          className="absolute inset-0 opacity-30"
+          style={{
+            backgroundImage:
+              "radial-gradient(at 20% 30%, rgba(242, 169, 0, 0.15) 0%, transparent 50%), radial-gradient(at 80% 70%, rgba(242, 169, 0, 0.1) 0%, transparent 50%)",
+          }}
+        />
+
+        <div className="relative">
+          {/* Label */}
+          <div className="flex items-center gap-2 mb-2">
+            <Wallet className="w-4 h-4 text-warning" />
+            <span className="text-xs font-bold text-warning uppercase tracking-wider">Wallet Balance</span>
           </div>
 
-          {/* Right: Icon + Status Pill */}
-          <div className="flex flex-col items-end justify-between py-0.5">
-            {/* Wallet Icon */}
-            <div className="text-base-content/30 text-lg">💳</div>
-            {/* Status Pill */}
-            {overallBalance !== 0 && (
-              <div
-                className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                  overallBalance > 0 ? "bg-[#00C46A]/10 text-[#00C46A]" : "bg-[#FF4D4F]/10 text-[#FF4D4F]"
-                }`}
+          {/* Main Balance */}
+          <div className="mb-4">
+            {isWalletBalanceLoading ? (
+              <span className="inline-block w-40 h-12 bg-base-300/50 rounded-xl animate-pulse" />
+            ) : (
+              <motion.span
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.1 }}
+                className="text-5xl font-bold text-white font-mono tracking-tight"
               >
-                {overallBalance > 0 ? "You're owed" : "You owe"}
-              </div>
-            )}
-            {overallBalance === 0 && (
-              <div className="px-2 py-0.5 bg-base-content/5 text-base-content/40 rounded-full text-[10px] font-semibold">
-                Settled
-              </div>
+                ${walletBalance.toFixed(2)}
+              </motion.span>
             )}
           </div>
+
+          {/* Friends Balance Badge */}
+          <motion.div
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2 }}
+            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full ${
+              overallBalance > 0 ? "bg-emerald-500/15" : overallBalance < 0 ? "bg-rose-500/15" : "bg-base-300/50"
+            }`}
+          >
+            {overallBalance > 0 ? (
+              <ArrowDownRight className="w-4 h-4 text-emerald-500" />
+            ) : overallBalance < 0 ? (
+              <ArrowUpRight className="w-4 h-4 text-rose-500" />
+            ) : (
+              <TrendingUp className="w-4 h-4 text-base-content/60" />
+            )}
+            <span
+              className={`text-sm font-semibold ${
+                overallBalance > 0 ? "text-emerald-500" : overallBalance < 0 ? "text-rose-500" : "text-base-content/60"
+              }`}
+            >
+              {overallBalance > 0
+                ? `Friends owe you $${formatAmount(overallBalance)}`
+                : overallBalance < 0
+                  ? `You owe $${formatAmount(overallBalance)}`
+                  : "All settled up"}
+            </span>
+          </motion.div>
         </div>
+      </motion.div>
+
+      {/* Section Header */}
+      <div className="flex items-center justify-between mb-4 px-1">
+        <h3 className="text-sm font-semibold text-base-content/70 uppercase tracking-wider">Friends</h3>
+        <span className="text-xs text-base-content/60 bg-base-300 px-2.5 py-1 rounded-full">
+          {balances.length} {balances.length === 1 ? "friend" : "friends"}
+        </span>
       </div>
 
-      {/* Friend Expense Cards */}
-      <div className="space-y-2">
-        {balances.map(balance => {
+      {/* Friend List Tiles */}
+      <div className="rounded-2xl overflow-hidden bg-base-100/50">
+        {balances.map((balance, index) => {
           const isSettleable = canSettle(balance.net_balance);
           const isRequestable = canRequestPayment(balance.net_balance);
           const isClickable = isSettleable || isRequestable;
+          const isPositive = balance.net_balance > 0;
+          const isLast = index === balances.length - 1;
+
           return (
-            <div
+            <motion.div
               key={balance.friend_wallet}
-              className={`bg-base-300/30 rounded-xl p-3 border border-base-content/5 transition-all ${
-                isClickable
-                  ? "cursor-pointer hover:bg-base-300/50 hover:border-primary/20 active:scale-[0.99]"
-                  : "cursor-default opacity-75"
-              }`}
+              whileTap={isClickable ? { scale: 0.98 } : {}}
+              className={`group flex items-center justify-between px-4 py-3 transition-colors ${
+                isClickable ? "cursor-pointer hover:bg-base-200/50 active:bg-base-200" : "cursor-default opacity-60"
+              } ${!isLast ? "border-b border-base-content/10" : ""}`}
               onClick={() => isClickable && handleFriendClick(balance)}
             >
               <div className="flex items-center gap-3">
@@ -386,35 +475,40 @@ export const FriendBalancesList = () => {
                     className="w-11 h-11 rounded-full flex-shrink-0"
                   />
                 ) : (
-                  <div className="w-11 h-11 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                    <span className="text-sm font-semibold text-primary">
+                  <div className="w-11 h-11 rounded-full bg-neutral flex items-center justify-center flex-shrink-0">
+                    <span className="text-lg font-bold text-neutral-content">
                       {balance.friend_name.charAt(0).toUpperCase()}
                     </span>
                   </div>
                 )}
 
-                {/* Name */}
-                <div className="flex-1 min-w-0">
-                  <p className="text-base font-semibold text-base-content truncate">{balance.friend_name}</p>
+                {/* Name & Status */}
+                <div className="min-w-0">
+                  <p className="font-bold text-white truncate">{balance.friend_name}</p>
+                  <p className={`text-xs font-medium ${isPositive ? "text-emerald-500" : "text-rose-500"}`}>
+                    {getBalanceText(balance.net_balance)}
+                  </p>
                 </div>
-
-                {/* Amount */}
-                <p
-                  className={`text-lg font-bold flex-shrink-0 ${balance.net_balance > 0 ? "text-[#00C46A]" : "text-[#FF4D4F]"}`}
-                >
-                  ${formatAmount(balance.net_balance)}
-                </p>
-
-                {/* Status Label */}
-                <span
-                  className={`text-[10px] font-medium uppercase tracking-wider flex-shrink-0 ${
-                    balance.net_balance > 0 ? "text-[#00C46A]" : "text-[#FF4D4F]"
-                  }`}
-                >
-                  {getBalanceText(balance.net_balance)}
-                </span>
               </div>
-            </div>
+
+              {/* Amount & Action */}
+              <div className="flex items-center gap-3">
+                <span className={`font-mono font-bold text-lg ${isPositive ? "text-emerald-500" : "text-rose-500"}`}>
+                  ${formatAmount(balance.net_balance)}
+                </span>
+
+                {/* Notify button - prominent clickable */}
+                {isClickable && (
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    className="w-9 h-9 rounded-full bg-warning/20 hover:bg-warning/30 flex items-center justify-center transition-colors"
+                  >
+                    <Bell className="w-4 h-4 text-warning" />
+                  </motion.button>
+                )}
+              </div>
+            </motion.div>
           );
         })}
       </div>
@@ -470,6 +564,6 @@ export const FriendBalancesList = () => {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 };

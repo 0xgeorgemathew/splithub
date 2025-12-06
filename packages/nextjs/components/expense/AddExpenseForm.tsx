@@ -1,21 +1,21 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AmountInput } from "./AmountInput";
 import { FriendPill } from "./FriendPill";
 import { FriendSelector } from "./FriendSelector";
 import { SplitSummary } from "./SplitSummary";
 import { useExpenseForm } from "./hooks/useExpenseForm";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   AlertCircle,
   ArrowLeft,
   Check,
-  CheckCircle2,
-  Coins,
+  CircleDollarSign,
   FileText,
-  Loader2,
-  Plus,
+  Sparkles,
+  UserPlus,
   Users,
   Wallet,
 } from "lucide-react";
@@ -75,144 +75,213 @@ export const AddExpenseForm = () => {
   };
 
   return (
-    <div className="min-h-[calc(100vh-64px)] bg-base-200 p-4 pb-24">
+    <div className="min-h-[calc(100vh-64px)] bg-base-200 p-4 pb-32">
       <div className="w-full max-w-md mx-auto">
-        {/* Header with Back Button */}
-        {!isSuccess && !isSubmitting && (
-          <div className="flex items-center gap-3 mb-6">
-            <button
-              onClick={() => router.back()}
-              className="w-10 h-10 rounded-full bg-base-100 hover:bg-base-300 flex items-center justify-center transition-colors shadow-sm"
-              aria-label="Go back"
+        <AnimatePresence mode="wait">
+          {!isConnected ? (
+            /* Not Connected State */
+            <motion.div
+              key="not-connected"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="flex flex-col items-center justify-center mt-24"
             >
-              <ArrowLeft className="w-5 h-5 text-base-content" />
-            </button>
-            <h1 className="text-2xl font-semibold text-base-content">Add Expense</h1>
-          </div>
-        )}
-
-        {!isConnected ? (
-          /* Not Connected State */
-          <div className="flex flex-col items-center justify-center mt-20">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-base-100 mb-4 shadow-md">
-              <Wallet className="w-8 h-8 text-base-content/50" />
-            </div>
-            <p className="text-base-content/50 text-center">Connect your wallet to add an expense</p>
-          </div>
-        ) : isSuccess ? (
-          /* Success State */
-          <div className="flex flex-col items-center justify-center mt-12 fade-in-up">
-            <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-success/20 mb-6 success-glow">
-              <Check className="w-12 h-12 text-success" strokeWidth={3} />
-            </div>
-            <h3 className="text-2xl font-bold mb-3 text-base-content">Expense Added!</h3>
-
-            {/* Expense details */}
-            <div className="flex items-center gap-2 px-4 py-2 bg-base-100 border border-success/30 rounded-full mb-2">
-              <Coins className="w-4 h-4 text-success" />
-              <span className="text-sm font-semibold text-base-content">{amount} USDC</span>
-            </div>
-
-            <div className="flex items-center gap-2 px-4 py-2 bg-base-100 border border-base-300 rounded-full mb-4">
-              <Users className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium text-base-content">Split {participantCount} ways</span>
-            </div>
-
-            {/* <p className="text-base-content/60 text-sm">Redirecting to home...</p> */}
-          </div>
-        ) : isSubmitting ? (
-          /* Submitting State */
-          <div className="flex flex-col items-center justify-center mt-12">
-            <div className="relative mb-6">
-              <div className="w-28 h-28 rounded-full bg-primary/20 flex items-center justify-center">
-                <Loader2 className="w-12 h-12 text-primary animate-spin" />
-              </div>
-            </div>
-
-            <h3 className="text-lg font-semibold mb-1 text-base-content">Creating Expense...</h3>
-            <p className="text-base-content/50 text-sm">Please wait</p>
-          </div>
-        ) : (
-          /* Main Form UI */
-          <div className="flex flex-col items-center pt-6">
-            {/* Form Card */}
-            <div className="w-full bg-base-100 rounded-2xl shadow-lg p-6 space-y-4">
-              {/* Description */}
-              <div>
-                <label className="text-sm font-medium text-base-content/70 mb-2 flex items-center gap-1.5">
-                  <FileText className="w-4 h-4 text-primary/80" />
-                  <span>Description</span>
-                </label>
-                <input
-                  type="text"
-                  value={description}
-                  onChange={e => setDescription(e.target.value)}
-                  placeholder="Dinner, groceries, etc."
-                  className="w-full h-11 px-4 bg-base-200 rounded-lg text-base text-base-content placeholder:text-base-content/30 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.1 }}
+                className="w-20 h-20 rounded-3xl bg-base-100 flex items-center justify-center mb-5 shadow-lg"
+              >
+                <Wallet className="w-10 h-10 text-primary/50" />
+              </motion.div>
+              <p className="text-base-content/60 text-center font-medium">Connect your wallet to add an expense</p>
+            </motion.div>
+          ) : isSuccess ? (
+            /* Success State */
+            <SuccessView key="success" amount={amount} participantCount={participantCount} />
+          ) : isSubmitting ? (
+            /* Submitting State */
+            <motion.div
+              key="submitting"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="flex flex-col items-center justify-center mt-24"
+            >
+              <div className="relative mb-6">
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                  className="w-20 h-20 rounded-full border-3 border-primary/20 border-t-primary"
                 />
-              </div>
-
-              {/* Friends Section */}
-              <div>
-                <label className="text-sm font-medium text-base-content/70 mb-2 flex items-center gap-1.5">
-                  <Users className="w-4 h-4 text-primary/80" />
-                  <span>Split with</span>
-                </label>
-
-                {/* Selected friends */}
-                {selectedFriends.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-2.5">
-                    {selectedFriends.map(friend => (
-                      <FriendPill
-                        key={friend.address}
-                        address={friend.address}
-                        name={friend.name}
-                        onRemove={() => removeFriend(friend.address)}
-                      />
-                    ))}
-                  </div>
-                )}
-
-                {/* Add friend button */}
-                <button
-                  onClick={() => setIsSelectorOpen(true)}
-                  className="w-full h-11 px-3 bg-base-200 hover:bg-base-300 border border-dashed border-base-300/60 hover:border-primary/40 rounded-lg flex items-center justify-center gap-2 transition-all"
-                >
-                  <Plus className="w-4 h-4 text-primary" />
-                  <span className="text-sm font-medium text-base-content/80">Add friend</span>
-                </button>
-              </div>
-
-              {/* Amount */}
-              <AmountInput value={amount} onChange={setAmount} currency="USDC" />
-
-              {/* Split Summary */}
-              {participantCount > 0 && (
-                <div className="pt-2">
-                  <SplitSummary totalAmount={amount} participantCount={participantCount} currency="USDC" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Sparkles className="w-8 h-8 text-primary/60" />
                 </div>
-              )}
-            </div>
-
-            {/* Error Message */}
-            {error && (
-              <div className="flex items-center gap-2 px-4 py-2.5 bg-error/10 border border-error/30 rounded-full mt-4 max-w-xs">
-                <AlertCircle className="w-4 h-4 text-error flex-shrink-0" />
-                <span className="text-error text-xs">{error}</span>
               </div>
-            )}
-
-            {/* Submit Button */}
-            <button
-              onClick={handleSubmit}
-              disabled={!isValid || !userWallet}
-              className="w-full max-w-xs mt-6 py-3.5 px-6 bg-primary hover:bg-primary/90 text-primary-content font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              <h3 className="text-lg font-bold mb-1 text-base-content">Creating Expense...</h3>
+              <p className="text-base-content/50 text-sm">Just a moment</p>
+            </motion.div>
+          ) : (
+            /* Main Form UI */
+            <motion.div
+              key="form"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.35, ease: "easeOut" }}
             >
-              <CheckCircle2 className="w-5 h-5" />
-              Create Expense
-            </button>
-          </div>
-        )}
+              {/* Header */}
+              <motion.div
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.1 }}
+                className="flex items-center gap-4 mb-6"
+              >
+                <Link href="/splits">
+                  <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="w-11 h-11 rounded-2xl bg-base-100 flex items-center justify-center shadow-md"
+                  >
+                    <ArrowLeft className="w-5 h-5 text-base-content/70" />
+                  </motion.div>
+                </Link>
+                <h1 className="text-2xl font-bold">New Expense</h1>
+              </motion.div>
+
+              {/* Card */}
+              <motion.div
+                layout
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15 }}
+                className="bg-base-100 rounded-3xl shadow-xl p-6 space-y-5 overflow-hidden relative"
+              >
+                {/* Amount Input - Hero Element */}
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.2 }}
+                  className="flex justify-center py-6 bg-base-200/40 rounded-2xl"
+                >
+                  <div className="relative flex items-baseline">
+                    <span className="text-3xl font-bold text-primary mr-1">$</span>
+                    <input
+                      type="number"
+                      value={amount}
+                      onChange={e => setAmount(e.target.value)}
+                      placeholder="0.00"
+                      className="bg-transparent text-center text-5xl font-bold outline-none w-48 placeholder:text-base-content/20 caret-primary"
+                      autoFocus
+                    />
+                  </div>
+                </motion.div>
+
+                {/* Description */}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.25 }}
+                  className="space-y-2"
+                >
+                  <label className="text-xs font-semibold text-base-content/50 uppercase tracking-wider flex items-center gap-2">
+                    <FileText className="w-4 h-4" /> Description
+                  </label>
+                  <input
+                    type="text"
+                    value={description}
+                    onChange={e => setDescription(e.target.value)}
+                    placeholder="What's this for?"
+                    className="w-full h-12 px-4 bg-base-200/60 rounded-2xl focus:bg-base-200 focus:ring-2 focus:ring-primary/20 transition-all outline-none text-base font-medium"
+                  />
+                </motion.div>
+
+                {/* Friends Section */}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="space-y-3"
+                >
+                  <label className="text-xs font-semibold text-base-content/50 uppercase tracking-wider flex items-center gap-2">
+                    <Users className="w-4 h-4" /> Split with
+                  </label>
+
+                  <motion.div layout className="flex flex-wrap gap-2">
+                    <AnimatePresence>
+                      {selectedFriends.map(friend => (
+                        <FriendPill
+                          key={friend.address}
+                          address={friend.address}
+                          name={friend.name}
+                          onRemove={() => removeFriend(friend.address)}
+                        />
+                      ))}
+                    </AnimatePresence>
+
+                    <motion.button
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => setIsSelectorOpen(true)}
+                      className="h-10 px-4 border-2 border-dashed border-base-content/15 rounded-full text-sm font-semibold text-base-content/50 hover:border-primary/40 hover:text-primary hover:bg-primary/5 transition-all flex items-center gap-1.5"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      Add friend
+                    </motion.button>
+                  </motion.div>
+                </motion.div>
+
+                {/* Split Summary */}
+                <AnimatePresence>
+                  {participantCount > 1 && amount && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      <SplitSummary totalAmount={amount} participantCount={participantCount} currency="USDC" />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Error Message */}
+                <AnimatePresence>
+                  {error && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="flex items-center gap-2 px-4 py-3 bg-error/10 border border-error/20 rounded-2xl">
+                        <AlertCircle className="w-4 h-4 text-error flex-shrink-0" />
+                        <span className="text-error text-sm font-medium">{error}</span>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Submit Button */}
+                <motion.button
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.35 }}
+                  whileHover={{ scale: 1.015 }}
+                  whileTap={{ scale: 0.985 }}
+                  disabled={!isValid || !userWallet}
+                  onClick={handleSubmit}
+                  className="w-full py-4 bg-primary text-primary-content rounded-2xl font-bold text-base shadow-lg shadow-primary/25 flex items-center justify-center gap-2 disabled:opacity-40 disabled:shadow-none transition-all"
+                >
+                  <CircleDollarSign className="w-5 h-5" />
+                  Create Expense
+                </motion.button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Friend Selector Modal */}
@@ -230,3 +299,59 @@ export const AddExpenseForm = () => {
     </div>
   );
 };
+
+// Separate Success Component for clean animations
+const SuccessView = ({ amount, participantCount }: { amount: string; participantCount: number }) => (
+  <motion.div
+    initial={{ scale: 0.9, opacity: 0 }}
+    animate={{ scale: 1, opacity: 1 }}
+    transition={{ type: "spring", stiffness: 300, damping: 25 }}
+    className="bg-base-100 p-8 rounded-3xl shadow-xl text-center max-w-sm mx-auto mt-16"
+  >
+    <div className="w-24 h-24 bg-emerald-500/15 rounded-3xl flex items-center justify-center mx-auto mb-6 relative">
+      <motion.div
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        transition={{ type: "spring", stiffness: 400, damping: 20, delay: 0.1 }}
+        className="w-14 h-14 bg-emerald-500 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/30"
+      >
+        <Check className="w-8 h-8 text-white" strokeWidth={3} />
+      </motion.div>
+    </div>
+    <motion.h2
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.2 }}
+      className="text-2xl font-bold mb-4"
+    >
+      Expense Added!
+    </motion.h2>
+
+    {/* Expense details */}
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.3 }}
+      className="space-y-3"
+    >
+      <div className="inline-flex items-center gap-2.5 px-5 py-2.5 bg-emerald-500/10 rounded-full">
+        <CircleDollarSign className="w-5 h-5 text-emerald-500" />
+        <span className="text-base font-bold text-base-content">${amount} USDC</span>
+      </div>
+
+      <div className="flex items-center justify-center gap-2 px-4 py-2 bg-base-200/80 rounded-full">
+        <Users className="w-4 h-4 text-primary" />
+        <span className="text-sm font-semibold text-base-content">Split {participantCount} ways</span>
+      </div>
+    </motion.div>
+
+    <motion.p
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 0.4 }}
+      className="text-sm text-base-content/50 mt-5"
+    >
+      Taking you back...
+    </motion.p>
+  </motion.div>
+);

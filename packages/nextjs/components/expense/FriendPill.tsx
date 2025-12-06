@@ -1,3 +1,6 @@
+"use client";
+
+import { motion } from "framer-motion";
 import { X } from "lucide-react";
 
 interface FriendPillProps {
@@ -10,18 +13,22 @@ export const FriendPill = ({ address, name, onRemove }: FriendPillProps) => {
   const displayName = name || `${address.slice(0, 6)}...${address.slice(-4)}`;
 
   return (
-    <div className="inline-flex items-center gap-2 pl-1.5 pr-2 py-1.5 bg-base-100 border border-base-300/60 rounded-full shadow-sm hover:shadow transition-shadow">
-      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center">
-        <span className="text-xs font-bold text-primary">{displayName.charAt(0).toUpperCase()}</span>
+    <motion.button
+      layout
+      initial={{ scale: 0, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      exit={{ scale: 0, opacity: 0 }}
+      transition={{ type: "spring", stiffness: 400, damping: 25 }}
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      onClick={onRemove}
+      className="group h-10 pl-2 pr-3 bg-primary/10 border border-primary/20 rounded-full flex items-center gap-2 text-sm font-semibold text-base-content hover:bg-rose-500/10 hover:border-rose-500/30 transition-colors"
+    >
+      <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary group-hover:bg-rose-500/20 group-hover:text-rose-500 transition-colors">
+        {displayName.charAt(0).toUpperCase()}
       </div>
-      <span className="text-sm font-medium text-base-content">{displayName}</span>
-      <button
-        onClick={onRemove}
-        className="w-4 h-4 rounded-full bg-base-200 hover:bg-error/10 flex items-center justify-center transition-colors"
-        aria-label="Remove friend"
-      >
-        <X className="w-3 h-3 text-base-content/60 hover:text-error transition-colors" />
-      </button>
-    </div>
+      <span className="group-hover:text-rose-500 transition-colors">{displayName}</span>
+      <X className="w-3.5 h-3.5 text-base-content/40 group-hover:text-rose-500 transition-colors" />
+    </motion.button>
   );
 };
