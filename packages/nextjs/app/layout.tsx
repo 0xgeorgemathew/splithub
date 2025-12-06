@@ -19,8 +19,9 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata = getMetadata({
-  title: "SplitHub",
-  description: "Tap-to-pay bill splitting. No wallets, no popups, no gas fees.",
+  title: "SplitHub | Split Bills Instantly with NFC Tap-to-Pay",
+  description:
+    "Split bills with friends using NFC tap-to-pay. No wallet popups, no gas fees, no crypto complexity. Just tap your chip and pay instantly.",
 });
 
 export const viewport = {
