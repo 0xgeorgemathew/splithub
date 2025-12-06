@@ -10,6 +10,38 @@ export const fastTransition = {
   ease: [0.22, 1, 0.36, 1] as const,
 };
 
+export const springTransition = {
+  type: "spring" as const,
+  stiffness: 400,
+  damping: 30,
+};
+
+// Stagger container for orchestrating children
+export const staggerContainerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.2,
+    },
+  },
+};
+
+// Text reveal with blur
+export const textRevealVariants = {
+  hidden: { opacity: 0, y: 30, filter: "blur(10px)" },
+  visible: {
+    opacity: 1,
+    y: 0,
+    filter: "blur(0px)",
+    transition: {
+      duration: 0.6,
+      ease: [0.22, 1, 0.36, 1],
+    },
+  },
+};
+
 // Card slide-in from left (for friends balance cards)
 export const cardSlideInVariants = {
   hidden: { opacity: 0, x: -30 },
@@ -54,18 +86,6 @@ export const wristbandGlowVariants = {
 export const counterBumpVariants = {
   initial: { scale: 1 },
   bump: { scale: [1, 1.2, 1], transition: { duration: 0.3 } },
-};
-
-// Staggered container for children
-export const staggerContainerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-      delayChildren: 0.2,
-    },
-  },
 };
 
 // Fade up for feature cards
@@ -126,5 +146,89 @@ export const unlockVariants = {
     opacity: 1,
     filter: "grayscale(0)",
     transition: { duration: 0.4 },
+  },
+};
+
+// Phone tap animation
+export const tapHandVariants = {
+  hidden: { opacity: 0, y: 20, scale: 0.8 },
+  visible: {
+    opacity: 1,
+    y: [20, 0, 5, 0],
+    scale: [0.8, 1, 0.95, 1],
+    transition: {
+      duration: 0.5,
+      times: [0, 0.4, 0.7, 1],
+      ease: "easeOut",
+    },
+  },
+  exit: { opacity: 0, y: 10, scale: 0.9 },
+};
+
+// NFC wave pulse
+export const nfcWaveVariants = {
+  hidden: { scale: 0.5, opacity: 0 },
+  visible: {
+    scale: [1, 1.5, 2],
+    opacity: [0.8, 0.4, 0],
+    transition: {
+      duration: 1,
+      repeat: Infinity,
+      repeatDelay: 0.5,
+    },
+  },
+};
+
+// Card hover lift
+export const cardHoverVariants = {
+  rest: { y: 0, boxShadow: "0 10px 30px -10px rgba(0, 0, 0, 0.2)" },
+  hover: {
+    y: -4,
+    boxShadow: "0 20px 40px -12px rgba(0, 0, 0, 0.3)",
+    transition: { duration: 0.3 },
+  },
+};
+
+// Feature row slide in
+export const featureRowVariants = {
+  hidden: (isEven: boolean) => ({ opacity: 0, x: isEven ? -40 : 40 }),
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: {
+      duration: 0.6,
+      ease: [0.22, 1, 0.36, 1],
+    },
+  },
+};
+
+// Security chip glow
+export const chipGlowVariants = {
+  idle: { boxShadow: "0 0 10px rgba(34, 197, 94, 0.1)" },
+  generating: {
+    boxShadow: "0 0 20px rgba(34, 197, 94, 0.3)",
+    transition: { duration: 0.3 },
+  },
+  signing: {
+    boxShadow: "0 0 40px rgba(34, 197, 94, 0.5)",
+    transition: { duration: 0.3 },
+  },
+  done: {
+    boxShadow: "0 0 20px rgba(34, 197, 94, 0.3)",
+    transition: { duration: 0.3 },
+  },
+};
+
+// Gradient line reveal
+export const lineRevealVariants = {
+  hidden: { scaleX: 0, opacity: 0 },
+  visible: {
+    scaleX: 1,
+    opacity: 1,
+    transition: {
+      duration: 0.8,
+      delay: 0.5,
+      ease: [0.22, 1, 0.36, 1],
+    },
   },
 };

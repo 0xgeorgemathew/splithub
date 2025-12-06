@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { usePrivy } from "@privy-io/react-auth";
 import { useAccount, useReadContract } from "wagmi";
 
 // USDC token address on Base Sepolia
@@ -30,13 +31,18 @@ const ERC20_ABI = [
 ] as const;
 
 export function useUSDCBalance() {
-  const { address, isConnected } = useAccount();
+  const { address: wagmiAddress, isConnected } = useAccount();
+  const { user } = usePrivy();
+
+  // Use Privy wallet address if available, fallback to wagmi address
+  const address = (user?.wallet?.address as `0x${string}` | undefined) ?? wagmiAddress;
 
   // Read USDC balance
   const {
     data: balance,
     refetch: refetchBalance,
     isLoading: isBalanceLoading,
+    isFetching: isBalanceFetching,
   } = useReadContract({
     address: USDC_ADDRESS,
     abi: ERC20_ABI,
@@ -44,6 +50,8 @@ export function useUSDCBalance() {
     args: address ? [address] : undefined,
     query: {
       enabled: !!address,
+      refetchOnMount: true,
+      staleTime: 0,
     },
   });
 
@@ -71,6 +79,13 @@ export function useUSDCBalance() {
   const formattedBalance =
     balance !== undefined && decimals !== undefined ? Number(balance) / Math.pow(10, decimals) : 0;
 
+  // Refetch when address becomes available
+  useEffect(() => {
+    if (address) {
+      refetchBalance();
+    }
+  }, [address, refetchBalance]);
+
   // Listen for balance refresh events
   useEffect(() => {
     const handleRefresh = () => {
@@ -89,8 +104,8 @@ export function useUSDCBalance() {
     formattedBalance, // Human readable balance
     decimals,
     symbol,
-    isConnected,
-    isLoading: isBalanceLoading,
+    isConnected: isConnected || !!address,
+    isLoading: isBalanceLoading || isBalanceFetching,
     usdcAddress: USDC_ADDRESS,
     refetchBalance,
   };

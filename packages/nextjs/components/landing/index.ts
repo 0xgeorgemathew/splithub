@@ -1,11 +1,13 @@
 export { LandingPage } from "./LandingPage";
 export { HeroSection } from "./HeroSection";
-export { FeatureCards } from "./FeatureCards";
-export { HowItWorks } from "./HowItWorks";
-export { DualHowItWorks } from "./DualHowItWorks";
+export { UseCaseSection } from "./UseCaseSection";
+export { UseCaseCards } from "./UseCaseCards";
+export { SecuritySection } from "./SecuritySection";
+export { HowItWorksEase } from "./HowItWorksEase";
 export { LandingFooter } from "./LandingFooter";
 export { DualHeroAnimation } from "./DualHeroAnimation";
 export { FriendsAnimation } from "./FriendsAnimation";
 export { VenuesAnimation } from "./VenuesAnimation";
 export { UseCaseTabs } from "./UseCaseTabs";
 export { WristbandIcon } from "./WristbandIcon";
+export { PhoneMockup } from "./PhoneMockup";

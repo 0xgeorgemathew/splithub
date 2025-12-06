@@ -2,75 +2,121 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { ArrowRight, Nfc } from "lucide-react";
+
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.1,
+    },
+  },
+};
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 10 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.4 },
+  },
+};
 
 export function LandingFooter() {
-  const scrollToHowItWorks = () => {
-    document.querySelector("section.bg-base-200\\/50")?.scrollIntoView({ behavior: "smooth" });
-  };
-
   return (
-    <footer className="py-12 px-4 border-t border-base-300/30">
-      <div className="max-w-2xl mx-auto">
-        {/* Final CTA */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          className="text-center mb-10"
-        >
-          <h2 className="font-[family-name:var(--font-bricolage)] text-2xl sm:text-3xl font-bold mb-4">
-            Ready to simplify payments?
+    <footer className="py-20 sm:py-28 px-4 border-t border-base-300/20 bg-gradient-to-b from-base-200/50 to-base-100">
+      <motion.div
+        variants={staggerContainer}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true }}
+        className="max-w-4xl mx-auto"
+      >
+        {/* CTA Section */}
+        <motion.div variants={fadeUp} className="text-center mb-16">
+          {/* Animated NFC icon */}
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            whileInView={{ scale: 1, opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 border border-primary/20 mb-6"
+          >
+            <motion.div
+              animate={{ rotate: [0, 5, -5, 0] }}
+              transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
+            >
+              <Nfc className="w-8 h-8 text-primary" />
+            </motion.div>
+          </motion.div>
+
+          <h2 className="font-[family-name:var(--font-bricolage)] text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
+            Ready to tap?
           </h2>
-          <p className="text-base-content/60 text-sm mb-6">
-            Split bills with friends or power your venue with tap-to-pay credits.
+          <p className="text-base-content/50 text-base sm:text-lg mb-8 max-w-md mx-auto">
+            Get started in seconds with your existing social login.
+            <br />
+            No seed phrases. No wallet setup. Just tap and pay.
           </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+
+          <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }} className="inline-block">
             <Link
               href="/register"
-              className="inline-flex h-12 px-8 text-base font-bold bg-primary text-primary-content hover:bg-primary/90 rounded-full transition-all duration-200 items-center justify-center"
+              className="inline-flex items-center gap-3 h-14 px-10 text-lg font-bold bg-primary text-primary-content hover:bg-primary/90 rounded-full transition-colors duration-200"
               style={{
-                boxShadow: "0 4px 14px rgba(242, 169, 0, 0.4), inset 0 1px 1px rgba(255,255,255,0.2)",
+                boxShadow: "0 6px 20px rgba(242, 169, 0, 0.4), inset 0 1px 1px rgba(255,255,255,0.2)",
               }}
             >
-              Get Started Free
+              <span>Get Started in Seconds</span>
+              <ArrowRight className="w-5 h-5" />
             </Link>
-            <button
-              onClick={scrollToHowItWorks}
-              className="inline-flex h-10 px-6 text-sm font-medium text-base-content/70 hover:text-base-content border border-base-300 hover:border-base-content/30 rounded-full transition-all duration-200 items-center justify-center"
-            >
-              See How It Works
-            </button>
-          </div>
+          </motion.div>
+
+          {/* Trust indicator */}
+          <motion.p variants={fadeUp} className="mt-6 text-xs text-base-content/40">
+            Web2 login powered by Privy
+          </motion.p>
         </motion.div>
 
         {/* Bottom bar */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-8 border-t border-base-300/30">
+        <motion.div
+          variants={fadeUp}
+          className="flex flex-col sm:flex-row items-center justify-between gap-6 pt-8 border-t border-base-300/20"
+        >
           {/* Logo */}
-          <div
-            className="flex items-center h-9 rounded-full overflow-hidden"
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            className="flex items-center h-8 rounded-full overflow-hidden"
             style={{
               boxShadow: "inset 0 1px 3px rgba(0,0,0,0.2), 0 1px 0 rgba(255,255,255,0.03)",
             }}
           >
-            <span className="bg-base-300 text-white h-full flex items-center font-bold text-sm tracking-tight px-3">
+            <span className="bg-base-300 text-white h-full flex items-center font-bold text-xs tracking-tight px-2.5">
               Split
             </span>
-            <span className="bg-primary text-primary-content h-full flex items-center font-bold text-sm tracking-tight px-3">
+            <span className="bg-primary text-primary-content h-full flex items-center font-bold text-xs tracking-tight px-2.5">
               hub
             </span>
-          </div>
+          </motion.div>
 
           {/* Powered by */}
-          <div className="flex items-center gap-2 text-base-content/40 text-xs">
+          <div className="flex items-center gap-3 text-base-content/40 text-xs">
             <span>Powered by</span>
-            <span className="font-[family-name:var(--font-jetbrains)] font-medium text-base-content/60">Base</span>
+            <div className="flex items-center gap-2">
+              <span className="font-[family-name:var(--font-jetbrains)] font-medium text-base-content/60">Base</span>
+              <span className="text-base-content/20">|</span>
+              <span className="font-medium text-base-content/60">Privy</span>
+              <span className="text-base-content/20">|</span>
+              <span className="font-medium text-base-content/60">Arx</span>
+            </div>
           </div>
 
           {/* Copyright */}
           <p className="text-base-content/40 text-xs">© {new Date().getFullYear()} SplitHub</p>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
     </footer>
   );
 }

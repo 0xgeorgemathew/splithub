@@ -201,7 +201,7 @@ export function useCreditSpend({ onSuccess, onError }: UseCreditSpendOptions = {
         // Wait for transaction confirmation
         setFlowState("confirming");
         setStatusMessage("Confirming...");
-        const receipt = await publicClient.waitForTransactionReceipt({ hash: result.txHash as `0x${string}` });
+        await publicClient.waitForTransactionReceipt({ hash: result.txHash as `0x${string}` });
 
         // Create a fresh client with cache disabled to get accurate post-tx balance
         const freshClient = createPublicClient({
@@ -211,13 +211,12 @@ export function useCreditSpend({ onSuccess, onError }: UseCreditSpendOptions = {
           }),
         });
 
-        // Fetch remaining balance AFTER confirmation at the confirmed block
+        // Fetch remaining balance AFTER confirmation
         const balance = (await freshClient.readContract({
           address: creditTokenAddress,
           abi: CREDIT_TOKEN_ABI,
           functionName: "balanceOf",
           args: [owner],
-          blockNumber: receipt.blockNumber,
         })) as bigint;
 
         setRemainingBalance(balance.toString());

@@ -1,20 +1,25 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 
 export const useRequestNotifications = () => {
   const { user, authenticated } = usePrivy();
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const walletRef = useRef<string | null>(null);
+
+  // Keep wallet address in ref to avoid callback recreation
+  walletRef.current = authenticated ? (user?.wallet?.address ?? null) : null;
 
   const fetchNotificationCount = useCallback(async () => {
-    if (!authenticated || !user?.wallet?.address) {
+    const walletAddress = walletRef.current;
+    if (!walletAddress) {
       setCount(0);
       return;
     }
 
     setLoading(true);
     try {
-      const response = await fetch(`/api/payment-requests?wallet=${user.wallet.address}&type=incoming`);
+      const response = await fetch(`/api/payment-requests?wallet=${walletAddress}&type=incoming`);
       const data = await response.json();
 
       if (response.ok && data.data) {
@@ -28,9 +33,12 @@ export const useRequestNotifications = () => {
     } finally {
       setLoading(false);
     }
-  }, [authenticated, user?.wallet?.address]);
+  }, []);
 
   useEffect(() => {
+    // Only fetch if we have a wallet address
+    if (!walletRef.current) return;
+
     fetchNotificationCount();
 
     // Refresh every 30 seconds
@@ -46,7 +54,7 @@ export const useRequestNotifications = () => {
       clearInterval(interval);
       window.removeEventListener("refreshPaymentRequests", handleRefresh);
     };
-  }, [fetchNotificationCount]);
+  }, [fetchNotificationCount, authenticated, user?.wallet?.address]);
 
   // Expose refresh function for manual updates
   return { count, loading, refresh: fetchNotificationCount };

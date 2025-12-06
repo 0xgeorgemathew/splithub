@@ -7,7 +7,7 @@ import { useCreditPurchase } from "~~/hooks/credits";
 import { useTargetNetwork } from "~~/hooks/scaffold-eth";
 
 export default function CreditsPage() {
-  const [amount, setAmount] = useState(25);
+  const [amount, setAmount] = useState(1);
   const { targetNetwork } = useTargetNetwork();
   const router = useRouter();
 
