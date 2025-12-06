@@ -13,6 +13,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export type User = {
   wallet_address: string;
   chip_address: string | null;
+  chip_registration_status?: "pending" | "registered" | "skipped" | null; // Track chip registration state
+  approval_status?: "pending" | "completed" | null; // Track token approval completion
   name: string;
   email: string | null; // Now optional (Twitter login doesn't require email)
   privy_user_id?: string | null;
