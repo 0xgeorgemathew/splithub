@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { usePrivy } from "@privy-io/react-auth";
 import { motion } from "framer-motion";
 import { ArrowDownRight, ArrowUpRight, Bell, Plus, Sparkles, TrendingUp, Wallet } from "lucide-react";
+import { ExpenseModal } from "~~/components/expense/ExpenseModal";
 import { SettleModal } from "~~/components/settle/SettleModal";
 import { type PaymentParams } from "~~/components/settle/types";
 import { useUSDCBalance } from "~~/hooks/useUSDCBalance";
@@ -19,7 +19,8 @@ export const FriendBalancesList = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Settlement modal state
+  // Modal states
+  const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
   const [isSettleModalOpen, setIsSettleModalOpen] = useState(false);
   const [selectedFriend, setSelectedFriend] = useState<FriendBalance | null>(null);
   const [settlementParams, setSettlementParams] = useState<PaymentParams | null>(null);
@@ -445,16 +446,15 @@ export const FriendBalancesList = () => {
             {balances.length}
           </span>
         </div>
-        <Link href="/expense/add">
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-warning/10 hover:bg-warning/20 text-warning rounded-full text-xs font-semibold transition-colors"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Add Expense
-          </motion.button>
-        </Link>
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => setIsExpenseModalOpen(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-warning/10 hover:bg-warning/20 text-warning rounded-full text-xs font-semibold transition-colors"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          Add Expense
+        </motion.button>
       </div>
 
       {/* Friend List Tiles */}
@@ -542,6 +542,16 @@ export const FriendBalancesList = () => {
           );
         })}
       </motion.div>
+
+      {/* Expense Modal */}
+      <ExpenseModal
+        isOpen={isExpenseModalOpen}
+        onClose={() => setIsExpenseModalOpen(false)}
+        onSuccess={() => {
+          // Refresh balances after adding expense
+          window.dispatchEvent(new Event("refreshBalances"));
+        }}
+      />
 
       {/* Settlement Modal */}
       {settlementParams && (
