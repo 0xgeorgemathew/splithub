@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { usePrivy } from "@privy-io/react-auth";
 import { motion } from "framer-motion";
-import { ArrowDownRight, ArrowUpRight, Bell, Sparkles, TrendingUp, Wallet } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Bell, Plus, Sparkles, TrendingUp, Wallet } from "lucide-react";
 import { SettleModal } from "~~/components/settle/SettleModal";
 import { type PaymentParams } from "~~/components/settle/types";
 import { useUSDCBalance } from "~~/hooks/useUSDCBalance";
@@ -355,7 +356,7 @@ export const FriendBalancesList = () => {
           transition={{ delay: 0.3 }}
           className="text-sm text-base-content/40 mt-2 max-w-xs mx-auto"
         >
-          Tap &quot;Add Expense&quot; below to start splitting with friends
+          Add an expense to start tracking who owes what
         </motion.p>
       </motion.div>
     );
@@ -437,10 +438,23 @@ export const FriendBalancesList = () => {
 
       {/* Section Header */}
       <div className="flex items-center justify-between mb-4 px-1">
-        <h3 className="text-sm font-semibold text-base-content/70 uppercase tracking-wider">Friends</h3>
-        <span className="text-xs text-base-content/60 bg-base-300 px-2.5 py-1 rounded-full">
-          {balances.length} {balances.length === 1 ? "friend" : "friends"}
-        </span>
+        <div className="flex items-center gap-2">
+          <Wallet className="w-4 h-4 text-primary" />
+          <span className="text-sm font-semibold text-base-content/70 uppercase tracking-wider">Balances</span>
+          <span className="text-xs text-base-content/50 bg-base-300/50 px-2 py-0.5 rounded-full">
+            {balances.length}
+          </span>
+        </div>
+        <Link href="/expense/add">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-warning/10 hover:bg-warning/20 text-warning rounded-full text-xs font-semibold transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Add Expense
+          </motion.button>
+        </Link>
       </div>
 
       {/* Friend List Tiles */}

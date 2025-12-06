@@ -1,15 +1,16 @@
 # Circle Feature Implementation Plan
 
 ## Overview
-Add "Circle" feature to the splits page — a pre-configured group of friends that expenses automatically split with.
+Add "Circle" feature — when you tap & pay via the relayer, expenses auto-split with your Circle members.
 
 ## User Flow
 
 1. **Create Circle**: User goes to `/splits`, taps "Add Circle" button
-2. **Configure**: Names the Circle (e.g., "Roommates"), selects friends
-3. **Use Circle**: When adding an expense, user can select their Circle
-4. **Auto-Split**: Expense splits evenly among Circle members
-5. **Auto-Request**: Payment requests are automatically sent to each member
+2. **Configure**: Names the Circle (e.g., "Roommates"), adds John & Jeff
+3. **Tap & Pay**: User taps chip to pay $100 via relayer
+4. **Auto-Split**: Relayer detects Circle → splits $100 ÷ 3 = $33.33 each
+5. **Auto-Request**: John & Jeff get payment requests for $33.33
+6. **Leave Circle**: John or Jeff can leave the Circle anytime
 
 ## Storage (Database)
 
@@ -21,6 +22,7 @@ CREATE TABLE circles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   creator_wallet TEXT NOT NULL REFERENCES users(wallet_address) ON DELETE CASCADE,
+  is_active BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -37,10 +39,20 @@ CREATE TABLE circle_members (
 CREATE INDEX idx_circles_creator ON circles(creator_wallet);
 CREATE INDEX idx_circle_members_circle ON circle_members(circle_id);
 CREATE INDEX idx_circle_members_member ON circle_members(member_wallet);
+
+-- Only one active circle per user
+CREATE UNIQUE INDEX idx_circles_active_per_user
+ON circles(creator_wallet) WHERE is_active = true;
 ```
 
+**Note:** Added `is_active` column so users can have multiple circles but only one active at a time.
+
 ### How to Apply Migration
-Run the SQL in your Supabase Dashboard (SQL Editor) — no restart needed.
+1. Go to https://supabase.com → Log in → Open your project
+2. Click **SQL Editor** in left sidebar
+3. Paste the SQL from the migration file
+4. Click **Run**
+5. Done! Tables are created.
 
 ## Implementation Steps
 
@@ -73,32 +85,39 @@ Run the SQL in your Supabase Dashboard (SQL Editor) — no restart needed.
   - Save/Cancel buttons
 - Used for both create and edit flows
 
-### Step 4: Integrate with Expense Creation
-**File**: Modify `packages/nextjs/components/expense/AddExpenseForm.tsx`
+### Step 4: Modify Relayer to Auto-Split
+**File**: Modify `packages/nextjs/app/api/relay/payment/route.ts`
 
-- Add "Circle" dropdown at top of friend selection
-- Options: "Select friends manually" OR list of user's Circles
-- When Circle selected:
-  - Auto-populate selectedFriends with Circle members
-  - Disable individual friend selection (or show as read-only)
-
-### Step 5: Auto-Create Payment Requests
-**File**: Modify `packages/nextjs/services/expenseService.ts`
-
-After `createExpense()` succeeds:
+After successful payment:
 ```typescript
-// For each participant (except creator):
-await fetch('/api/payment-requests', {
-  method: 'POST',
-  body: JSON.stringify({
-    payer: participant.walletAddress,
-    recipient: creatorWallet,
-    amount: shareAmount,
-    memo: `Split: ${description}`,
-    // ... other fields
-  })
-});
+// 1. Check if payer has active Circle
+const circle = await getActiveCircle(payerWallet);
+
+if (circle) {
+  // 2. Get Circle members
+  const members = await getCircleMembers(circle.id);
+
+  // 3. Calculate split (amount ÷ (members + 1 for payer))
+  const splitAmount = amount / (members.length + 1);
+
+  // 4. Create payment request for each member
+  for (const member of members) {
+    await createPaymentRequest({
+      payer: member.wallet_address,
+      recipient: payerWallet,
+      amount: splitAmount,
+      memo: `Circle split`,
+    });
+  }
+}
 ```
+
+### Step 5: Leave Circle Feature
+**File**: `packages/nextjs/app/api/circles/leave/route.ts`
+
+- Members can leave a Circle they're part of
+- Removes them from `circle_members` table
+- They stop getting auto-split requests
 
 ## File Changes Summary
 
@@ -108,8 +127,8 @@ await fetch('/api/payment-requests', {
 | `services/circleService.ts` | NEW - Circle CRUD |
 | `components/home/CircleSection.tsx` | NEW - Circle list UI |
 | `components/home/CircleModal.tsx` | NEW - Create/edit modal |
-| `components/expense/AddExpenseForm.tsx` | MODIFY - Add Circle selector |
-| `services/expenseService.ts` | MODIFY - Auto-create payment requests |
+| `app/api/relay/payment/route.ts` | MODIFY - Auto-split with Circle |
+| `app/api/circles/leave/route.ts` | NEW - Leave Circle endpoint |
 | `app/splits/page.tsx` | MODIFY - Add CircleSection |
 
 ## UI Mockup

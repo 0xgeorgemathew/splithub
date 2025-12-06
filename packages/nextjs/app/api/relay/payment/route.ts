@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Abi } from "viem";
+import { Abi, formatUnits } from "viem";
 import { createPublicClient, createWalletClient, http, isAddress } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { baseSepolia } from "viem/chains";
@@ -144,10 +144,106 @@ export async function POST(request: NextRequest) {
 
     console.log("Transaction confirmed! Block:", receipt.blockNumber.toString());
 
+    // Circle Auto-Split: Check if payer has an active Circle
+    // Using dynamic imports to prevent module-level loading issues
+    let circleSplitResult = null;
+    try {
+      // Dynamic imports to avoid affecting other routes if Circle tables don't exist
+      const { getActiveCircle, getCircleMembers } = await import("~~/services/circleService");
+      const { createExpense } = await import("~~/services/expenseService");
+      const { supabase } = await import("~~/lib/supabase");
+
+      const activeCircle = await getActiveCircle(payer);
+
+      if (activeCircle) {
+        console.log("Active Circle found:", activeCircle.name);
+
+        const members = await getCircleMembers(activeCircle.id);
+        console.log("Circle members:", members.length);
+
+        if (members.length > 0) {
+          // Calculate split amount: original amount / (members + payer)
+          const amountBigInt = BigInt(amount);
+          const totalParticipants = members.length + 1; // members + payer
+          const splitAmountWei = amountBigInt / BigInt(totalParticipants);
+
+          // Convert to human-readable format (assuming 6 decimals for USDC)
+          const splitAmountFormatted = formatUnits(splitAmountWei, 6);
+          const totalAmountFormatted = parseFloat(formatUnits(amountBigInt, 6));
+
+          console.log(`Split: ${formatUnits(amountBigInt, 6)} / ${totalParticipants} = ${splitAmountFormatted} each`);
+
+          // Create expense record so balances update
+          const participantWallets = [payer.toLowerCase(), ...members.map(m => m.wallet_address.toLowerCase())];
+          try {
+            const expenseResult = await createExpense({
+              creatorWallet: payer.toLowerCase(),
+              description: `Circle: ${activeCircle.name}`,
+              totalAmount: totalAmountFormatted,
+              tokenAddress: token.toLowerCase(),
+              participantWallets,
+            });
+            console.log("Expense created:", expenseResult.expense.id);
+          } catch (expenseError) {
+            console.error("Failed to create expense (non-critical):", expenseError);
+          }
+
+          // Get payer's user info for the memo
+          const { data: payerUser } = await supabase
+            .from("users")
+            .select("name, twitter_handle")
+            .eq("wallet_address", payer.toLowerCase())
+            .single();
+
+          // Create payment requests for each Circle member
+          const paymentRequests = [];
+          const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+          for (const member of members) {
+            // Skip if somehow the member is the payer
+            if (member.wallet_address.toLowerCase() === payer.toLowerCase()) continue;
+
+            const { data: request, error: requestError } = await supabase
+              .from("payment_requests")
+              .insert({
+                payer: member.wallet_address.toLowerCase(),
+                recipient: payer.toLowerCase(),
+                token: token.toLowerCase(),
+                amount: splitAmountFormatted,
+                memo: `Circle split: ${activeCircle.name}`,
+                status: "pending",
+                expires_at: expiresAt,
+                payer_twitter: member.twitter_handle || null,
+                requester_twitter: payerUser?.twitter_handle || null,
+              })
+              .select()
+              .single();
+
+            if (requestError) {
+              console.error(`Failed to create payment request for ${member.wallet_address}:`, requestError);
+            } else {
+              paymentRequests.push(request);
+              console.log(`Payment request created for ${member.name || member.wallet_address}`);
+            }
+          }
+
+          circleSplitResult = {
+            circleName: activeCircle.name,
+            membersNotified: paymentRequests.length,
+            splitAmount: splitAmountFormatted,
+          };
+        }
+      }
+    } catch (circleError) {
+      // Circle split is non-critical, log but don't fail the payment
+      console.error("Circle auto-split error (non-critical):", circleError);
+    }
+
     return NextResponse.json({
       success: true,
       txHash: hash,
       blockNumber: receipt.blockNumber.toString(),
+      circleSplit: circleSplitResult,
     });
   } catch (error: any) {
     console.error("Relay payment error:", error);

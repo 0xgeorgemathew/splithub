@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Abi } from "viem";
+import { Abi, formatUnits } from "viem";
 import { createPublicClient, createWalletClient, http, isAddress } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { baseSepolia } from "viem/chains";
@@ -110,6 +110,107 @@ export async function POST(request: NextRequest) {
     // USDC has 6 decimals, credits have 18 decimals
     const creditsMinted = (BigInt(usdcAmount) * BigInt(10) * BigInt(10 ** 18)) / BigInt(10 ** 6);
 
+    console.log("Credit purchase confirmed! Block:", receipt.blockNumber.toString());
+
+    // Circle Auto-Split: Check if buyer has an active Circle
+    // Using dynamic imports to prevent module-level loading issues
+    let circleSplitResult = null;
+    try {
+      const { getActiveCircle, getCircleMembers } = await import("~~/services/circleService");
+      const { createExpense } = await import("~~/services/expenseService");
+      const { supabase } = await import("~~/lib/supabase");
+
+      const activeCircle = await getActiveCircle(buyer);
+
+      if (activeCircle) {
+        console.log("Active Circle found:", activeCircle.name);
+
+        const members = await getCircleMembers(activeCircle.id);
+        console.log("Circle members:", members.length);
+
+        if (members.length > 0) {
+          // Split USDC amount among Circle members (not credits)
+          const amountBigInt = BigInt(usdcAmount);
+          const totalParticipants = members.length + 1; // members + buyer
+          const splitAmountWei = amountBigInt / BigInt(totalParticipants);
+
+          // Convert to human-readable format (USDC has 6 decimals)
+          const splitAmountFormatted = formatUnits(splitAmountWei, 6);
+          const totalAmountFormatted = parseFloat(formatUnits(amountBigInt, 6));
+
+          console.log(
+            `Split: ${formatUnits(amountBigInt, 6)} USDC / ${totalParticipants} = ${splitAmountFormatted} each`,
+          );
+
+          // Get USDC token address
+          const usdcAddress = chainContracts?.MockUSDC?.address || "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
+
+          // Create expense record so balances update
+          const participantWallets = [buyer.toLowerCase(), ...members.map(m => m.wallet_address.toLowerCase())];
+          try {
+            const expenseResult = await createExpense({
+              creatorWallet: buyer.toLowerCase(),
+              description: `Circle: ${activeCircle.name} (credits)`,
+              totalAmount: totalAmountFormatted,
+              tokenAddress: usdcAddress.toLowerCase(),
+              participantWallets,
+            });
+            console.log("Expense created:", expenseResult.expense.id);
+          } catch (expenseError) {
+            console.error("Failed to create expense (non-critical):", expenseError);
+          }
+
+          // Get buyer's user info for the memo
+          const { data: buyerUser } = await supabase
+            .from("users")
+            .select("name, twitter_handle")
+            .eq("wallet_address", buyer.toLowerCase())
+            .single();
+
+          // Create payment requests for each Circle member to reimburse buyer
+          const paymentRequests = [];
+          const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+          for (const member of members) {
+            // Skip if somehow the member is the buyer
+            if (member.wallet_address.toLowerCase() === buyer.toLowerCase()) continue;
+
+            const { data: request, error: requestError } = await supabase
+              .from("payment_requests")
+              .insert({
+                payer: member.wallet_address.toLowerCase(),
+                recipient: buyer.toLowerCase(),
+                token: usdcAddress.toLowerCase(),
+                amount: splitAmountFormatted,
+                memo: `Circle split: ${activeCircle.name} (credits)`,
+                status: "pending",
+                expires_at: expiresAt,
+                payer_twitter: member.twitter_handle || null,
+                requester_twitter: buyerUser?.twitter_handle || null,
+              })
+              .select()
+              .single();
+
+            if (requestError) {
+              console.error(`Failed to create payment request for ${member.wallet_address}:`, requestError);
+            } else {
+              paymentRequests.push(request);
+              console.log(`Payment request created for ${member.name || member.wallet_address}`);
+            }
+          }
+
+          circleSplitResult = {
+            circleName: activeCircle.name,
+            membersNotified: paymentRequests.length,
+            splitAmount: splitAmountFormatted,
+          };
+        }
+      }
+    } catch (circleError) {
+      // Circle split is non-critical, log but don't fail the purchase
+      console.error("Circle auto-split error (non-critical):", circleError);
+    }
+
     return NextResponse.json({
       success: true,
       txHash: hash,
@@ -119,6 +220,7 @@ export async function POST(request: NextRequest) {
       effectiveGasPrice: receipt.effectiveGasPrice?.toString() || "0",
       network: "Base Sepolia",
       chainId: CHAIN_ID,
+      circleSplit: circleSplitResult,
     });
   } catch (error) {
     console.error("Relay credit purchase error:", error);

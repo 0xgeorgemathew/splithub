@@ -103,3 +103,25 @@ export type TwitterUser = {
   chip_address: string | null;
   name: string;
 };
+
+// Circle table type
+export type Circle = {
+  id: string;
+  name: string;
+  creator_wallet: string;
+  is_active: boolean;
+  created_at: string;
+};
+
+// Circle member table type
+export type CircleMember = {
+  id: string;
+  circle_id: string;
+  member_wallet: string;
+  added_at: string;
+};
+
+// Circle with members (joined)
+export type CircleWithMembers = Circle & {
+  members: User[];
+};

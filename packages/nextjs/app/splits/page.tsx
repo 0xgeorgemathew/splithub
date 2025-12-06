@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { usePrivy } from "@privy-io/react-auth";
 import { motion } from "framer-motion";
-import { Plus, Sparkles, Wallet } from "lucide-react";
+import { Sparkles, Wallet } from "lucide-react";
+import { CircleSection } from "~~/components/home/CircleSection";
 import { FriendBalancesList } from "~~/components/home/FriendBalancesList";
 
 export default function SplitsPage() {
@@ -68,31 +68,9 @@ export default function SplitsPage() {
   }
 
   return (
-    <div className="px-4 py-4 pb-32">
+    <div className="px-4 py-4 pb-8">
+      <CircleSection />
       <FriendBalancesList />
-
-      {/* Add Expense FAB */}
-      <motion.div
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: "spring", stiffness: 400, damping: 25, delay: 0.3 }}
-        className="fixed bottom-24 right-5 z-40"
-      >
-        <Link href="/expense/add">
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="flex items-center gap-2 px-6 py-3.5 bg-warning text-black font-bold rounded-full transition-all duration-150"
-            style={{
-              boxShadow:
-                "0 0 20px rgba(251, 191, 36, 0.4), 0 0 40px rgba(251, 191, 36, 0.2), 0 4px 12px rgba(0,0,0,0.2)",
-            }}
-          >
-            <Plus className="w-5 h-5" strokeWidth={2.5} />
-            <span>Add Expense</span>
-          </motion.div>
-        </Link>
-      </motion.div>
     </div>
   );
 }

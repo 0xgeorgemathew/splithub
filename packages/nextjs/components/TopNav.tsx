@@ -47,14 +47,19 @@ export const TopNav = () => {
 
   return (
     <motion.nav
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: "easeOut" }}
-      className="fixed top-0 left-0 right-0 z-50"
+      initial={{ y: -100, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ type: "spring", stiffness: 260, damping: 25, delay: 0.1 }}
+      className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-md"
     >
-      {/* Glass background with subtle border */}
-      <div className="bg-base-100/80 backdrop-blur-xl border-b border-base-content/5">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+      <motion.div
+        className="bg-base-100/95 backdrop-blur-xl rounded-full border border-base-content/10 px-4 py-2"
+        style={{
+          boxShadow:
+            "0 8px 32px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255,255,255,0.08)",
+        }}
+      >
+        <div className="flex items-center justify-between">
           {/* Logo - Click to refresh */}
           <motion.button
             onClick={handleRefresh}
@@ -64,7 +69,7 @@ export const TopNav = () => {
             whileTap={{ scale: 0.98 }}
             className="flex items-center gap-1 cursor-pointer"
           >
-            <span className="text-xl font-bold tracking-tight">
+            <span className="text-2xl font-black tracking-tight">
               Split<span className="text-primary">Hub</span>
             </span>
           </motion.button>
@@ -157,27 +162,32 @@ export const TopNav = () => {
                         transition={{ type: "spring", stiffness: 400, damping: 30 }}
                         className="absolute right-0 top-full mt-3 w-80 z-50"
                       >
-                        {/* Dropdown container with gradient border effect */}
-                        <div className="relative rounded-2xl p-[1px] bg-gradient-to-b from-base-content/10 to-transparent">
+                        {/* Dropdown container with dark gradient */}
+                        <div className="relative rounded-2xl border border-white/[0.05] overflow-hidden">
                           <div
-                            className="bg-base-100 rounded-2xl overflow-hidden"
+                            className="relative rounded-2xl overflow-hidden"
                             style={{
-                              boxShadow:
-                                "0 20px 40px rgba(0,0,0,0.3), 0 8px 16px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.05)",
+                              background: "linear-gradient(145deg, #1a1a1a 0%, #0d0d0d 100%)",
+                              boxShadow: "0 4px 20px -5px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.03)",
                             }}
                           >
-                            {/* User Info Header with gradient background */}
+                            {/* Mesh gradient overlay */}
+                            <div
+                              className="absolute inset-0 opacity-40 pointer-events-none"
+                              style={{
+                                backgroundImage:
+                                  "radial-gradient(at 20% 30%, rgba(242, 169, 0, 0.12) 0%, transparent 50%), radial-gradient(at 80% 70%, rgba(242, 169, 0, 0.08) 0%, transparent 50%)",
+                              }}
+                            />
+                            {/* User Info Header */}
                             <motion.div
                               custom={0}
                               variants={dropdownItemVariants}
                               initial="hidden"
                               animate="visible"
-                              className="relative p-5 overflow-hidden"
+                              className="relative p-5 overflow-hidden z-10"
                             >
-                              {/* Subtle gradient background */}
-                              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent" />
-
-                              <div className="relative flex items-center gap-4">
+                              <div className="flex items-center gap-4">
                                 <div className="relative">
                                   {profilePic ? (
                                     <Image
@@ -210,22 +220,22 @@ export const TopNav = () => {
                             </motion.div>
 
                             {/* Divider */}
-                            <div className="h-px bg-gradient-to-r from-transparent via-base-content/10 to-transparent" />
+                            <div className="h-px bg-white/5 relative z-10" />
 
                             {/* Address Cards */}
-                            <div className="p-3 space-y-2">
+                            <div className="p-3 space-y-2 relative z-10">
                               {/* Wallet Address */}
                               <motion.div
                                 custom={1}
                                 variants={dropdownItemVariants}
                                 initial="hidden"
                                 animate="visible"
-                                className="group p-3 rounded-xl bg-base-200/50 hover:bg-base-200 transition-colors cursor-pointer"
+                                className="group p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/5 transition-colors cursor-pointer"
                                 onClick={() => walletAddress && copyToClipboard(walletAddress, "wallet")}
                               >
                                 <div className="flex items-center gap-3">
-                                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-600/10 flex items-center justify-center">
-                                    <Wallet className="w-5 h-5 text-blue-400" />
+                                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-warning/20 to-warning/10 flex items-center justify-center">
+                                    <Wallet className="w-5 h-5 text-warning" />
                                   </div>
                                   <div className="flex-1 min-w-0">
                                     <p className="text-[11px] font-semibold text-base-content/40 uppercase tracking-wider">
@@ -241,12 +251,12 @@ export const TopNav = () => {
                                       animate={{
                                         scale: copiedField === "wallet" ? [1, 1.2, 1] : 1,
                                       }}
-                                      className="w-8 h-8 rounded-lg flex items-center justify-center bg-base-100 group-hover:bg-base-300 transition-colors"
+                                      className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/5 group-hover:bg-white/10 transition-colors"
                                     >
                                       {copiedField === "wallet" ? (
-                                        <Check className="w-4 h-4 text-success" />
+                                        <Check className="w-4 h-4 text-[#00E0B8]" />
                                       ) : (
-                                        <Copy className="w-4 h-4 text-base-content/40 group-hover:text-base-content/70" />
+                                        <Copy className="w-4 h-4 text-white/40 group-hover:text-white/70" />
                                       )}
                                     </motion.div>
                                   )}
@@ -259,7 +269,7 @@ export const TopNav = () => {
                                 variants={dropdownItemVariants}
                                 initial="hidden"
                                 animate="visible"
-                                className="group p-3 rounded-xl bg-base-200/50 hover:bg-base-200 transition-colors cursor-pointer"
+                                className="group p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/5 transition-colors cursor-pointer"
                                 onClick={() => chipAddress && copyToClipboard(chipAddress, "chip")}
                               >
                                 <div className="flex items-center gap-3">
@@ -280,12 +290,12 @@ export const TopNav = () => {
                                       animate={{
                                         scale: copiedField === "chip" ? [1, 1.2, 1] : 1,
                                       }}
-                                      className="w-8 h-8 rounded-lg flex items-center justify-center bg-base-100 group-hover:bg-base-300 transition-colors"
+                                      className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/5 group-hover:bg-white/10 transition-colors"
                                     >
                                       {copiedField === "chip" ? (
-                                        <Check className="w-4 h-4 text-success" />
+                                        <Check className="w-4 h-4 text-[#00E0B8]" />
                                       ) : (
-                                        <Copy className="w-4 h-4 text-base-content/40 group-hover:text-base-content/70" />
+                                        <Copy className="w-4 h-4 text-white/40 group-hover:text-white/70" />
                                       )}
                                     </motion.div>
                                   )}
@@ -294,7 +304,7 @@ export const TopNav = () => {
                             </div>
 
                             {/* Divider */}
-                            <div className="h-px bg-gradient-to-r from-transparent via-base-content/10 to-transparent" />
+                            <div className="h-px bg-white/5 relative z-10" />
 
                             {/* Logout Button */}
                             <motion.div
@@ -302,7 +312,7 @@ export const TopNav = () => {
                               variants={dropdownItemVariants}
                               initial="hidden"
                               animate="visible"
-                              className="p-3"
+                              className="p-3 relative z-10"
                             >
                               <motion.button
                                 whileHover={{ scale: 1.01 }}
@@ -311,7 +321,7 @@ export const TopNav = () => {
                                   setIsDropdownOpen(false);
                                   logout();
                                 }}
-                                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-error/10 hover:bg-error/20 text-error font-semibold transition-colors"
+                                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 font-semibold transition-colors border border-rose-500/10"
                               >
                                 <LogOut className="w-4 h-4" />
                                 <span>Log out</span>
@@ -327,7 +337,7 @@ export const TopNav = () => {
             )}
           </AnimatePresence>
         </div>
-      </div>
+      </motion.div>
     </motion.nav>
   );
 };
