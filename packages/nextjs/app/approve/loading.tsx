@@ -1,17 +1,12 @@
-import { Loader2 } from "lucide-react";
-
+/**
+ * Next.js loading.tsx - shown during page transitions to /approve
+ *
+ * IMPORTANT: This file is deliberately minimal/invisible to prevent flashing
+ * loading states during onboarding flow. The page component itself handles
+ * loading states appropriately based on context (direct navigation vs onboarding).
+ */
 export default function ApproveLoading() {
-  return (
-    <div className="min-h-[calc(100vh-64px)] flex items-center justify-center bg-base-300">
-      <div className="text-center">
-        <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary/20 mb-4">
-          <Loader2 className="w-10 h-10 animate-spin text-primary" />
-        </div>
-        <div className="space-y-2">
-          <p className="text-base-content font-semibold">Step 2 of 3</p>
-          <p className="text-base-content/60 text-sm">Loading approval page...</p>
-        </div>
-      </div>
-    </div>
-  );
+  // Return minimal invisible element to prevent flash during navigation
+  // The actual page will handle loading states appropriately
+  return <div className="min-h-[calc(100vh-64px)] bg-base-300" />;
 }
