@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { usePrivy } from "@privy-io/react-auth";
 import { AlertCircle, Check, Coins, Loader2, Shield } from "lucide-react";
 import { parseUnits } from "viem";
 import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import deployedContracts from "~~/contracts/deployedContracts";
 import { useTargetNetwork } from "~~/hooks/scaffold-eth";
+import { supabase } from "~~/lib/supabase";
 
 // Default values
 const DEFAULT_TOKEN_ADDRESS = "0x0a215D8ba66387DCA84B284D18c3B4ec3de6E54a" as const;
@@ -46,6 +48,7 @@ export function ApprovalFlow() {
   const router = useRouter();
   const { address, isConnected } = useAccount();
   const { targetNetwork } = useTargetNetwork();
+  const { user } = usePrivy();
 
   const [error, setError] = useState("");
   const [paymentsState, setPaymentsState] = useState<ApprovalState>("pending");
@@ -74,10 +77,15 @@ export function ApprovalFlow() {
   });
 
   // Write contract hook
-  const { writeContract, data: txHash, isPending, reset } = useWriteContract();
+  const { writeContract, data: txHash, isPending, error: writeError, reset } = useWriteContract();
 
   // Wait for transaction receipt
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+  const {
+    isLoading: isConfirming,
+    isSuccess,
+    isError: txError,
+    error: txErrorDetails,
+  } = useWaitForTransactionReceipt({
     hash: txHash,
   });
 
@@ -92,12 +100,63 @@ export function ApprovalFlow() {
       // Immediately update state to show success
       setCreditsState("approved");
       reset();
+
+      // Mark approvals as completed in database
+      const updateApprovalStatus = async () => {
+        if (!user?.id) return;
+
+        try {
+          await supabase.from("users").update({ approval_status: "completed" }).eq("privy_user_id", user.id);
+        } catch (err) {
+          console.error("Failed to update approval status:", err);
+        }
+      };
+
+      updateApprovalStatus();
+
       // Redirect to /splits after brief success display
       setTimeout(() => {
         router.replace("/splits");
       }, 600);
     }
-  }, [isSuccess, paymentsState, creditsState, reset, router]);
+  }, [isSuccess, paymentsState, creditsState, reset, router, user]);
+
+  // Handle failed approvals - reset state and show error
+  useEffect(() => {
+    if (txError && paymentsState === "approving") {
+      console.error("Payments approval failed:", txErrorDetails);
+      setPaymentsState("pending");
+      setError(txErrorDetails?.message || "Transaction failed. Please try again.");
+      reset();
+    } else if (txError && creditsState === "approving") {
+      console.error("Credits approval failed:", txErrorDetails);
+      setCreditsState("pending");
+      setError(txErrorDetails?.message || "Transaction failed. Please try again.");
+      reset();
+    }
+  }, [txError, txErrorDetails, paymentsState, creditsState, reset]);
+
+  // Handle write contract errors (e.g., user rejected)
+  useEffect(() => {
+    if (writeError) {
+      console.error("Write contract error:", writeError);
+
+      // Reset state based on which approval was in progress
+      if (paymentsState === "approving") {
+        setPaymentsState("pending");
+      } else if (creditsState === "approving") {
+        setCreditsState("pending");
+      }
+
+      // Show user-friendly error message
+      const errorMessage = writeError.message.includes("User rejected")
+        ? "Transaction rejected. Please try again when ready."
+        : writeError.message || "Approval failed. Please try again.";
+
+      setError(errorMessage);
+      reset();
+    }
+  }, [writeError, paymentsState, creditsState, reset]);
 
   const handleApprovePayments = async () => {
     setError("");
