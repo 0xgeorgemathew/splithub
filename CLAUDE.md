@@ -87,6 +87,8 @@ SplitHub is a tap-to-pay bill splitting and payment application built on blockch
 - NFC: @arx-research/libhalo for Halo Chip signing
 - UI: TailwindCSS + DaisyUI + Framer Motion
 - State: Zustand for client-side store
+- Loading Strategy: Minimal `loading.tsx` files prevent flash, pages handle granular states
+- Session Storage: `skipLoadingStates` flag prevents redundant loaders during onboarding flow
 
 **Smart Contracts (`packages/foundry/contracts/`)**
 - Development: Foundry (Forge, Anvil)
@@ -103,6 +105,31 @@ SplitHub is a tap-to-pay bill splitting and payment application built on blockch
 - Contract addresses: Auto-generated in `deployedContracts.ts`
 - Relayer private key: `RELAYER_PRIVATE_KEY` env variable
 
+### Frontend Architecture Patterns
+
+**Loading State Management:**
+- **Minimal `loading.tsx` files**: Next.js App Router `loading.tsx` files are kept minimal (just background color) to prevent flashing loading states during navigation
+- **Page-level loading states**: Individual pages (`/register`, `/approve`) handle their own granular loading states based on context (Privy ready, wallet ready, etc.)
+- **Reusable loading components**: Extracted `LoadingUI` and `LoadingCard` components eliminate code duplication
+- **Session storage flags**: `skipLoadingStates` flag in sessionStorage prevents redundant loading screens during onboarding flow transitions
+
+**Code Organization Best Practices:**
+- **DRY principle**: Loading UI components extracted and reused across multiple states
+- **Single responsibility**: `UserSyncWrapper` handles all onboarding routing logic (single source of truth)
+- **Separation of concerns**: Auth redirects, loading states, and business logic clearly separated
+- **Component composition**: Dynamic imports for code-splitting heavy components (NFC, Wagmi)
+
+**Onboarding Flow Architecture:**
+- **Atomic finalization**: `/api/onboarding/finalize` endpoint consolidates all onboarding checks in single API call
+- **Prevents race conditions**: `isFinalizingRef` flag prevents duplicate finalize calls
+- **Smooth UX**: `OnboardingFinalizer` full-screen loader with minimum display time (1.2s) prevents jarring fast transitions
+- **Skip loading on redirect**: After finalize, destination page skips loading states for seamless transition
+
+**Error Handling:**
+- **Approval flow**: Handles transaction rejection, network errors, and insufficient balance with clear user feedback
+- **Database updates**: Marks `approval_status = 'completed'` after successful approvals
+- **Retry logic**: Failed approvals reset state to allow user retry without page refresh
+
 ---
 
 ## Core Concepts & Data Model
@@ -111,7 +138,9 @@ SplitHub is a tap-to-pay bill splitting and payment application built on blockch
 
 **User**
 - `wallet_address` (PK): Ethereum address of user's wallet
-- `chip_address` (UNIQUE): NFC chip address (registered during onboarding)
+- `chip_address` (UNIQUE): NFC chip address (registered during onboarding, or null if skipped/not yet registered)
+- `chip_registration_status`: pending | registered | skipped | null - Tracks chip registration state
+- `approval_status`: pending | completed | null - Tracks token approval completion (set when both USDC approvals complete)
 - `name`: Display name
 - `email`: Email (optional, not used with Twitter login)
 - `privy_user_id` (UNIQUE): Privy authentication ID
@@ -217,7 +246,7 @@ Algorithm (from `balanceService.ts`):
 
 **Preconditions:**
 - User has Twitter account
-- User has Arx Halo Chip
+- User has Arx Halo Chip (optional - can be skipped)
 
 **Steps:**
 
@@ -234,6 +263,8 @@ Algorithm (from `balanceService.ts`):
    - If existing: Updates Twitter profile info
 
 3. **NFC Chip Registration** (`RegisterChipForm` component)
+
+   **Option A: Register Chip (Full Flow)**
    - User taps NFC chip to read chip address
    - System builds EIP-712 typed data:
      ```typescript
@@ -243,23 +274,61 @@ Algorithm (from `balanceService.ts`):
      ```
    - User taps chip again to sign
    - Chip returns signature using private key stored on secure element
-
-4. **Relayer Submission**
    - Frontend sends `{ signer: chipAddress, owner: userWallet, signature }` to `/api/relay/register`
    - Relayer creates transaction calling `SplitHubRegistry.register(signer, owner, signature)`
    - Relayer pays gas and submits on-chain
    - Contract verifies signature matches chip address
    - Contract stores mapping: `ownerOf[chip] = wallet` and `signerOf[wallet] = chip`
+   - **Finalize Onboarding**: Frontend displays `OnboardingFinalizer` full-screen loader ("Checking your account…")
+   - Frontend calls `/api/onboarding/finalize` with `{ userId, action: 'register', chipAddress }`
+   - Backend updates `chip_address` and `chip_registration_status = 'registered'`
+   - Backend checks `approval_status` and returns appropriate next route
+   - Sets `skipLoadingStates` flag in sessionStorage to prevent loading flash on destination page
+   - User redirected to returned route (`/approve` or `/splits`)
 
-5. **Database Update**
-   - On success, frontend updates `users.chip_address` in Supabase
-   - User redirected to `/approve` (token approval page)
+   **Option B: Skip Chip Registration (Alternative Path)**
+   - User clicks "Skip and continue" button
+   - **Finalize Onboarding**: Frontend displays `OnboardingFinalizer` full-screen loader ("Checking your account…")
+   - Frontend calls `/api/onboarding/finalize` with `{ userId, action: 'skip' }`
+   - Backend updates `chip_registration_status = 'skipped'`
+   - Backend checks `approval_status` and returns appropriate next route
+   - Sets `skipLoadingStates` flag in sessionStorage to prevent loading flash on destination page
+   - User redirected to returned route (`/approve` or `/splits`)
+   - User can register chip later from settings
 
-**Success State:**
+**Key Onboarding Endpoint:**
+
+`POST /api/onboarding/finalize` - Atomic endpoint that consolidates all onboarding checks and database updates. Prevents flashing screens by returning the next route in a single call.
+
+Request:
+```json
+{
+  "userId": "privy_user_id",
+  "action": "skip" | "register",
+  "chipAddress": "0x..." // Required for 'register', optional for 'skip'
+}
+```
+
+Response:
+```json
+{
+  "nextRoute": "/approve" | "/splits",
+  "status": "ok"
+}
+```
+
+**Success State (Option A - Full Registration):**
 - User has Twitter account linked
 - Embedded wallet created and funded
 - NFC chip registered on-chain
-- Database record complete with chip_address
+- Database record complete with chip_address and chip_registration_status = 'registered'
+
+**Success State (Option B - Skipped Registration):**
+- User has Twitter account linked
+- Embedded wallet created and funded
+- chip_address remains null
+- chip_registration_status = 'skipped'
+- User can complete chip registration later from settings
 
 ---
 
@@ -270,12 +339,13 @@ Algorithm (from `balanceService.ts`):
 **Purpose:** One-time setup to allow smart contracts to spend user's tokens
 
 **Preconditions:**
-- User has registered chip
+- User has completed registration (either registered chip or skipped)
 - User has USDC tokens in wallet
 
 **Steps:**
 
 1. **User Navigates to Approve Page**
+   - If coming from onboarding, loading states are skipped (`skipLoadingStates` flag)
    - Displays list of tokens/contracts needing approval:
      - USDC → SplitHubPayments contract
      - USDC → CreditToken contract
@@ -286,14 +356,23 @@ Algorithm (from `balanceService.ts`):
    - User signs with wallet (not NFC chip—this is wallet signature)
    - Transaction submitted on-chain
 
-3. **Verification**
+3. **Verification & Error Handling**
    - Frontend polls allowance: `USDC.allowance(userWallet, contractAddress)`
    - Once allowance > 0, approval marked as complete
    - UI shows green checkmark
+   - Error handling:
+     - User rejection: Shows "Transaction rejected. Please try again when ready."
+     - Network error: Shows error message, allows retry
+     - Transaction revert: Parses revert reason and displays
+
+4. **Database Update**
+   - After both approvals complete successfully, updates `users.approval_status = 'completed'`
+   - Auto-redirects to `/splits` after brief success display (600ms)
 
 **Success State:**
 - SplitHubPayments can transfer USDC from user's wallet (for bill splitting)
 - CreditToken can transfer USDC from user's wallet (for buying credits)
+- User's `approval_status` marked as 'completed' in database
 
 ---
 
@@ -1185,7 +1264,18 @@ ETHERSCAN_API_KEY=your_key
 
 ---
 
-**Last Updated:** 2025-12-06
-**Schema Version:** 003 (includes Circles)
+**Last Updated:** 2025-12-07
+**Schema Version:** 004 (includes onboarding refactor, approval tracking)
 **Contract Deployment:** Base Sepolia (Chain ID: 84532)
 **Source:** Full codebase analysis from repository state
+
+**Recent Updates (2025-12-07):**
+- Added skip chip registration functionality (users can complete onboarding without NFC chip)
+- Implemented `/api/onboarding/finalize` atomic endpoint for onboarding flow
+- Added `chip_registration_status` and `approval_status` fields to users table
+- Refactored loading states architecture (minimal `loading.tsx` files + page-level granular states)
+- Added `skipLoadingStates` sessionStorage flag to prevent loading flashes during onboarding
+- Implemented error handling for approval flow (transaction rejection, network errors)
+- Database tracking of approval completion status
+- Created reusable loading components (`LoadingUI`, `LoadingCard`) following DRY principles
+- `UserSyncWrapper` now handles all onboarding routing logic as single source of truth
