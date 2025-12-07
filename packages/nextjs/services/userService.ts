@@ -157,3 +157,31 @@ export async function searchUsersByTwitter(query: string, limit = 20): Promise<U
 
   return (data || []) as User[];
 }
+
+/**
+ * Updates a user's OneSignal player ID for push notifications
+ */
+export async function updateOneSignalPlayerId(walletAddress: string, playerId: string): Promise<void> {
+  const { error } = await supabase
+    .from("users")
+    .update({ onesignal_player_id: playerId })
+    .eq("wallet_address", walletAddress.toLowerCase());
+
+  if (error) {
+    throw new Error(`Failed to update OneSignal player ID: ${error.message}`);
+  }
+}
+
+/**
+ * Gets a user's OneSignal player ID
+ */
+export async function getOneSignalPlayerId(walletAddress: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("users")
+    .select("onesignal_player_id")
+    .eq("wallet_address", walletAddress.toLowerCase())
+    .single();
+
+  if (error || !data) return null;
+  return data.onesignal_player_id;
+}

@@ -1,6 +1,7 @@
 import { Bricolage_Grotesque, JetBrains_Mono } from "next/font/google";
 import "@rainbow-me/rainbowkit/styles.css";
 import "@scaffold-ui/components/styles.css";
+import { OneSignalProvider } from "~~/components/OneSignalProvider";
 import { ScaffoldEthAppWithProviders } from "~~/components/ScaffoldEthAppWithProviders";
 import { ThemeProvider } from "~~/components/ThemeProvider";
 import "~~/styles/globals.css";
@@ -37,7 +38,9 @@ const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {
     <html suppressHydrationWarning className={`${bricolage.variable} ${jetbrainsMono.variable}`}>
       <body>
         <ThemeProvider enableSystem>
-          <ScaffoldEthAppWithProviders>{children}</ScaffoldEthAppWithProviders>
+          <ScaffoldEthAppWithProviders>
+            <OneSignalProvider>{children}</OneSignalProvider>
+          </ScaffoldEthAppWithProviders>
         </ThemeProvider>
       </body>
     </html>

@@ -285,16 +285,16 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess }: ExpenseModalProps) 
                   </motion.div>
 
                   {/* Amount Input */}
-                  <motion.div variants={staggerItem} className="px-4 py-4 border-b border-base-300/50">
+                  <motion.div variants={staggerItem} className="px-4 py-2.5 border-b border-base-300/50">
                     <motion.div
                       animate={{
                         boxShadow: amountFocused ? "0 0 0 2px rgba(var(--primary-rgb), 0.5)" : "0 0 0 0px transparent",
                       }}
                       transition={{ duration: 0.2 }}
-                      className="flex justify-center py-4 bg-base-100/50 rounded-xl"
+                      className="flex justify-center py-2.5 bg-base-100/50 rounded-lg"
                     >
                       <div className="relative flex items-baseline">
-                        <span className="text-2xl font-bold text-primary mr-1">$</span>
+                        <span className="text-xl font-bold text-primary mr-0.5">$</span>
                         <input
                           type="number"
                           value={amount}
@@ -302,7 +302,7 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess }: ExpenseModalProps) 
                           onFocus={() => setAmountFocused(true)}
                           onBlur={() => setAmountFocused(false)}
                           placeholder="0.00"
-                          className="bg-transparent text-center text-4xl font-bold outline-none w-36 placeholder:text-base-content/20 caret-primary"
+                          className="bg-transparent text-center text-3xl font-bold outline-none w-32 placeholder:text-base-content/20 caret-primary"
                           autoFocus
                         />
                       </div>
@@ -310,9 +310,9 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess }: ExpenseModalProps) 
                   </motion.div>
 
                   {/* Description */}
-                  <motion.div variants={staggerItem} className="px-4 py-3 border-b border-base-300/50">
-                    <label className="text-xs text-base-content/50 uppercase tracking-wider mb-1.5 block flex items-center gap-1.5">
-                      <FileText className="w-3.5 h-3.5" /> Description
+                  <motion.div variants={staggerItem} className="px-4 py-2 border-b border-base-300/50">
+                    <label className="text-[10px] text-base-content/50 uppercase tracking-wider mb-1 block flex items-center gap-1">
+                      <FileText className="w-3 h-3" /> Description
                     </label>
                     <motion.div
                       animate={{
@@ -321,7 +321,7 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess }: ExpenseModalProps) 
                           : "0 0 0 0px transparent",
                       }}
                       transition={{ duration: 0.2 }}
-                      className="rounded-xl overflow-hidden"
+                      className="rounded-lg overflow-hidden"
                     >
                       <input
                         type="text"
@@ -330,24 +330,24 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess }: ExpenseModalProps) 
                         onFocus={() => setDescriptionFocused(true)}
                         onBlur={() => setDescriptionFocused(false)}
                         placeholder="What's this for?"
-                        className="w-full h-11 px-4 bg-base-100 text-sm text-base-content placeholder:text-base-content/40 focus:outline-none transition-all"
+                        className="w-full h-9 px-3 bg-base-100 text-sm text-base-content placeholder:text-base-content/40 focus:outline-none transition-all"
                       />
                     </motion.div>
                   </motion.div>
 
                   {/* Split With Section - Search */}
-                  <motion.div variants={staggerItem} className="px-4 py-3 border-b border-base-300/50">
-                    <label className="text-xs text-base-content/50 uppercase tracking-wider mb-1.5 block flex items-center gap-1.5">
-                      <Users className="w-3.5 h-3.5" /> Split with
+                  <motion.div variants={staggerItem} className="px-4 py-2 border-b border-base-300/50">
+                    <label className="text-[10px] text-base-content/50 uppercase tracking-wider mb-1 block flex items-center gap-1">
+                      <Users className="w-3 h-3" /> Split with
                     </label>
                     <motion.div
                       animate={{
                         boxShadow: searchFocused ? "0 0 0 2px rgba(var(--primary-rgb), 0.5)" : "0 0 0 0px transparent",
                       }}
                       transition={{ duration: 0.2 }}
-                      className="relative rounded-xl overflow-hidden"
+                      className="relative rounded-lg overflow-hidden"
                     >
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-base-content/40" />
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-base-content/40" />
                       <input
                         type="text"
                         value={searchQuery}
@@ -355,7 +355,7 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess }: ExpenseModalProps) 
                         onFocus={() => setSearchFocused(true)}
                         onBlur={() => setSearchFocused(false)}
                         placeholder="Search by @handle or name..."
-                        className="w-full h-11 pl-9 pr-3 bg-base-100 text-sm text-base-content placeholder:text-base-content/40 focus:outline-none transition-all"
+                        className="w-full h-9 pl-8 pr-3 bg-base-100 text-sm text-base-content placeholder:text-base-content/40 focus:outline-none transition-all"
                       />
                     </motion.div>
                   </motion.div>
@@ -367,7 +367,7 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess }: ExpenseModalProps) 
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: "auto" }}
                         exit={{ opacity: 0, height: 0 }}
-                        className="px-4 py-2 border-b border-base-300/50 flex flex-wrap gap-2 overflow-hidden"
+                        className="px-4 py-1.5 border-b border-base-300/50 flex flex-wrap gap-1.5 overflow-hidden"
                       >
                         <AnimatePresence mode="popLayout">
                           {selectedFriends.map(friend => (
@@ -378,31 +378,31 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess }: ExpenseModalProps) 
                               animate={{ opacity: 1, scale: 1 }}
                               exit={{ opacity: 0, scale: 0.8 }}
                               transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                              className="flex items-center gap-1.5 px-2.5 py-1 bg-primary/15 border border-primary/30 rounded-full"
+                              className="flex items-center gap-1 px-2 py-0.5 bg-primary/15 border border-primary/30 rounded-full"
                             >
                               {friend.twitterProfileUrl ? (
                                 <Image
                                   src={friend.twitterProfileUrl}
                                   alt={friend.name}
-                                  width={18}
-                                  height={18}
-                                  className="w-4.5 h-4.5 rounded-full"
+                                  width={16}
+                                  height={16}
+                                  className="w-4 h-4 rounded-full"
                                 />
                               ) : (
-                                <div className="w-4.5 h-4.5 rounded-full bg-primary/30 flex items-center justify-center">
-                                  <span className="text-[8px] font-bold text-primary">
+                                <div className="w-4 h-4 rounded-full bg-primary/30 flex items-center justify-center">
+                                  <span className="text-[7px] font-bold text-primary">
                                     {friend.name.charAt(0).toUpperCase()}
                                   </span>
                                 </div>
                               )}
-                              <span className="text-xs font-medium text-base-content">{friend.name}</span>
+                              <span className="text-[11px] font-medium text-base-content">{friend.name}</span>
                               <motion.button
                                 whileHover={{ scale: 1.1 }}
                                 whileTap={{ scale: 0.9 }}
                                 onClick={() => removeFriend(friend.address)}
-                                className="w-4 h-4 rounded-full bg-base-content/10 hover:bg-base-content/20 flex items-center justify-center"
+                                className="w-3.5 h-3.5 rounded-full bg-base-content/10 hover:bg-base-content/20 flex items-center justify-center"
                               >
-                                <X className="w-2.5 h-2.5 text-base-content/60" />
+                                <X className="w-2 h-2 text-base-content/60" />
                               </motion.button>
                             </motion.div>
                           ))}
@@ -414,20 +414,20 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess }: ExpenseModalProps) 
                   {/* Friend List */}
                   <motion.div
                     variants={staggerItem}
-                    className="flex-1 overflow-y-auto px-4 py-2 min-h-[150px] max-h-[200px]"
+                    className="flex-1 overflow-y-auto px-4 py-1.5 min-h-[120px] max-h-[160px]"
                   >
                     {loadingUsers ? (
-                      <div className="flex items-center justify-center py-8">
+                      <div className="flex items-center justify-center py-6">
                         <motion.div
                           animate={{ rotate: 360 }}
                           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                          className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full"
+                          className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full"
                         />
                       </div>
                     ) : (
                       <AnimatePresence mode="popLayout">
                         {filteredUsers.length > 0 ? (
-                          <motion.div layout className="space-y-1">
+                          <motion.div layout className="space-y-0.5">
                             {filteredUsers.map((user, index) => {
                               const isSelected = isFriendSelected(user.wallet_address);
                               return (
@@ -441,7 +441,7 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess }: ExpenseModalProps) 
                                   custom={index}
                                   whileTap={{ scale: 1.01 }}
                                   onClick={() => handleToggleFriend(user)}
-                                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-colors ${
+                                  className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg transition-colors ${
                                     isSelected
                                       ? "bg-primary/15 border border-primary/40"
                                       : "bg-base-100/50 hover:bg-base-100 active:bg-base-300/50"
@@ -452,13 +452,13 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess }: ExpenseModalProps) 
                                     <Image
                                       src={user.twitter_profile_url}
                                       alt={user.twitter_handle || user.name}
-                                      width={40}
-                                      height={40}
-                                      className="w-10 h-10 rounded-full flex-shrink-0"
+                                      width={32}
+                                      height={32}
+                                      className="w-8 h-8 rounded-full flex-shrink-0"
                                     />
                                   ) : (
-                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center flex-shrink-0">
-                                      <span className="text-sm font-bold text-primary">
+                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center flex-shrink-0">
+                                      <span className="text-xs font-bold text-primary">
                                         {(user.twitter_handle || user.name).charAt(0).toUpperCase()}
                                       </span>
                                     </div>
@@ -466,8 +466,10 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess }: ExpenseModalProps) 
 
                                   {/* User info */}
                                   <div className="flex-1 text-left min-w-0">
-                                    <div className="font-medium text-sm text-base-content truncate">{user.name}</div>
-                                    <div className="text-xs text-base-content/60 truncate">
+                                    <div className="font-medium text-[13px] text-base-content truncate">
+                                      {user.name}
+                                    </div>
+                                    <div className="text-[11px] text-base-content/60 truncate">
                                       {user.twitter_handle
                                         ? `@${user.twitter_handle}`
                                         : user.wallet_address.slice(0, 10)}
@@ -478,7 +480,7 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess }: ExpenseModalProps) 
                                   <motion.div
                                     animate={isSelected ? { scale: [1, 1.2, 1] } : {}}
                                     transition={{ duration: 0.2 }}
-                                    className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 transition-colors ${
+                                    className={`w-4.5 h-4.5 rounded-full flex items-center justify-center flex-shrink-0 transition-colors ${
                                       isSelected ? "bg-primary" : "bg-base-200 border-2 border-base-content/20"
                                     }`}
                                   >
@@ -490,7 +492,7 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess }: ExpenseModalProps) 
                                           exit={{ scale: 0 }}
                                           transition={{ type: "spring", stiffness: 500, damping: 25 }}
                                         >
-                                          <Check className="w-3 h-3 text-primary-content" />
+                                          <Check className="w-2.5 h-2.5 text-primary-content" />
                                         </motion.div>
                                       )}
                                     </AnimatePresence>
@@ -504,12 +506,12 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess }: ExpenseModalProps) 
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="flex flex-col items-center justify-center py-8"
+                            className="flex flex-col items-center justify-center py-6"
                           >
-                            <div className="w-12 h-12 rounded-full bg-base-100 flex items-center justify-center mb-2">
-                              <Search className="w-6 h-6 text-base-content/30" />
+                            <div className="w-10 h-10 rounded-full bg-base-100 flex items-center justify-center mb-1.5">
+                              <Search className="w-5 h-5 text-base-content/30" />
                             </div>
-                            <p className="text-sm text-base-content/50">
+                            <p className="text-xs text-base-content/50">
                               {searchQuery ? "No users found" : "No users available"}
                             </p>
                           </motion.div>
@@ -525,7 +527,7 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess }: ExpenseModalProps) 
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: "auto" }}
                         exit={{ opacity: 0, height: 0 }}
-                        className="px-4 py-3 border-b border-base-300/50 overflow-hidden"
+                        className="px-4 py-2 border-b border-base-300/50 overflow-hidden"
                       >
                         <SplitSummary totalAmount={amount} participantCount={participantCount} currency="USDC" />
                       </motion.div>
@@ -550,12 +552,12 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess }: ExpenseModalProps) 
                   </AnimatePresence>
 
                   {/* Footer */}
-                  <motion.div variants={staggerItem} className="px-4 py-3 flex gap-2">
+                  <motion.div variants={staggerItem} className="px-4 py-2.5 flex gap-2">
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={handleClose}
-                      className="flex-1 h-11 bg-base-300/50 hover:bg-base-300 text-base-content font-medium text-sm rounded-xl transition-colors"
+                      className="flex-1 h-10 bg-base-300/50 hover:bg-base-300 text-base-content font-medium text-sm rounded-lg transition-colors"
                     >
                       Cancel
                     </motion.button>
@@ -564,7 +566,7 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess }: ExpenseModalProps) 
                       whileTap={isValid && userWallet ? { scale: 0.98 } : {}}
                       onClick={handleSubmit}
                       disabled={!isValid || !userWallet}
-                      className="flex-1 h-11 bg-primary hover:bg-primary/90 disabled:bg-base-300 disabled:text-base-content/40 text-primary-content font-semibold text-sm rounded-xl transition-all flex items-center justify-center gap-2"
+                      className="flex-1 h-10 bg-primary hover:bg-primary/90 disabled:bg-base-300 disabled:text-base-content/40 text-primary-content font-semibold text-sm rounded-lg transition-all flex items-center justify-center gap-1.5"
                     >
                       <CircleDollarSign className="w-4 h-4" />
                       Create Expense
