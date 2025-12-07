@@ -46,7 +46,7 @@ export async function sendPaymentRequestNotification({
       contents: {
         en: memo ? `@${requesterName} requests $${amount} - ${memo}` : `@${requesterName} requests $${amount}`,
       },
-      url: targetUrl,
+      // Use web_url for web push (don't use both url and web_url)
       web_url: targetUrl,
       data: {
         type: "payment_request",
@@ -119,7 +119,7 @@ export async function sendPaymentCompletedNotification({
       contents: {
         en: `@${payerName} paid you $${amount}`,
       },
-      url: targetUrl,
+      // Use web_url for web push (don't use both url and web_url)
       web_url: targetUrl,
       data: {
         type: "payment_completed",

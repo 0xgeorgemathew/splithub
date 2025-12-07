@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
     include_subscription_ids: [subscriptionId],
     headings: { en: "Test Notification" },
     contents: { en: "This is a test notification from the debug endpoint" },
-    url: targetUrl,
+    // Use web_url only (don't use both url and web_url - causes 400 error)
     web_url: targetUrl,
     data: {
       type: "test",
