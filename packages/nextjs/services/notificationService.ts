@@ -36,40 +36,61 @@ export async function sendPaymentRequestNotification({
   }
 
   try {
+    const targetUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://splithub.app"}/settle/${requestId}`;
+
+    const notificationPayload = {
+      app_id: ONESIGNAL_APP_ID,
+      // Use include_subscription_ids (v16) instead of deprecated include_player_ids
+      include_subscription_ids: [playerId],
+      headings: { en: "Payment Request" },
+      contents: {
+        en: memo ? `@${requesterName} requests $${amount} - ${memo}` : `@${requesterName} requests $${amount}`,
+      },
+      url: targetUrl,
+      web_url: targetUrl,
+      data: {
+        type: "payment_request",
+        requestId,
+        amount,
+        requester: requesterName,
+        url: targetUrl,
+      },
+    };
+
+    console.log("[OneSignal] Sending payment request notification:", {
+      subscriptionId: playerId,
+      requestId,
+      targetUrl,
+    });
+
     const response = await fetch("https://onesignal.com/api/v1/notifications", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Basic ${ONESIGNAL_REST_API_KEY}`,
       },
-      body: JSON.stringify({
-        app_id: ONESIGNAL_APP_ID,
-        include_player_ids: [playerId],
-        headings: { en: "Payment Request" },
-        contents: {
-          en: memo ? `@${requesterName} requests $${amount} - ${memo}` : `@${requesterName} requests $${amount}`,
-        },
-        url: `${process.env.NEXT_PUBLIC_APP_URL || "https://splithub.app"}/settle/${requestId}`,
-        data: {
-          type: "payment_request",
-          requestId,
-          amount,
-          requester: requesterName,
-        },
-      }),
+      body: JSON.stringify(notificationPayload),
     });
 
+    const result = await response.json();
+
     if (!response.ok) {
-      const error = await response.text();
-      console.error("OneSignal API error:", error);
+      console.error("[OneSignal] API error:", {
+        status: response.status,
+        errors: result.errors,
+        subscriptionId: playerId,
+        requestId,
+      });
       return false;
     }
 
-    const result = await response.json();
-    console.log("Notification sent:", result.id);
+    console.log("[OneSignal] Notification sent successfully:", {
+      notificationId: result.id,
+      recipients: result.recipients,
+    });
     return true;
   } catch (error) {
-    console.error("Failed to send notification:", error);
+    console.error("[OneSignal] Failed to send notification:", error);
     return false;
   }
 }
@@ -88,36 +109,59 @@ export async function sendPaymentCompletedNotification({
   }
 
   try {
+    const targetUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://splithub.app"}/splits`;
+
+    const notificationPayload = {
+      app_id: ONESIGNAL_APP_ID,
+      // Use include_subscription_ids (v16) instead of deprecated include_player_ids
+      include_subscription_ids: [playerId],
+      headings: { en: "Payment Received!" },
+      contents: {
+        en: `@${payerName} paid you $${amount}`,
+      },
+      url: targetUrl,
+      web_url: targetUrl,
+      data: {
+        type: "payment_completed",
+        amount,
+        payer: payerName,
+        url: targetUrl,
+      },
+    };
+
+    console.log("[OneSignal] Sending payment completed notification:", {
+      subscriptionId: playerId,
+      amount,
+      payerName,
+    });
+
     const response = await fetch("https://onesignal.com/api/v1/notifications", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Basic ${ONESIGNAL_REST_API_KEY}`,
       },
-      body: JSON.stringify({
-        app_id: ONESIGNAL_APP_ID,
-        include_player_ids: [playerId],
-        headings: { en: "Payment Received!" },
-        contents: {
-          en: `@${payerName} paid you $${amount}`,
-        },
-        data: {
-          type: "payment_completed",
-          amount,
-          payer: payerName,
-        },
-      }),
+      body: JSON.stringify(notificationPayload),
     });
 
+    const result = await response.json();
+
     if (!response.ok) {
-      const error = await response.text();
-      console.error("OneSignal API error:", error);
+      console.error("[OneSignal] API error:", {
+        status: response.status,
+        errors: result.errors,
+        subscriptionId: playerId,
+      });
       return false;
     }
 
+    console.log("[OneSignal] Payment completed notification sent:", {
+      notificationId: result.id,
+      recipients: result.recipients,
+    });
     return true;
   } catch (error) {
-    console.error("Failed to send notification:", error);
+    console.error("[OneSignal] Failed to send notification:", error);
     return false;
   }
 }

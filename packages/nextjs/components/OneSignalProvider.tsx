@@ -10,6 +10,19 @@ declare global {
   }
 }
 
+export interface OneSignalNotificationClickEvent {
+  notification: {
+    additionalData?: {
+      type?: string;
+      requestId?: string;
+      url?: string;
+      amount?: string;
+      requester?: string;
+      payer?: string;
+    };
+  };
+}
+
 export interface OneSignalType {
   init: (config: { appId: string }) => Promise<void>;
   User: {
@@ -21,6 +34,7 @@ export interface OneSignalType {
   Notifications: {
     permission: boolean;
     requestPermission: () => Promise<void>;
+    addEventListener: (event: string, callback: (event: OneSignalNotificationClickEvent) => void) => void;
   };
 }
 
@@ -46,6 +60,23 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
       await OneSignal.init({
         appId: ONESIGNAL_APP_ID,
       });
+
+      // Handle notification clicks for deep linking
+      OneSignal.Notifications.addEventListener("click", event => {
+        const data = event.notification.additionalData;
+        console.log("[OneSignal] Notification clicked:", data);
+
+        if (data?.url) {
+          // Use the URL from the notification data
+          window.location.href = data.url;
+        } else if (data?.type === "payment_request" && data?.requestId) {
+          // Fallback: Navigate to settle page for payment requests
+          window.location.href = `/settle/${data.requestId}`;
+        } else if (data?.type === "payment_completed") {
+          // Navigate to splits page for payment completed
+          window.location.href = "/splits";
+        }
+      });
     });
   }, []);
 
@@ -53,8 +84,15 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!authenticated || !user?.wallet?.address || playerIdSaved.current) return;
 
-    const savePlayerId = async (playerId: string) => {
-      if (!playerId || playerIdSaved.current) return;
+    const savePlayerId = async (subscriptionId: string, forceUpdate = false) => {
+      if (!subscriptionId) return;
+      if (playerIdSaved.current && !forceUpdate) return;
+
+      console.log("[OneSignal] Saving subscription ID:", {
+        subscriptionId,
+        walletAddress: user.wallet?.address,
+        forceUpdate,
+      });
 
       try {
         const response = await fetch("/api/user/onesignal", {
@@ -62,15 +100,22 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             walletAddress: user.wallet?.address,
-            playerId,
+            playerId: subscriptionId,
           }),
         });
 
         if (response.ok) {
+          console.log("[OneSignal] Subscription ID saved successfully");
           playerIdSaved.current = true;
+        } else {
+          const errorData = await response.json().catch(() => ({}));
+          console.error("[OneSignal] Failed to save subscription ID:", {
+            status: response.status,
+            error: errorData,
+          });
         }
       } catch (error) {
-        console.error("Failed to save OneSignal player ID:", error);
+        console.error("[OneSignal] Error saving subscription ID:", error);
       }
     };
 
@@ -82,10 +127,12 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
         await savePlayerId(subscriptionId);
       }
 
-      // Listen for future subscription changes
+      // Listen for future subscription changes (e.g., user re-subscribes)
       OneSignal.User.PushSubscription.addEventListener("change", async subscription => {
+        console.log("[OneSignal] Subscription changed:", subscription.id);
         if (subscription.id) {
-          await savePlayerId(subscription.id);
+          // Force update since the subscription changed
+          await savePlayerId(subscription.id, true);
         }
       });
     });
