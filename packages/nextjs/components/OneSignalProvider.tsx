@@ -10,7 +10,7 @@ declare global {
   }
 }
 
-interface OneSignalType {
+export interface OneSignalType {
   init: (config: { appId: string }) => Promise<void>;
   User: {
     PushSubscription: {
@@ -31,13 +31,11 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
   const initialized = useRef(false);
   const playerIdSaved = useRef(false);
 
+  // Load OneSignal SDK
   useEffect(() => {
     if (!ONESIGNAL_APP_ID || initialized.current) return;
     initialized.current = true;
 
-    console.log("[OneSignal] Loading SDK...");
-
-    // Load OneSignal SDK
     const script = document.createElement("script");
     script.src = "https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js";
     script.defer = true;
@@ -45,23 +43,15 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
 
     window.OneSignalDeferred = window.OneSignalDeferred || [];
     window.OneSignalDeferred.push(async (OneSignal: OneSignalType) => {
-      console.log("[OneSignal] Initializing with App ID:", ONESIGNAL_APP_ID);
       await OneSignal.init({
         appId: ONESIGNAL_APP_ID,
       });
-      console.log("[OneSignal] Initialized successfully");
     });
-
-    return () => {
-      // Cleanup if needed
-    };
   }, []);
 
-  // Save player ID when user is authenticated and subscribed
+  // Save player ID when user is authenticated and has a subscription
   useEffect(() => {
-    console.log("[OneSignal] Auth effect - authenticated:", authenticated, "wallet:", user?.wallet?.address);
     if (!authenticated || !user?.wallet?.address || playerIdSaved.current) return;
-    console.log("[OneSignal] User is authenticated, checking subscription...");
 
     const savePlayerId = async (playerId: string) => {
       if (!playerId || playerIdSaved.current) return;
@@ -78,29 +68,18 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
 
         if (response.ok) {
           playerIdSaved.current = true;
-          console.log("OneSignal player ID saved");
         }
       } catch (error) {
         console.error("Failed to save OneSignal player ID:", error);
       }
     };
 
-    // Check for existing subscription and request permission if needed
+    // Check for existing subscription
     window.OneSignalDeferred = window.OneSignalDeferred || [];
     window.OneSignalDeferred.push(async (OneSignal: OneSignalType) => {
-      console.log("[OneSignal] Checking subscription status...");
-      console.log("[OneSignal] Current permission:", OneSignal.Notifications.permission);
-
-      // Get current subscription ID
       const subscriptionId = OneSignal.User.PushSubscription.id;
-      console.log("[OneSignal] Subscription ID:", subscriptionId);
-
       if (subscriptionId) {
         await savePlayerId(subscriptionId);
-      } else if (!OneSignal.Notifications.permission) {
-        // No subscription yet - request permission
-        console.log("[OneSignal] Requesting permission...");
-        await OneSignal.Notifications.requestPermission();
       }
 
       // Listen for future subscription changes
