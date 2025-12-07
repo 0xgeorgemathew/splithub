@@ -82,8 +82,19 @@ export async function syncPrivyUser(privyUser: PrivyUser): Promise<User> {
 
   const walletAddress = embeddedWallet.address.toLowerCase();
 
-  // Check if user already exists
-  const { data: existingUser } = await supabase.from("users").select("*").eq("privy_user_id", privyUser.id).single();
+  // Check if user already exists by privy_user_id
+  const { data: existingByPrivyId } = await supabase
+    .from("users")
+    .select("*")
+    .eq("privy_user_id", privyUser.id)
+    .single();
+
+  // Also check if user exists by wallet_address (handles migration/edge cases)
+  const { data: existingByWallet } = await supabase
+    .from("users")
+    .select("*")
+    .eq("wallet_address", walletAddress)
+    .single();
 
   const userData = {
     privy_user_id: privyUser.id,
@@ -95,8 +106,8 @@ export async function syncPrivyUser(privyUser: PrivyUser): Promise<User> {
     email: null, // No email with Twitter login
   };
 
-  if (existingUser) {
-    // Update existing user
+  // Case 1: User exists by privy_user_id - update them
+  if (existingByPrivyId) {
     const { data, error } = await supabase
       .from("users")
       .update(userData)
@@ -106,17 +117,30 @@ export async function syncPrivyUser(privyUser: PrivyUser): Promise<User> {
 
     if (error) throw error;
     return data as User;
-  } else {
-    // Create new user (without chip - that comes in registration step)
+  }
+
+  // Case 2: User exists by wallet but not privy_id (legacy/migration case) - update with privy_id
+  if (existingByWallet) {
     const { data, error } = await supabase
       .from("users")
-      .insert({ ...userData, chip_address: null })
+      .update(userData)
+      .eq("wallet_address", walletAddress)
       .select()
       .single();
 
     if (error) throw error;
     return data as User;
   }
+
+  // Case 3: New user - create them
+  const { data, error } = await supabase
+    .from("users")
+    .insert({ ...userData, chip_address: null })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as User;
 }
 
 /**

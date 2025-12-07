@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { usePrivy } from "@privy-io/react-auth";
+import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { AlertCircle, Check, Coins, Loader2, Shield } from "lucide-react";
-import { parseUnits } from "viem";
-import { useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import { createWalletClient, custom, parseUnits } from "viem";
+import { baseSepolia } from "viem/chains";
+import { useReadContract, useWaitForTransactionReceipt } from "wagmi";
 import { TOKENS } from "~~/config/tokens";
 import deployedContracts from "~~/contracts/deployedContracts";
 import { useTargetNetwork } from "~~/hooks/scaffold-eth";
@@ -49,6 +50,7 @@ export function ApprovalFlow() {
   const router = useRouter();
   const { targetNetwork } = useTargetNetwork();
   const { authenticated, user } = usePrivy();
+  const { wallets } = useWallets();
 
   // Use Privy's authentication state instead of wagmi's useAccount
   // This properly reflects the embedded wallet connection status
@@ -58,6 +60,8 @@ export function ApprovalFlow() {
   const [error, setError] = useState("");
   const [paymentsState, setPaymentsState] = useState<ApprovalState>("pending");
   const [creditsState, setCreditsState] = useState<ApprovalState>("pending");
+  const [txHash, setTxHash] = useState<`0x${string}` | undefined>();
+  const [isPending, setIsPending] = useState(false);
 
   // Get contract addresses for the current network
   const chainContracts = deployedContracts[targetNetwork.id as keyof typeof deployedContracts] as
@@ -81,9 +85,6 @@ export function ApprovalFlow() {
     functionName: "symbol",
   });
 
-  // Write contract hook
-  const { writeContract, data: txHash, isPending, error: writeError, reset } = useWriteContract();
-
   // Wait for transaction receipt
   const {
     isLoading: isConfirming,
@@ -93,6 +94,34 @@ export function ApprovalFlow() {
   } = useWaitForTransactionReceipt({
     hash: txHash,
   });
+
+  // Helper function to get wallet client from Privy wallet
+  const getWalletClient = async () => {
+    // Find the embedded wallet
+    const embeddedWallet = wallets.find(w => w.walletClientType === "privy");
+    if (!embeddedWallet) {
+      throw new Error("No embedded wallet found");
+    }
+
+    // Switch chain if needed
+    await embeddedWallet.switchChain(baseSepolia.id);
+
+    // Get the provider
+    const provider = await embeddedWallet.getEthereumProvider();
+
+    // Create viem wallet client
+    return createWalletClient({
+      chain: baseSepolia,
+      transport: custom(provider),
+      account: embeddedWallet.address as `0x${string}`,
+    });
+  };
+
+  // Helper to reset state - wrapped in useCallback to avoid useEffect dependency issues
+  const reset = useCallback(() => {
+    setTxHash(undefined);
+    setIsPending(false);
+  }, []);
 
   // Handle successful approvals - auto-advance without toasts
   useEffect(() => {
@@ -141,28 +170,6 @@ export function ApprovalFlow() {
     }
   }, [txError, txErrorDetails, paymentsState, creditsState, reset]);
 
-  // Handle write contract errors (e.g., user rejected)
-  useEffect(() => {
-    if (writeError) {
-      console.error("Write contract error:", writeError);
-
-      // Reset state based on which approval was in progress
-      if (paymentsState === "approving") {
-        setPaymentsState("pending");
-      } else if (creditsState === "approving") {
-        setCreditsState("pending");
-      }
-
-      // Show user-friendly error message
-      const errorMessage = writeError.message.includes("User rejected")
-        ? "Transaction rejected. Please try again when ready."
-        : writeError.message || "Approval failed. Please try again.";
-
-      setError(errorMessage);
-      reset();
-    }
-  }, [writeError, paymentsState, creditsState, reset]);
-
   const handleApprovePayments = async () => {
     setError("");
 
@@ -183,18 +190,31 @@ export function ApprovalFlow() {
 
     try {
       setPaymentsState("approving");
+      setIsPending(true);
       const approvalAmount = parseUnits(DEFAULT_AMOUNT, decimals);
 
-      writeContract({
+      // Use Privy wallet directly instead of wagmi's useWriteContract
+      const walletClient = await getWalletClient();
+      const hash = await walletClient.writeContract({
         address: DEFAULT_TOKEN_ADDRESS,
         abi: ERC20_ABI,
         functionName: "approve",
         args: [paymentsAddress, approvalAmount],
       });
+
+      setTxHash(hash);
+      setIsPending(false);
     } catch (err: unknown) {
       console.error("Approval error:", err);
-      setError(err instanceof Error ? err.message : "Approval failed");
+      const errorMessage =
+        err instanceof Error && err.message.includes("User rejected")
+          ? "Transaction rejected. Please try again when ready."
+          : err instanceof Error
+            ? err.message
+            : "Approval failed";
+      setError(errorMessage);
       setPaymentsState("pending");
+      setIsPending(false);
     }
   };
 
@@ -218,18 +238,31 @@ export function ApprovalFlow() {
 
     try {
       setCreditsState("approving");
+      setIsPending(true);
       const approvalAmount = parseUnits(DEFAULT_AMOUNT, decimals);
 
-      writeContract({
+      // Use Privy wallet directly instead of wagmi's useWriteContract
+      const walletClient = await getWalletClient();
+      const hash = await walletClient.writeContract({
         address: DEFAULT_TOKEN_ADDRESS,
         abi: ERC20_ABI,
         functionName: "approve",
         args: [creditsAddress, approvalAmount],
       });
+
+      setTxHash(hash);
+      setIsPending(false);
     } catch (err: unknown) {
       console.error("Approval error:", err);
-      setError(err instanceof Error ? err.message : "Approval failed");
+      const errorMessage =
+        err instanceof Error && err.message.includes("User rejected")
+          ? "Transaction rejected. Please try again when ready."
+          : err instanceof Error
+            ? err.message
+            : "Approval failed";
+      setError(errorMessage);
       setCreditsState("pending");
+      setIsPending(false);
     }
   };
 

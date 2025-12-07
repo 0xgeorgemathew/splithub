@@ -27,13 +27,15 @@ export const UserSyncWrapper = ({ children }: { children: React.ReactNode }) => 
     const checkAndSyncUser = async () => {
       if (!ready || !authenticated || !user) return;
 
-      // Skip if already synced in this session
+      // Skip if already synced (or attempted) in this session
       if (hasSynced.current) return;
+
+      // Mark as synced immediately to prevent retry loops on errors
+      hasSynced.current = true;
 
       try {
         // Sync user data to Supabase (only once per session)
         await syncPrivyUser(user);
-        hasSynced.current = true;
 
         // Check user's onboarding status
         const dbUser = await getUserByPrivyId(user.id);
@@ -67,6 +69,7 @@ export const UserSyncWrapper = ({ children }: { children: React.ReactNode }) => 
         }
       } catch (error) {
         console.error("User sync error:", error);
+        // Don't reset hasSynced - prevent infinite retry loops that trigger rate limits
       }
     };
 
