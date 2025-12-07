@@ -4,10 +4,11 @@ import { useState } from "react";
 import { Coins, Fuel, Plus, Trash2, User, Users } from "lucide-react";
 import { isAddress } from "viem";
 import { MultiSettleFlow } from "~~/components/settle";
+import { TOKENS } from "~~/config/tokens";
 
 // Demo/default values - in production these would come from a split creation flow
 const DEFAULT_RECIPIENT = "0x09a6f8C0194246c365bB42122E872626460F8a71" as const;
-const DEFAULT_TOKEN = "0x0a215D8ba66387DCA84B284D18c3B4ec3de6E54a" as const;
+const DEFAULT_TOKEN = TOKENS.USDC;
 
 interface AmountSlot {
   id: string;

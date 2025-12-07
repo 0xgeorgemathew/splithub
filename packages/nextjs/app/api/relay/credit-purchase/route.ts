@@ -3,6 +3,7 @@ import { Abi, formatUnits } from "viem";
 import { createPublicClient, createWalletClient, http, isAddress } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { baseSepolia } from "viem/chains";
+import { TOKENS } from "~~/config/tokens";
 import deployedContracts from "~~/contracts/deployedContracts";
 
 const CHAIN_ID = 84532; // Base Sepolia
@@ -142,8 +143,8 @@ export async function POST(request: NextRequest) {
             `Split: ${formatUnits(amountBigInt, 6)} USDC / ${totalParticipants} = ${splitAmountFormatted} each`,
           );
 
-          // Get USDC token address
-          const usdcAddress = chainContracts?.MockUSDC?.address || "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
+          // Get USDC token address from centralized config
+          const usdcAddress = TOKENS.USDC;
 
           // Create expense record so balances update
           const participantWallets = [buyer.toLowerCase(), ...members.map(m => m.wallet_address.toLowerCase())];

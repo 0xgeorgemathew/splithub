@@ -1,9 +1,10 @@
 import { useEffect } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { useAccount, useReadContract } from "wagmi";
+import { TOKENS } from "~~/config/tokens";
 
-// USDC token address on Base Sepolia
-const USDC_ADDRESS = "0x0a215D8ba66387DCA84B284D18c3B4ec3de6E54a" as const;
+// USDC token address from centralized config
+const USDC_ADDRESS = TOKENS.USDC;
 
 // ERC20 ABI for balance and decimals
 const ERC20_ABI = [

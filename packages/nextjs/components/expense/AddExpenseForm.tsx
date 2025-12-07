@@ -7,6 +7,7 @@ import { FriendPill } from "./FriendPill";
 import { FriendSelector } from "./FriendSelector";
 import { SplitSummary } from "./SplitSummary";
 import { useExpenseForm } from "./hooks/useExpenseForm";
+import { usePrivy } from "@privy-io/react-auth";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   AlertCircle,
@@ -19,12 +20,15 @@ import {
   Users,
   Wallet,
 } from "lucide-react";
-import { useAccount } from "wagmi";
+import { TOKENS } from "~~/config/tokens";
 import { createExpense } from "~~/services/expenseService";
 
 export const AddExpenseForm = () => {
   const router = useRouter();
-  const { address: userWallet, isConnected } = useAccount();
+  const { authenticated, user } = usePrivy();
+  // Use Privy's authentication state instead of wagmi's useAccount
+  const userWallet = user?.wallet?.address as `0x${string}` | undefined;
+  const isConnected = authenticated && !!userWallet;
   const [isSelectorOpen, setIsSelectorOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -57,7 +61,7 @@ export const AddExpenseForm = () => {
         creatorWallet: userWallet,
         description,
         totalAmount: parseFloat(amount),
-        tokenAddress: "0x0a215D8ba66387DCA84B284D18c3B4ec3de6E54a", // USDT on Base Sepolia
+        tokenAddress: TOKENS.USDC,
         participantWallets,
       });
 

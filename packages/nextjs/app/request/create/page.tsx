@@ -7,6 +7,7 @@ import { usePrivy } from "@privy-io/react-auth";
 import { CheckCircle2, Loader2, Send } from "lucide-react";
 import { FriendSelector } from "~~/components/expense/FriendSelector";
 import { Friend } from "~~/components/expense/hooks/useExpenseForm";
+import { TOKENS } from "~~/config/tokens";
 
 export default function CreateRequestPage() {
   const router = useRouter();
@@ -33,7 +34,7 @@ export default function CreateRequestPage() {
         body: JSON.stringify({
           payer: selectedFriend.address,
           recipient: requesterWallet,
-          token: "0x0a215D8ba66387DCA84B284D18c3B4ec3de6E54a", // USDT Base Sepolia
+          token: TOKENS.USDC,
           amount,
           memo,
           payerTwitter: selectedFriend.twitterHandle,

@@ -5,13 +5,14 @@ import { useRouter } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
 import { AlertCircle, Check, Coins, Loader2, Shield } from "lucide-react";
 import { parseUnits } from "viem";
-import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import { useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import { TOKENS } from "~~/config/tokens";
 import deployedContracts from "~~/contracts/deployedContracts";
 import { useTargetNetwork } from "~~/hooks/scaffold-eth";
 import { supabase } from "~~/lib/supabase";
 
-// Default values
-const DEFAULT_TOKEN_ADDRESS = "0x0a215D8ba66387DCA84B284D18c3B4ec3de6E54a" as const;
+// Token address from centralized config
+const DEFAULT_TOKEN_ADDRESS = TOKENS.USDC;
 const DEFAULT_AMOUNT = "1000";
 
 // Approval states
@@ -46,9 +47,13 @@ const ERC20_ABI = [
 
 export function ApprovalFlow() {
   const router = useRouter();
-  const { address, isConnected } = useAccount();
   const { targetNetwork } = useTargetNetwork();
-  const { user } = usePrivy();
+  const { authenticated, user } = usePrivy();
+
+  // Use Privy's authentication state instead of wagmi's useAccount
+  // This properly reflects the embedded wallet connection status
+  const address = user?.wallet?.address as `0x${string}` | undefined;
+  const isConnected = authenticated && !!address;
 
   const [error, setError] = useState("");
   const [paymentsState, setPaymentsState] = useState<ApprovalState>("pending");

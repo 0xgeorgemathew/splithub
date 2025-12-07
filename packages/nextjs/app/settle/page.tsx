@@ -1,16 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import { usePrivy } from "@privy-io/react-auth";
 import { AlertCircle, Check, Coins, Fuel, Loader2, Nfc, User, Wallet } from "lucide-react";
 import { parseUnits } from "viem";
-import { useAccount, useReadContract } from "wagmi";
+import { useReadContract } from "wagmi";
+import { TOKENS } from "~~/config/tokens";
 import deployedContracts from "~~/contracts/deployedContracts";
 import { useHaloChip } from "~~/hooks/halochip-arx/useHaloChip";
 import { useTargetNetwork } from "~~/hooks/scaffold-eth";
 
 // Hardcoded values
 const RECIPIENT_ADDRESS = "0x09a6f8C0194246c365bB42122E872626460F8a71" as const;
-const DEFAULT_TOKEN_ADDRESS = "0x0a215D8ba66387DCA84B284D18c3B4ec3de6E54a" as const;
+const DEFAULT_TOKEN_ADDRESS = TOKENS.USDC;
 const DEFAULT_AMOUNT = "1";
 
 const ERC20_ABI = [
@@ -51,9 +53,14 @@ const FLOW_STEPS = [
 ] as const;
 
 export default function SettlePage() {
-  const { address, isConnected } = useAccount();
+  const { authenticated, user } = usePrivy();
   const { targetNetwork } = useTargetNetwork();
   const { signTypedData } = useHaloChip();
+
+  // Use Privy's authentication state instead of wagmi's useAccount
+  // This properly reflects the embedded wallet connection status
+  const address = user?.wallet?.address as `0x${string}` | undefined;
+  const isConnected = authenticated && !!address;
 
   const [flowState, setFlowState] = useState<FlowState>("idle");
   const [statusMessage, setStatusMessage] = useState("");

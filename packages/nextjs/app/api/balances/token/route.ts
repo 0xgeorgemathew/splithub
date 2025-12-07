@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { TOKENS } from "~~/config/tokens";
 import { supabase } from "~~/lib/supabase";
 
 /**
@@ -69,9 +70,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ tokenAddress });
     }
 
-    // Final fallback: return default USDT token address
-    const defaultTokenAddress = "0x0a215D8ba66387DCA84B284D18c3B4ec3de6E54a";
-    return NextResponse.json({ tokenAddress: defaultTokenAddress });
+    // Final fallback: return default USDC token address from config
+    return NextResponse.json({ tokenAddress: TOKENS.USDC });
   } catch (error) {
     console.error("Error fetching token address:", error);
     return NextResponse.json(

@@ -5,9 +5,10 @@ import Image from "next/image";
 import { SplitSummary } from "./SplitSummary";
 import { Friend } from "./hooks/useExpenseForm";
 import { useExpenseForm } from "./hooks/useExpenseForm";
+import { usePrivy } from "@privy-io/react-auth";
 import { AnimatePresence, motion } from "framer-motion";
 import { AlertCircle, Check, CircleDollarSign, FileText, Search, Sparkles, Users, X } from "lucide-react";
-import { useAccount } from "wagmi";
+import { TOKENS } from "~~/config/tokens";
 import { type User, supabase } from "~~/lib/supabase";
 import { createExpense } from "~~/services/expenseService";
 
@@ -40,7 +41,9 @@ const listItemVariants = {
 };
 
 export const ExpenseModal = ({ isOpen, onClose, onSuccess }: ExpenseModalProps) => {
-  const { address: userWallet } = useAccount();
+  const { user } = usePrivy();
+  // Use Privy's wallet address instead of wagmi's useAccount
+  const userWallet = user?.wallet?.address as `0x${string}` | undefined;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -137,7 +140,7 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess }: ExpenseModalProps) 
         creatorWallet: userWallet,
         description,
         totalAmount: parseFloat(amount),
-        tokenAddress: "0x0a215D8ba66387DCA84B284D18c3B4ec3de6E54a", // USDT on Base Sepolia
+        tokenAddress: TOKENS.USDC,
         participantWallets,
       });
 
