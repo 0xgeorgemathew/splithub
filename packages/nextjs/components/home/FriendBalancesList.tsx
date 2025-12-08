@@ -27,6 +27,7 @@ export const FriendBalancesList = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isCreatingRequest, setIsCreatingRequest] = useState(false);
   const [requestSuccess, setRequestSuccess] = useState(false);
+  const [sendingReminder, setSendingReminder] = useState<string | null>(null); // wallet address of friend being reminded
 
   const walletAddress = user?.wallet?.address;
 
@@ -261,6 +262,41 @@ export const FriendBalancesList = () => {
     setIsSettleModalOpen(false);
     setSelectedFriend(null);
     setSettlementParams(null);
+  };
+
+  // Handler for bell icon - sends reminder without creating new request
+  const handleNotifyFriend = async (friend: FriendBalance, e: React.MouseEvent) => {
+    e.stopPropagation(); // Don't trigger card click
+
+    if (!walletAddress || sendingReminder) return;
+
+    setSendingReminder(friend.friend_wallet);
+
+    try {
+      const res = await fetch("/api/notifications/remind", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          friendWallet: friend.friend_wallet,
+          requesterWallet: walletAddress,
+          amount: formatAmount(friend.net_balance),
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.notificationSent) {
+        setSuccessMessage(`Reminder sent to ${friend.friend_name}!`);
+      } else {
+        setSuccessMessage(`${friend.friend_name} hasn't enabled notifications yet.`);
+      }
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      console.error("Failed to send reminder:", err);
+      setError("Failed to send reminder");
+    } finally {
+      setSendingReminder(null);
+    }
   };
 
   if (loading) {
@@ -524,14 +560,20 @@ export const FriendBalancesList = () => {
                     ${formatAmount(balance.net_balance)}
                   </span>
 
-                  {/* Notify button - ghost style */}
-                  {isClickable && (
+                  {/* Notify button - sends reminder notification */}
+                  {isRequestable && (
                     <motion.button
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
-                      className="btn btn-circle btn-sm btn-ghost text-warning hover:bg-warning/20"
+                      onClick={(e: React.MouseEvent<HTMLButtonElement>) => handleNotifyFriend(balance, e)}
+                      disabled={sendingReminder === balance.friend_wallet}
+                      className="btn btn-circle btn-sm btn-ghost text-warning hover:bg-warning/20 disabled:opacity-50"
                     >
-                      <Bell className="w-5 h-5" />
+                      {sendingReminder === balance.friend_wallet ? (
+                        <span className="loading loading-spinner loading-xs" />
+                      ) : (
+                        <Bell className="w-5 h-5" />
+                      )}
                     </motion.button>
                   )}
                 </div>

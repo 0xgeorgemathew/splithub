@@ -64,7 +64,7 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
       // Handle notification clicks for deep linking
       OneSignal.Notifications.addEventListener("click", event => {
         const data = event.notification.additionalData;
-        console.log("[OneSignal] Notification clicked:", data);
+        console.log("[OneSignal] Notification clicked:", JSON.stringify(data));
 
         if (data?.url) {
           // Use the URL from the notification data
@@ -72,9 +72,11 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
         } else if (data?.type === "payment_request" && data?.requestId) {
           // Fallback: Navigate to settle page for payment requests
           window.location.href = `/settle/${data.requestId}`;
-        } else if (data?.type === "payment_completed") {
-          // Navigate to splits page for payment completed
+        } else if (data?.type === "payment_completed" || data?.type === "expense_created") {
+          // Navigate to splits page for payment completed or expense created
           window.location.href = "/splits";
+        } else {
+          console.warn("[OneSignal] No redirect URL found in notification data");
         }
       });
     });

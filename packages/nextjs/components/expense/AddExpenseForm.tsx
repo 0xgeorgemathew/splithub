@@ -59,6 +59,7 @@ export const AddExpenseForm = () => {
       // Create expense in database
       await createExpense({
         creatorWallet: userWallet,
+        creatorTwitterHandle: user?.twitter?.username || undefined,
         description,
         totalAmount: parseFloat(amount),
         tokenAddress: TOKENS.USDC,

@@ -20,6 +20,13 @@ interface PaymentCompletedNotificationParams {
   payerName: string;
 }
 
+interface ExpenseNotificationParams {
+  playerId: string;
+  amount: string;
+  creatorName: string;
+  description: string;
+}
+
 /**
  * Send a push notification for a new payment request
  */
@@ -162,6 +169,79 @@ export async function sendPaymentCompletedNotification({
     return true;
   } catch (error) {
     console.error("[OneSignal] Failed to send notification:", error);
+    return false;
+  }
+}
+
+/**
+ * Send a push notification when a new expense is created
+ * Notifies participants that they owe money
+ */
+export async function sendExpenseNotification({
+  playerId,
+  amount,
+  creatorName,
+  description,
+}: ExpenseNotificationParams): Promise<boolean> {
+  if (!ONESIGNAL_APP_ID || !ONESIGNAL_REST_API_KEY) {
+    console.warn("OneSignal not configured, skipping notification");
+    return false;
+  }
+
+  try {
+    const targetUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://splithub.app"}/splits`;
+
+    const notificationPayload = {
+      app_id: ONESIGNAL_APP_ID,
+      include_subscription_ids: [playerId],
+      headings: { en: "New Expense Added" },
+      contents: {
+        en: `You owe $${amount} to @${creatorName} for "${description}"`,
+      },
+      web_url: targetUrl,
+      data: {
+        type: "expense_created",
+        amount,
+        creator: creatorName,
+        description,
+        url: targetUrl,
+      },
+    };
+
+    console.log("[OneSignal] Sending expense notification:", {
+      subscriptionId: playerId,
+      amount,
+      creatorName,
+      description,
+    });
+
+    const response = await fetch("https://onesignal.com/api/v1/notifications", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Basic ${ONESIGNAL_REST_API_KEY}`,
+      },
+      body: JSON.stringify(notificationPayload),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      console.error("[OneSignal] API error:", {
+        status: response.status,
+        errors: result.errors,
+        subscriptionId: playerId,
+      });
+      return false;
+    }
+
+    console.log("[OneSignal] Expense notification sent:", {
+      notificationId: result.id,
+      recipients: result.recipients,
+    });
+    return true;
+  } catch (error) {
+    console.error("[OneSignal] Failed to send expense notification:", error);
     return false;
   }
 }

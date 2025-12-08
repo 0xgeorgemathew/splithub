@@ -1,52 +1,36 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { type OneSignalType } from "./OneSignalProvider";
+import { useState } from "react";
 import { Bell, RefreshCw, X } from "lucide-react";
+import { NotificationTroubleshoot } from "~~/components/NotificationTroubleshoot";
+import { useNotificationStatus } from "~~/hooks/useNotificationStatus";
 
 export function EnableNotificationsButton() {
-  const [showBanner, setShowBanner] = useState(false);
-  const [isRequesting, setIsRequesting] = useState(false);
-  const [isResubscribe, setIsResubscribe] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
 
-  useEffect(() => {
-    // Check if notifications are already enabled
-    window.OneSignalDeferred = window.OneSignalDeferred || [];
-    window.OneSignalDeferred.push(async (OneSignal: OneSignalType) => {
-      const hasPermission = OneSignal.Notifications.permission;
-      const hasSubscription = !!OneSignal.User.PushSubscription.id;
+  const { sdkReady, browserSubscriptionId, needsResubscribe, isResubscribing, pendingDuration, resubscribe } =
+    useNotificationStatus();
 
-      console.log("[EnableNotifications] Check:", { hasPermission, hasSubscription });
-
-      // Show banner if no subscription (even if permission was granted before)
-      // This handles stale subscriptions
-      if (!hasSubscription) {
-        setShowBanner(true);
-        // If permission exists but no subscription, it's a re-subscribe case
-        setIsResubscribe(hasPermission);
-      }
-    });
-  }, []);
+  // Don't show banner if:
+  // - User dismissed it
+  // - SDK not ready yet
+  // - Already has a valid subscription
+  const showBanner = sdkReady && !browserSubscriptionId && !dismissed;
 
   const handleEnableNotifications = async () => {
-    setIsRequesting(true);
+    const result = await resubscribe();
 
-    try {
-      window.OneSignalDeferred = window.OneSignalDeferred || [];
-      window.OneSignalDeferred.push(async (OneSignal: OneSignalType) => {
-        await OneSignal.Notifications.requestPermission();
-        // Hide banner after request (whether accepted or denied)
-        setShowBanner(false);
-      });
-    } catch (error) {
-      console.error("Failed to request notification permission:", error);
-    } finally {
-      setIsRequesting(false);
+    if (result.success) {
+      // Banner will auto-hide when browserSubscriptionId updates
+      console.log("[EnableNotifications] Subscribed successfully:", result.subscriptionId);
+    } else {
+      console.error("[EnableNotifications] Failed:", result.error);
+      // Don't hide banner on failure - let user see troubleshoot
     }
   };
 
   const handleDismiss = () => {
-    setShowBanner(false);
+    setDismissed(true);
   };
 
   if (!showBanner) return null;
@@ -55,14 +39,18 @@ export function EnableNotificationsButton() {
     <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 mb-4">
       <div className="flex items-start gap-3">
         <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-          {isResubscribe ? <RefreshCw className="w-5 h-5 text-primary" /> : <Bell className="w-5 h-5 text-primary" />}
+          {needsResubscribe ? (
+            <RefreshCw className="w-5 h-5 text-primary" />
+          ) : (
+            <Bell className="w-5 h-5 text-primary" />
+          )}
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-base-content">
-            {isResubscribe ? "Re-enable Notifications" : "Enable Notifications"}
+            {needsResubscribe ? "Re-enable Notifications" : "Enable Notifications"}
           </p>
           <p className="text-sm text-base-content/60 mt-0.5">
-            {isResubscribe
+            {needsResubscribe
               ? "Your notification subscription expired. Re-enable to receive payment alerts."
               : "Get notified when someone requests payment from you"}
           </p>
@@ -73,11 +61,14 @@ export function EnableNotificationsButton() {
       </div>
       <button
         onClick={handleEnableNotifications}
-        disabled={isRequesting}
+        disabled={isResubscribing}
         className="w-full mt-3 py-2.5 px-4 bg-primary text-primary-content rounded-lg font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
       >
-        {isRequesting ? "Requesting..." : isResubscribe ? "Re-enable Notifications" : "Enable Notifications"}
+        {isResubscribing ? "Requesting..." : needsResubscribe ? "Re-enable Notifications" : "Enable Notifications"}
       </button>
+
+      {/* Troubleshoot section - shows after 15s stuck */}
+      <NotificationTroubleshoot pendingDuration={pendingDuration} onRetry={() => window.location.reload()} minimal />
     </div>
   );
 }

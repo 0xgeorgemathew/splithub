@@ -1,41 +1,34 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { usePrivy } from "@privy-io/react-auth";
-import { type OneSignalType } from "~~/components/OneSignalProvider";
+import { NotificationTroubleshoot } from "~~/components/NotificationTroubleshoot";
+import { useNotificationStatus } from "~~/hooks/useNotificationStatus";
 
 export default function NotificationDebugPage() {
   const { user, authenticated } = usePrivy();
-  const [browserSubscriptionId, setBrowserSubscriptionId] = useState<string | null>(null);
-  const [dbSubscriptionId, setDbSubscriptionId] = useState<string | null>(null);
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [testResult, setTestResult] = useState<string>("");
-  const [loading, setLoading] = useState(true);
   const [testing, setTesting] = useState(false);
-  const [resubscribing, setResubscribing] = useState(false);
   const [clearing, setClearing] = useState(false);
 
   const walletAddress = user?.wallet?.address?.toLowerCase();
 
-  useEffect(() => {
-    if (!walletAddress) return;
-
-    // Check browser state
-    window.OneSignalDeferred = window.OneSignalDeferred || [];
-    window.OneSignalDeferred.push(async (OneSignal: OneSignalType) => {
-      setBrowserSubscriptionId(OneSignal.User.PushSubscription.id || null);
-      setHasPermission(OneSignal.Notifications.permission);
-    });
-
-    // Check database state
-    fetch(`/api/debug/test-notification?wallet=${walletAddress}`)
-      .then(res => res.json())
-      .then(data => {
-        setDbSubscriptionId(data.subscriptionId || null);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, [walletAddress]);
+  const {
+    permission,
+    browserSubscriptionId,
+    dbSubscriptionId,
+    sdkReady,
+    isHealthy,
+    isStale,
+    isMismatched,
+    needsResubscribe,
+    isResubscribing,
+    error,
+    pendingDuration,
+    resubscribe,
+    clearStaleSubscription,
+    refresh,
+  } = useNotificationStatus();
 
   const handleTestNotification = async () => {
     if (!walletAddress) return;
@@ -59,18 +52,8 @@ export default function NotificationDebugPage() {
     setTestResult("");
 
     try {
-      const res = await fetch("/api/user/onesignal", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ walletAddress }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setDbSubscriptionId(null);
-        setTestResult("✅ Database subscription ID cleared! Now tap 'Re-subscribe' to get a fresh one.");
-      } else {
-        setTestResult(`❌ Failed to clear: ${JSON.stringify(data)}`);
-      }
+      await clearStaleSubscription();
+      setTestResult("Database subscription ID cleared! Now tap 'Re-subscribe' to get a fresh one.");
     } catch (err) {
       setTestResult(`Error: ${err}`);
     } finally {
@@ -79,37 +62,13 @@ export default function NotificationDebugPage() {
   };
 
   const handleResubscribe = async () => {
-    setResubscribing(true);
-    try {
-      window.OneSignalDeferred = window.OneSignalDeferred || [];
-      window.OneSignalDeferred.push(async (OneSignal: OneSignalType) => {
-        await OneSignal.Notifications.requestPermission();
-        // Wait a moment for subscription to be created
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        const newId = OneSignal.User.PushSubscription.id;
-        setBrowserSubscriptionId(newId || null);
-        setHasPermission(OneSignal.Notifications.permission);
+    setTestResult("");
+    const result = await resubscribe();
 
-        if (newId && walletAddress) {
-          // Save to database
-          await fetch("/api/user/onesignal", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              walletAddress,
-              playerId: newId,
-            }),
-          });
-          setDbSubscriptionId(newId);
-          setTestResult("✅ Re-subscribed successfully! New ID: " + newId);
-        } else {
-          setTestResult("❌ Failed to get new subscription ID");
-        }
-        setResubscribing(false);
-      });
-    } catch (err) {
-      setTestResult(`Error: ${err}`);
-      setResubscribing(false);
+    if (result.success) {
+      setTestResult(`Re-subscribed successfully! New ID: ${result.subscriptionId}`);
+    } else {
+      setTestResult(`${result.error || "Failed to subscribe"}`);
     }
   };
 
@@ -122,12 +81,11 @@ export default function NotificationDebugPage() {
     );
   }
 
-  const subscriptionMismatch = browserSubscriptionId !== dbSubscriptionId;
-  const isStale = dbSubscriptionId && !browserSubscriptionId;
+  const loading = !sdkReady && permission === null;
 
   return (
     <div className="min-h-screen bg-base-100 p-6">
-      <h1 className="text-2xl font-bold mb-4">🔔 Notification Debug</h1>
+      <h1 className="text-2xl font-bold mb-4">Notification Debug</h1>
 
       {loading ? (
         <p>Loading...</p>
@@ -140,60 +98,82 @@ export default function NotificationDebugPage() {
                 <span className="text-base-content/60">Wallet:</span> {walletAddress?.slice(0, 10)}...
               </p>
               <p>
+                <span className="text-base-content/60">SDK Ready:</span> {sdkReady ? "Yes" : "No"}
+              </p>
+              <p>
                 <span className="text-base-content/60">Permission:</span>{" "}
-                {hasPermission === null ? "Loading..." : hasPermission ? "✅ Granted" : "❌ Not granted"}
+                {permission === null ? "Loading..." : permission ? "Granted" : "Not granted"}
               </p>
               <p>
                 <span className="text-base-content/60">Browser Subscription:</span>{" "}
-                {browserSubscriptionId ? `✅ ${browserSubscriptionId.slice(0, 8)}...` : "❌ None"}
+                {browserSubscriptionId ? `${browserSubscriptionId.slice(0, 8)}...` : "None"}
               </p>
               <p>
                 <span className="text-base-content/60">Database Subscription:</span>{" "}
-                {dbSubscriptionId ? `${dbSubscriptionId.slice(0, 8)}...` : "❌ None"}
+                {dbSubscriptionId ? `${dbSubscriptionId.slice(0, 8)}...` : "None"}
               </p>
             </div>
           </div>
 
           {/* Diagnosis */}
           <div
-            className={`rounded-lg p-4 ${isStale ? "bg-error/20" : subscriptionMismatch ? "bg-warning/20" : "bg-success/20"}`}
+            className={`rounded-lg p-4 ${
+              isStale
+                ? "bg-error/20"
+                : isMismatched || needsResubscribe
+                  ? "bg-warning/20"
+                  : isHealthy
+                    ? "bg-success/20"
+                    : "bg-warning/20"
+            }`}
           >
             <h2 className="font-semibold mb-2">Diagnosis</h2>
             {isStale ? (
               <p className="text-error">
-                ⚠️ <strong>STALE SUBSCRIPTION</strong> - Database has old ID but browser has none. Click
+                <strong>STALE SUBSCRIPTION</strong> - Database has old ID but browser has none. Click
                 &quot;Re-subscribe&quot; below.
               </p>
-            ) : subscriptionMismatch ? (
+            ) : isMismatched ? (
               <p className="text-warning">
-                ⚠️ <strong>MISMATCH</strong> - Browser and database have different IDs. Click &quot;Re-subscribe&quot;
-                to fix.
+                <strong>MISMATCH</strong> - Browser and database have different IDs. Click &quot;Re-subscribe&quot; to
+                fix.
               </p>
-            ) : browserSubscriptionId ? (
-              <p className="text-success">✅ Everything looks good!</p>
+            ) : needsResubscribe ? (
+              <p className="text-warning">
+                <strong>NEEDS RESUBSCRIPTION</strong> - Permission granted but no subscription. Click
+                &quot;Re-subscribe&quot;.
+              </p>
+            ) : isHealthy ? (
+              <p className="text-success">Everything looks good!</p>
             ) : (
-              <p className="text-warning">
-                ⚠️ No subscription. Click &quot;Re-subscribe&quot; to enable notifications.
-              </p>
+              <p className="text-warning">No subscription. Click &quot;Re-subscribe&quot; to enable notifications.</p>
             )}
           </div>
+
+          {/* Error display */}
+          {error && (
+            <div className="bg-error/20 rounded-lg p-4">
+              <h2 className="font-semibold mb-2 text-error">Error</h2>
+              <p className="text-sm whitespace-pre-wrap">{error}</p>
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex flex-col gap-3">
             <div className="flex gap-3">
               <button
                 onClick={handleResubscribe}
-                disabled={resubscribing}
+                disabled={isResubscribing}
                 className="flex-1 py-3 px-4 bg-primary text-primary-content rounded-lg font-medium disabled:opacity-50"
               >
-                {resubscribing ? "Re-subscribing..." : "🔄 Re-subscribe"}
+                {isResubscribing ? "Re-subscribing..." : "Re-subscribe"}
               </button>
               <button
                 onClick={handleTestNotification}
                 disabled={testing || !browserSubscriptionId}
                 className="flex-1 py-3 px-4 bg-base-300 rounded-lg font-medium disabled:opacity-50"
               >
-                {testing ? "Testing..." : "📤 Test Notification"}
+                {testing ? "Testing..." : "Test Notification"}
               </button>
             </div>
             {/* Clear stale subscription from DB */}
@@ -203,10 +183,25 @@ export default function NotificationDebugPage() {
                 disabled={clearing}
                 className="w-full py-3 px-4 bg-error/20 text-error rounded-lg font-medium disabled:opacity-50"
               >
-                {clearing ? "Clearing..." : "🗑️ Clear Stale DB Subscription"}
+                {clearing ? "Clearing..." : "Clear Stale DB Subscription"}
               </button>
             )}
+            {/* Refresh button */}
+            <button
+              onClick={refresh}
+              className="w-full py-3 px-4 bg-base-300 rounded-lg font-medium hover:bg-base-300/80"
+            >
+              Refresh Status
+            </button>
           </div>
+
+          {/* Troubleshoot section - shows after 15s */}
+          <NotificationTroubleshoot
+            pendingDuration={pendingDuration}
+            onRetry={() => {
+              window.location.reload();
+            }}
+          />
 
           {/* Result */}
           {testResult && (

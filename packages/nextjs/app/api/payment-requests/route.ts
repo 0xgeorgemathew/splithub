@@ -120,13 +120,32 @@ export async function POST(request: NextRequest) {
       .eq("status", "pending")
       .single();
 
-    // If a pending request already exists, return it instead of creating a duplicate
+    // If a pending request already exists, still send notification as a reminder
     if (existingRequest && !checkError) {
+      // Send reminder notification (non-blocking)
+      let notificationSent = false;
+      try {
+        const playerId = await getOneSignalPlayerId(payerLower);
+        if (playerId) {
+          await sendPaymentRequestNotification({
+            playerId,
+            amount: existingRequest.amount.toString(),
+            requesterName: requesterTwitter || "Someone",
+            memo: memo || "Payment reminder",
+            requestId: existingRequest.id,
+          });
+          notificationSent = true;
+        }
+      } catch (notifError) {
+        console.error("Failed to send reminder notification:", notifError);
+      }
+
       return NextResponse.json({
         requestId: existingRequest.id,
         settleUrl: `/settle/${existingRequest.id}`,
-        message: "A pending payment request already exists for this user",
+        message: "A pending payment request already exists. Reminder notification sent.",
         isExisting: true,
+        notificationSent,
       });
     }
 
