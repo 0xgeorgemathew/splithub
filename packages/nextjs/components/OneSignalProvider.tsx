@@ -43,7 +43,7 @@ const ONESIGNAL_APP_ID = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID;
 export function OneSignalProvider({ children }: { children: React.ReactNode }) {
   const { user, authenticated } = usePrivy();
   const initialized = useRef(false);
-  const playerIdSaved = useRef(false);
+  const lastSavedSubscriptionId = useRef<string | null>(null);
 
   // Load OneSignal SDK
   useEffect(() => {
@@ -82,16 +82,21 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
 
   // Save player ID when user is authenticated and has a subscription
   useEffect(() => {
-    if (!authenticated || !user?.wallet?.address || playerIdSaved.current) return;
+    if (!authenticated || !user?.wallet?.address) return;
 
-    const savePlayerId = async (subscriptionId: string, forceUpdate = false) => {
+    const savePlayerId = async (subscriptionId: string) => {
       if (!subscriptionId) return;
-      if (playerIdSaved.current && !forceUpdate) return;
+
+      // Skip if we already saved this exact subscription ID
+      if (lastSavedSubscriptionId.current === subscriptionId) {
+        console.log("[OneSignal] Subscription ID unchanged, skipping save");
+        return;
+      }
 
       console.log("[OneSignal] Saving subscription ID:", {
         subscriptionId,
         walletAddress: user.wallet?.address,
-        forceUpdate,
+        previousId: lastSavedSubscriptionId.current,
       });
 
       try {
@@ -106,7 +111,7 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
 
         if (response.ok) {
           console.log("[OneSignal] Subscription ID saved successfully");
-          playerIdSaved.current = true;
+          lastSavedSubscriptionId.current = subscriptionId;
         } else {
           const errorData = await response.json().catch(() => ({}));
           console.error("[OneSignal] Failed to save subscription ID:", {
@@ -119,20 +124,23 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
-    // Check for existing subscription
+    // Check for existing subscription - always check on auth change
     window.OneSignalDeferred = window.OneSignalDeferred || [];
     window.OneSignalDeferred.push(async (OneSignal: OneSignalType) => {
       const subscriptionId = OneSignal.User.PushSubscription.id;
+      console.log("[OneSignal] Current browser subscription ID:", subscriptionId);
+
       if (subscriptionId) {
         await savePlayerId(subscriptionId);
+      } else {
+        console.log("[OneSignal] No subscription ID - user needs to enable notifications");
       }
 
       // Listen for future subscription changes (e.g., user re-subscribes)
       OneSignal.User.PushSubscription.addEventListener("change", async subscription => {
         console.log("[OneSignal] Subscription changed:", subscription.id);
         if (subscription.id) {
-          // Force update since the subscription changed
-          await savePlayerId(subscription.id, true);
+          await savePlayerId(subscription.id);
         }
       });
     });

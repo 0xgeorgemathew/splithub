@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { usePrivy } from "@privy-io/react-auth";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, ChevronDown, Copy, CreditCard, LogIn, LogOut, Sparkles, Wallet } from "lucide-react";
+import { Bell, Check, ChevronDown, Copy, CreditCard, LogIn, LogOut, Sparkles, Wallet } from "lucide-react";
 import { useCurrentUser } from "~~/hooks/useCurrentUser";
 
 const dropdownItemVariants = {
@@ -306,9 +307,34 @@ export const TopNav = () => {
                             {/* Divider */}
                             <div className="h-px bg-white/5 relative z-10" />
 
-                            {/* Logout Button */}
+                            {/* Debug Notifications Link */}
                             <motion.div
                               custom={3}
+                              variants={dropdownItemVariants}
+                              initial="hidden"
+                              animate="visible"
+                              className="px-3 pt-3 relative z-10"
+                            >
+                              <Link
+                                href="/debug/notifications"
+                                onClick={() => setIsDropdownOpen(false)}
+                                className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/5 transition-colors"
+                              >
+                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-info/20 to-info/10 flex items-center justify-center">
+                                  <Bell className="w-5 h-5 text-info" />
+                                </div>
+                                <div className="flex-1">
+                                  <p className="text-[11px] font-semibold text-base-content/40 uppercase tracking-wider">
+                                    Debug
+                                  </p>
+                                  <p className="text-sm text-base-content">Notification Settings</p>
+                                </div>
+                              </Link>
+                            </motion.div>
+
+                            {/* Logout Button */}
+                            <motion.div
+                              custom={4}
                               variants={dropdownItemVariants}
                               initial="hidden"
                               animate="visible"

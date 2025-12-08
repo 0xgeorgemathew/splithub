@@ -184,8 +184,9 @@ export async function searchUsersByTwitter(query: string, limit = 20): Promise<U
 
 /**
  * Updates a user's OneSignal player ID for push notifications
+ * Pass null to clear the subscription ID
  */
-export async function updateOneSignalPlayerId(walletAddress: string, playerId: string): Promise<void> {
+export async function updateOneSignalPlayerId(walletAddress: string, playerId: string | null): Promise<void> {
   const { error } = await supabase
     .from("users")
     .update({ onesignal_player_id: playerId })
