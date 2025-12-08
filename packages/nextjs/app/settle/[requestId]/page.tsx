@@ -5,7 +5,6 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
 import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
-import { EnableNotificationsButton } from "~~/components/EnableNotificationsButton";
 import { useHaloChip } from "~~/hooks/halochip-arx/useHaloChip";
 import { type PaymentRequest } from "~~/lib/supabase";
 
@@ -315,9 +314,6 @@ export default function SettleRequestPage({ params }: { params: Promise<{ reques
                 <p className="font-medium">{request.memo}</p>
               </div>
             )}
-
-            {/* Enable Notifications Prompt */}
-            {authenticated && <EnableNotificationsButton />}
 
             {/* Error */}
             {error && (

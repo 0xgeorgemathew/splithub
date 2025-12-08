@@ -5,7 +5,6 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
 import { AlertCircle, ArrowDown, ArrowUp, Clock, Loader2 } from "lucide-react";
-import { EnableNotificationsButton } from "~~/components/EnableNotificationsButton";
 import { type PaymentRequest } from "~~/lib/supabase";
 
 export default function RequestsPage() {
@@ -141,9 +140,6 @@ export default function RequestsPage() {
             Requested
           </button>
         </div>
-
-        {/* Enable Notifications Banner */}
-        <EnableNotificationsButton />
 
         {/* Loading State */}
         {loading && (

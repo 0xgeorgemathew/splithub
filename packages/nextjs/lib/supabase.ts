@@ -21,7 +21,6 @@ export type User = {
   twitter_handle?: string | null;
   twitter_profile_url?: string | null;
   twitter_user_id?: string | null;
-  onesignal_player_id?: string | null; // OneSignal push notification player ID
   created_at: string;
 };
 

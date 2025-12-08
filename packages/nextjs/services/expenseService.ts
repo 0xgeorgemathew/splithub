@@ -1,10 +1,8 @@
-import { sendExpenseNotification } from "./notificationService";
-import { ensureUserExists, getOneSignalPlayerId } from "./userService";
+import { ensureUserExists } from "./userService";
 import { type Expense, type ExpenseParticipant, supabase } from "~~/lib/supabase";
 
 export interface CreateExpenseParams {
   creatorWallet: string;
-  creatorTwitterHandle?: string;
   description: string;
   totalAmount: number;
   tokenAddress: string;
@@ -20,7 +18,7 @@ export interface CreateExpenseResult {
  * Creates an expense and splits it equally among participants
  */
 export async function createExpense(params: CreateExpenseParams): Promise<CreateExpenseResult> {
-  const { creatorWallet, creatorTwitterHandle, description, totalAmount, tokenAddress, participantWallets } = params;
+  const { creatorWallet, description, totalAmount, tokenAddress, participantWallets } = params;
 
   // Normalize all wallet addresses to lowercase for consistency
   const normalizedCreatorWallet = creatorWallet.toLowerCase();
@@ -86,36 +84,6 @@ export async function createExpense(params: CreateExpenseParams): Promise<Create
     await supabase.from("expense").delete().eq("id", expense.id);
     throw new Error(`Failed to add participants: ${participantsError?.message}`);
   }
-
-  // 3. Send notifications to participants (non-blocking)
-  // Notify each participant except the creator
-  const notifyParticipants = async () => {
-    for (const participant of participantsData) {
-      // Skip creator - they don't need to be notified about their own expense
-      if (participant.wallet_address === normalizedCreatorWallet) continue;
-
-      try {
-        const playerId = await getOneSignalPlayerId(participant.wallet_address);
-        if (playerId) {
-          await sendExpenseNotification({
-            playerId,
-            amount: participant.share_amount.toFixed(2),
-            creatorName: creatorTwitterHandle || "Someone",
-            description,
-          });
-        }
-      } catch (notifError) {
-        // Non-critical - log but don't fail the expense creation
-        console.error("[Expense] Failed to send notification to participant:", {
-          wallet: participant.wallet_address,
-          error: notifError,
-        });
-      }
-    }
-  };
-
-  // Fire notifications without awaiting (non-blocking)
-  notifyParticipants().catch(err => console.error("[Expense] Notification batch error:", err));
 
   return {
     expense,

@@ -3,7 +3,6 @@
 import { usePrivy } from "@privy-io/react-auth";
 import { motion } from "framer-motion";
 import { Sparkles, Wallet } from "lucide-react";
-import { EnableNotificationsButton } from "~~/components/EnableNotificationsButton";
 import { CircleSection } from "~~/components/home/CircleSection";
 import { FriendBalancesList } from "~~/components/home/FriendBalancesList";
 
@@ -70,7 +69,6 @@ export default function SplitsPage() {
 
   return (
     <div className="px-4 py-4 pb-8">
-      <EnableNotificationsButton />
       <CircleSection />
       <FriendBalancesList />
     </div>

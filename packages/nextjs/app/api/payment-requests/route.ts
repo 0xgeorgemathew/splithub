@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAddress } from "viem";
 import { supabase } from "~~/lib/supabase";
-import { sendPaymentRequestNotification } from "~~/services/notificationService";
-import { getOneSignalPlayerId } from "~~/services/userService";
 
 // GET /api/payment-requests - Fetch payment requests for a user
 export async function GET(request: NextRequest) {
@@ -120,32 +118,13 @@ export async function POST(request: NextRequest) {
       .eq("status", "pending")
       .single();
 
-    // If a pending request already exists, still send notification as a reminder
+    // If a pending request already exists, return it
     if (existingRequest && !checkError) {
-      // Send reminder notification (non-blocking)
-      let notificationSent = false;
-      try {
-        const playerId = await getOneSignalPlayerId(payerLower);
-        if (playerId) {
-          await sendPaymentRequestNotification({
-            playerId,
-            amount: existingRequest.amount.toString(),
-            requesterName: requesterTwitter || "Someone",
-            memo: memo || "Payment reminder",
-            requestId: existingRequest.id,
-          });
-          notificationSent = true;
-        }
-      } catch (notifError) {
-        console.error("Failed to send reminder notification:", notifError);
-      }
-
       return NextResponse.json({
         requestId: existingRequest.id,
         settleUrl: `/settle/${existingRequest.id}`,
-        message: "A pending payment request already exists. Reminder notification sent.",
+        message: "A pending payment request already exists.",
         isExisting: true,
-        notificationSent,
       });
     }
 
@@ -172,23 +151,6 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error("Supabase error:", error);
       return NextResponse.json({ error: "Failed to create payment request" }, { status: 500 });
-    }
-
-    // Send push notification to the payer (non-blocking)
-    try {
-      const playerId = await getOneSignalPlayerId(payerLower);
-      if (playerId) {
-        await sendPaymentRequestNotification({
-          playerId,
-          amount: amount.toString(),
-          requesterName: requesterTwitter || "Someone",
-          memo: memo || undefined,
-          requestId: data.id,
-        });
-      }
-    } catch (notifError) {
-      // Non-critical - log but don't fail the request
-      console.error("Failed to send notification:", notifError);
     }
 
     return NextResponse.json({

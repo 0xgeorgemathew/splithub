@@ -159,36 +159,10 @@ yarn start          # Start frontend
 | `UnauthorizedSigner` | Chip not registered | Register chip first |
 | `insufficient allowance` | No approval | Navigate to `/approve` |
 
-## Push Notifications
-
-OneSignal Web Push SDK v16 with self-healing subscription system.
-
-**Key Files:**
-- `public/OneSignalSDKWorker.js` - Service worker with custom click handler
-- `components/OneSignalProvider.tsx` - SDK init & in-app click handling
-- `hooks/useNotificationStatus.ts` - Subscription state & atomic resubscription
-- `services/notificationService.ts` - Server-side notification dispatch
-
-**Click Handling:**
-- Service worker handles clicks when app is closed → opens `/settle/{requestId}`
-- In-app handler handles clicks when app is open → navigates via `window.location`
-- Both check `data.url`, `additionalData.url`, and fallback to constructing from `requestId`
-
-**Notification Types:**
-- `payment_request` → redirects to `/settle/{requestId}`
-- `payment_completed` / `expense_created` → redirects to `/splits`
-
-**Env Variables:**
-```bash
-NEXT_PUBLIC_ONESIGNAL_APP_ID=
-ONESIGNAL_REST_API_KEY=          # Server-side only
-```
-
 ## Key Files
 
 - `packages/nextjs/app/api/relay/payment/route.ts` - Payment relayer
 - `packages/nextjs/services/balanceService.ts` - Balance calculation
 - `packages/nextjs/hooks/useHaloChip.ts` - NFC signing
-- `packages/nextjs/hooks/useNotificationStatus.ts` - Notification subscription
 - `packages/nextjs/components/UserSyncWrapper.tsx` - Onboarding logic
 - `packages/foundry/contracts/SplitHubPayments.sol` - Payment contract
