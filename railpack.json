@@ -13,12 +13,13 @@
         "SKIP_ENV_VALIDATION": "true"
       },
       "commands": [
-        "yarn install --immutable",
-        "yarn workspace @se-2/nextjs build"
+        "yarn workspace @se-2/nextjs build",
+        "cp -r packages/nextjs/public packages/nextjs/.next/standalone/packages/nextjs/public",
+        "cp -r packages/nextjs/.next/static packages/nextjs/.next/standalone/packages/nextjs/.next/static"
       ]
     }
   },
   "deploy": {
-    "startCommand": "yarn workspace @se-2/nextjs serve"
+    "startCommand": "node packages/nextjs/.next/standalone/packages/nextjs/server.js"
   }
 }
