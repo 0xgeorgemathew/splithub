@@ -185,10 +185,15 @@ export const FriendBalancesList = () => {
       }
 
       const params: PaymentParams = {
-        recipient: friend.friend_wallet as `0x${string}`, // Friend receives payment
+        recipient: friend.friend_wallet as `0x${string}`,
         token: data.tokenAddress as `0x${string}`,
-        amount: formatAmount(Math.abs(friend.net_balance)), // Use absolute value since balance is negative
+        amount: formatAmount(Math.abs(friend.net_balance)),
         memo: `Settlement with ${friend.friend_name}`,
+        recipientInfo: {
+          name: friend.friend_name,
+          twitterHandle: friend.friend_twitter_handle ?? undefined,
+          profileUrl: friend.friend_twitter_profile_url ?? undefined,
+        },
       };
 
       setSettlementParams(params);
