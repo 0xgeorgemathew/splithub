@@ -31,16 +31,43 @@ export const initOneSignal = async () => {
 // Check if SDK is ready
 export const isOneSignalReady = () => initialized;
 
+// Track current logged-in external ID to prevent duplicate calls
+let currentExternalId: string | null = null;
+
 // Call when user connects wallet (after Privy auth)
 // This links the device to the wallet address
-export const loginOneSignal = async (walletAddress: string) => {
+export const loginOneSignal = async (walletAddress: string): Promise<boolean> => {
+  const externalId = walletAddress.toLowerCase();
+
+  // Skip if already logged in with this ID
+  if (currentExternalId === externalId) {
+    console.log("[OneSignal] Already logged in with external_id:", externalId);
+    return true;
+  }
+
   try {
-    const externalId = walletAddress.toLowerCase();
+    // Wait for SDK to be ready (with timeout)
+    if (!initialized) {
+      console.log("[OneSignal] Waiting for SDK before login...");
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("OneSignal init timeout for login")), 10000),
+      );
+      await Promise.race([initPromise || initOneSignal(), timeout]);
+    }
+
+    if (!initialized) {
+      console.error("[OneSignal] SDK not initialized, cannot login");
+      return false;
+    }
+
     console.log("[OneSignal] Logging in with external_id:", externalId);
     await OneSignal.login(externalId);
+    currentExternalId = externalId;
     console.log("[OneSignal] Login successful");
+    return true;
   } catch (error) {
     console.error("[OneSignal] Login failed:", error);
+    return false;
   }
 };
 
@@ -48,6 +75,7 @@ export const loginOneSignal = async (walletAddress: string) => {
 export const logoutOneSignal = async () => {
   try {
     await OneSignal.logout();
+    currentExternalId = null;
     console.log("[OneSignal] Logged out");
   } catch (error) {
     console.error("[OneSignal] Logout failed:", error);
