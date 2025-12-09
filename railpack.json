@@ -20,6 +20,6 @@
     }
   },
   "deploy": {
-    "startCommand": "node packages/nextjs/.next/standalone/packages/nextjs/server.js"
+    "startCommand": "HOSTNAME=0.0.0.0 node packages/nextjs/.next/standalone/packages/nextjs/server.js"
   }
 }
