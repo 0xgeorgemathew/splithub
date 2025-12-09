@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import { usePrivy } from "@privy-io/react-auth";
 import { motion } from "framer-motion";
@@ -8,16 +8,13 @@ import { ArrowDownRight, ArrowUpRight, Bell, Plus, Sparkles, TrendingUp, Wallet 
 import { ExpenseModal } from "~~/components/expense/ExpenseModal";
 import { SettleModal } from "~~/components/settle/SettleModal";
 import { type PaymentParams } from "~~/components/settle/types";
+import { useFriendBalancesRealtime } from "~~/hooks/useFriendBalancesRealtime";
 import { useUSDCBalance } from "~~/hooks/useUSDCBalance";
 import { type FriendBalance } from "~~/lib/supabase";
-import { getFriendBalances, getOverallBalance } from "~~/services/balanceService";
 
 export const FriendBalancesList = () => {
   const { user } = usePrivy();
-  const [balances, setBalances] = useState<FriendBalance[]>([]);
-  const [overallBalance, setOverallBalance] = useState<number>(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { balances, overallBalance, loading, error, refresh: refreshBalances } = useFriendBalancesRealtime();
 
   // Modal states
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
@@ -27,48 +24,12 @@ export const FriendBalancesList = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isCreatingRequest, setIsCreatingRequest] = useState(false);
   const [requestSuccess, setRequestSuccess] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const walletAddress = user?.wallet?.address;
 
   // Fetch actual USDC wallet balance
   const { formattedBalance: walletBalance, isLoading: isWalletBalanceLoading } = useUSDCBalance();
-
-  useEffect(() => {
-    const fetchBalances = async () => {
-      if (!walletAddress) return;
-
-      setLoading(true);
-      setError(null);
-
-      try {
-        const [friendBalances, overall] = await Promise.all([
-          getFriendBalances(walletAddress),
-          getOverallBalance(walletAddress),
-        ]);
-
-        setBalances(friendBalances);
-        setOverallBalance(overall);
-      } catch (err) {
-        console.error("Error fetching balances:", err);
-        setError(err instanceof Error ? err.message : "Failed to load balances");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchBalances();
-
-    // Listen for refresh events (e.g., when a payment request is completed)
-    const handleRefresh = () => {
-      console.log("Balance refresh event received, reloading balances...");
-      fetchBalances();
-    };
-    window.addEventListener("refreshBalances", handleRefresh);
-
-    return () => {
-      window.removeEventListener("refreshBalances", handleRefresh);
-    };
-  }, [walletAddress]);
 
   const formatAmount = (amount: number): string => {
     return Math.abs(amount).toFixed(2);
@@ -111,7 +72,7 @@ export const FriendBalancesList = () => {
 
     setSelectedFriend(friend);
     setIsCreatingRequest(true);
-    setError(null);
+    setActionError(null);
 
     try {
       // Fetch token address from their expenses
@@ -162,7 +123,7 @@ export const FriendBalancesList = () => {
       }, 2000);
     } catch (err) {
       console.error("Error creating request:", err);
-      setError(err instanceof Error ? err.message : "Failed to create payment request");
+      setActionError(err instanceof Error ? err.message : "Failed to create payment request");
       setIsCreatingRequest(false);
       setRequestSuccess(false);
     }
@@ -200,7 +161,7 @@ export const FriendBalancesList = () => {
       setIsSettleModalOpen(true);
     } catch (err) {
       console.error("Error preparing settlement:", err);
-      setError(err instanceof Error ? err.message : "Failed to prepare settlement");
+      setActionError(err instanceof Error ? err.message : "Failed to prepare settlement");
     }
   };
 
@@ -228,37 +189,15 @@ export const FriendBalancesList = () => {
         throw new Error("Failed to record settlement");
       }
 
-      console.log("Settlement recorded successfully, refreshing balances...");
+      console.log("Settlement recorded successfully");
 
-      // Trigger global balance refresh event
-      window.dispatchEvent(new Event("refreshBalances"));
-
-      // Small delay to ensure database consistency
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Refresh balances to show updated amounts
-      const [friendBalances, overall] = await Promise.all([
-        getFriendBalances(walletAddress),
-        getOverallBalance(walletAddress),
-      ]);
-
-      setBalances(friendBalances);
-      setOverallBalance(overall);
-
-      console.log("Balances refreshed:", { friendBalances, overall });
+      // Realtime will auto-update, but trigger manual refresh for immediate feedback
+      await new Promise(resolve => setTimeout(resolve, 500));
+      refreshBalances();
     } catch (err) {
       console.error("Error handling settlement success:", err);
-      // Still refresh balances even if there's an error
-      try {
-        const [friendBalances, overall] = await Promise.all([
-          getFriendBalances(walletAddress),
-          getOverallBalance(walletAddress),
-        ]);
-        setBalances(friendBalances);
-        setOverallBalance(overall);
-      } catch (refreshErr) {
-        console.error("Failed to refresh balances:", refreshErr);
-      }
+      // Still try to refresh balances
+      refreshBalances();
     }
   };
 
@@ -600,6 +539,23 @@ export const FriendBalancesList = () => {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Error Toast */}
+      {actionError && (
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="bg-error text-error-content px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 max-w-md">
+            <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <span className="font-medium text-sm">{actionError}</span>
           </div>
         </div>
       )}

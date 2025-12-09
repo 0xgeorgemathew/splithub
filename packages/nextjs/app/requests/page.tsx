@@ -1,60 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
 import { AlertCircle, ArrowDown, ArrowUp, Clock, Loader2 } from "lucide-react";
-import { type PaymentRequest } from "~~/lib/supabase";
+import { usePaymentRequestsRealtime } from "~~/hooks/usePaymentRequestsRealtime";
+import { type PaymentRequest as PaymentRequestType } from "~~/lib/supabase";
 
 export default function RequestsPage() {
   const router = useRouter();
-  const { user, authenticated } = usePrivy();
+  const { authenticated } = usePrivy();
   const [activeTab, setActiveTab] = useState<"incoming" | "outgoing">("incoming");
-  const [requests, setRequests] = useState<PaymentRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const walletAddress = user?.wallet?.address;
+  const { requests, loading, error } = usePaymentRequestsRealtime(activeTab);
 
-  useEffect(() => {
-    const fetchRequests = async () => {
-      if (!walletAddress) return;
-
-      setLoading(true);
-      setError(null);
-
-      try {
-        const response = await fetch(`/api/payment-requests?wallet=${walletAddress}&type=${activeTab}`);
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || "Failed to fetch requests");
-        }
-
-        setRequests(data.data || []);
-      } catch (err) {
-        console.error("Error fetching requests:", err);
-        setError(err instanceof Error ? err.message : "Failed to load requests");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchRequests();
-
-    // Listen for refresh events (e.g., when a payment is completed)
-    const handleRefresh = () => {
-      fetchRequests();
-    };
-    window.addEventListener("refreshPaymentRequests", handleRefresh);
-
-    return () => {
-      window.removeEventListener("refreshPaymentRequests", handleRefresh);
-    };
-  }, [walletAddress, activeTab]);
-
-  const handleRequestClick = (request: PaymentRequest) => {
+  const handleRequestClick = (request: PaymentRequestType) => {
     if (activeTab === "incoming" && request.status === "pending") {
       // Navigate to settlement page for incoming requests
       router.push(`/settle/${request.id}`);
