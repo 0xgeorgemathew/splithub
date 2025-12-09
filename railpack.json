@@ -1,24 +1,10 @@
 {
   "$schema": "https://schema.railpack.com",
   "steps": {
-    "install": {
+    "build": {
       "cache": [
         "node_modules",
-        ".yarn/cache"
-      ],
-      "commands": [
-        "corepack enable",
-        "corepack prepare yarn@3.2.3 --activate",
-        "yarn install --immutable"
-      ]
-    },
-    "build": {
-      "inputs": [
-        {
-          "step": "install"
-        }
-      ],
-      "cache": [
+        ".yarn/cache",
         "packages/nextjs/.next/cache"
       ],
       "env": {
@@ -27,6 +13,7 @@
         "SKIP_ENV_VALIDATION": "true"
       },
       "commands": [
+        "yarn install --immutable",
         "yarn workspace @se-2/nextjs build"
       ]
     }
