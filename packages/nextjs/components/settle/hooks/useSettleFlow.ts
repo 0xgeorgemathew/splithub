@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { ERC20_ABI, FlowState, PaymentParams, SPLIT_HUB_PAYMENTS_ABI, SPLIT_HUB_REGISTRY_ABI } from "../types";
+import { ERC20_ABI, FlowState, PaymentParams, SPLIT_HUB_PAYMENTS_ABI } from "../types";
 import { usePrivy } from "@privy-io/react-auth";
 import { createPublicClient, http, parseUnits } from "viem";
 import { useReadContract } from "wagmi";
@@ -44,7 +44,6 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
     | Record<string, { address: string }>
     | undefined;
   const paymentsAddress = chainContracts?.SplitHubPayments?.address as `0x${string}` | undefined;
-  const registryAddress = chainContracts?.SplitHubRegistry?.address as `0x${string}` | undefined;
 
   // Create public client for contract reads
   const publicClient = useMemo(
@@ -74,12 +73,12 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
     setError("");
     setTxHash(null);
 
-    if (!isConnected) {
+    if (!isConnected || !user?.wallet?.address) {
       setError("Please connect your wallet first");
       return;
     }
 
-    if (!paymentsAddress || !registryAddress) {
+    if (!paymentsAddress) {
       setError("Contracts not deployed on this network");
       return;
     }
@@ -89,9 +88,19 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
       return;
     }
 
+    const payerAddress = user.wallet.address as `0x${string}`;
+
     try {
-      setFlowState("tapping");
-      setStatusMessage("Tap your chip (1/2)");
+      // Fetch nonce for the connected wallet
+      setFlowState("signing");
+      setStatusMessage("Preparing...");
+
+      const nonce = (await publicClient.readContract({
+        address: paymentsAddress,
+        abi: SPLIT_HUB_PAYMENTS_ABI,
+        functionName: "nonces",
+        args: [payerAddress],
+      })) as bigint;
 
       const amountInWei = parseUnits(params.amount, decimals);
       const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600); // 1 hour from now
@@ -115,52 +124,9 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
         ],
       };
 
-      // FIRST TAP: Sign with placeholder payer to get chip address
-      const placeholderAuth = {
-        payer: "0x0000000000000000000000000000000000000000" as `0x${string}`,
-        recipient: params.recipient,
-        token: params.token,
-        amount: amountInWei,
-        nonce: BigInt(0),
-        deadline,
-      };
-
-      const firstTapResult = await signTypedData({
-        domain,
-        types,
-        primaryType: "PaymentAuth",
-        message: placeholderAuth,
-      });
-
-      const chipAddress = firstTapResult.address as `0x${string}`;
-
-      // Look up chip owner from registry
-      setStatusMessage("Looking up chip owner...");
-      const owner = (await publicClient.readContract({
-        address: registryAddress,
-        abi: SPLIT_HUB_REGISTRY_ABI,
-        functionName: "ownerOf",
-        args: [chipAddress],
-      })) as `0x${string}`;
-
-      if (!owner || owner === "0x0000000000000000000000000000000000000000") {
-        throw new Error("Chip not registered. Please register your chip first.");
-      }
-
-      // Get the correct nonce for this payer
-      const nonce = (await publicClient.readContract({
-        address: paymentsAddress,
-        abi: SPLIT_HUB_PAYMENTS_ABI,
-        functionName: "nonces",
-        args: [owner],
-      })) as bigint;
-
-      // SECOND TAP: Sign with correct payer
-      setFlowState("tapping");
-      setStatusMessage("Tap your chip again (2/2)");
-
-      const realPaymentAuth = {
-        payer: owner,
+      // Build PaymentAuth with connected wallet as payer
+      const paymentAuth = {
+        payer: payerAddress,
         recipient: params.recipient,
         token: params.token,
         amount: amountInWei,
@@ -168,17 +134,20 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
         deadline,
       };
 
-      // Signing state
-      setFlowState("signing");
-      setStatusMessage("Signing...");
+      // Single tap to sign
+      setFlowState("tapping");
+      setStatusMessage("Tap your chip");
 
-      // Sign with NFC chip
       const chipResult = await signTypedData({
         domain,
         types,
         primaryType: "PaymentAuth",
-        message: realPaymentAuth,
+        message: paymentAuth,
       });
+
+      // Signing state
+      setFlowState("signing");
+      setStatusMessage("Signing...");
 
       // Submitting state
       setFlowState("submitting");
@@ -192,12 +161,12 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
         },
         body: JSON.stringify({
           auth: {
-            payer: realPaymentAuth.payer,
-            recipient: realPaymentAuth.recipient,
-            token: realPaymentAuth.token,
-            amount: realPaymentAuth.amount.toString(),
-            nonce: realPaymentAuth.nonce.toString(),
-            deadline: realPaymentAuth.deadline.toString(),
+            payer: paymentAuth.payer,
+            recipient: paymentAuth.recipient,
+            token: paymentAuth.token,
+            amount: paymentAuth.amount.toString(),
+            nonce: paymentAuth.nonce.toString(),
+            deadline: paymentAuth.deadline.toString(),
           },
           signature: chipResult.signature,
           contractAddress: paymentsAddress,
@@ -238,8 +207,8 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
     }
   }, [
     isConnected,
+    user?.wallet?.address,
     paymentsAddress,
-    registryAddress,
     decimals,
     params,
     targetNetwork.id,
