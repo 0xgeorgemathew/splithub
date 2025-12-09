@@ -22,6 +22,7 @@ export interface SettleFlowProps {
   params: PaymentParams;
   onSuccess?: (txHash: string) => void;
   onError?: (error: Error) => void;
+  onClose?: () => void;
 }
 
 // Props for the modal wrapper
