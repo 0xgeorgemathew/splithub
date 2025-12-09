@@ -166,7 +166,7 @@ export const CircleModal = ({ isOpen, onClose, onSuccess, editingCircle }: Circl
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center px-4 pt-16">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -183,7 +183,7 @@ export const CircleModal = ({ isOpen, onClose, onSuccess, editingCircle }: Circl
             animate={{ y: "0%" }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="relative w-full max-w-sm bg-base-200 rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[85vh] flex flex-col mb-20 sm:mb-0"
+            className="relative w-full max-w-sm bg-base-200 rounded-2xl shadow-xl max-h-[85vh] flex flex-col"
           >
             {/* Staggered Content Container */}
             <motion.div
