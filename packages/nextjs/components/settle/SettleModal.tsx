@@ -53,7 +53,7 @@ export function SettleModal({ isOpen, onClose, params, onSuccess, onError }: Set
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/60 backdrop-blur-md"
         onClick={onClose}
       />
 
@@ -63,7 +63,7 @@ export function SettleModal({ isOpen, onClose, params, onSuccess, onError }: Set
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 20, scale: 0.95 }}
         transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-        className="relative w-full max-w-xs bg-base-200 rounded-3xl shadow-2xl"
+        className="relative w-full max-w-xs bg-gradient-to-b from-base-100 to-base-200 rounded-3xl shadow-2xl border border-white/10"
       >
         {/* Close Button */}
         <button
@@ -74,54 +74,59 @@ export function SettleModal({ isOpen, onClose, params, onSuccess, onError }: Set
           <X className="w-4 h-4 text-base-content/70" />
         </button>
 
-        {/* Compact Header with Avatar */}
-        <div className="pt-4 pb-1 px-4 text-center">
-          {/* Avatar */}
+        {/* Header with Avatar */}
+        <div className="pt-5 pb-2 px-4 text-center">
+          {/* Avatar with Glow */}
           {recipientInfo?.profileUrl && (
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ delay: 0.1 }}
-              className="mb-1.5"
+              className="mb-3 relative inline-block"
             >
+              {/* Glow effect */}
+              <div className="absolute inset-0 rounded-full bg-warning/30 blur-xl scale-150" />
               <Image
                 src={recipientInfo.profileUrl}
                 alt={displayName}
-                width={48}
-                height={48}
-                className="w-12 h-12 rounded-full mx-auto ring-2 ring-warning/20 ring-offset-2 ring-offset-base-200"
+                width={56}
+                height={56}
+                className="relative w-14 h-14 rounded-full ring-2 ring-warning/30 ring-offset-2 ring-offset-base-100"
               />
             </motion.div>
           )}
 
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.15 }}
-            className="text-[10px] text-base-content/60 mb-0.5"
-          >
-            You&apos;re paying
-          </motion.p>
-
-          <motion.h2
-            initial={{ opacity: 0, y: 5 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="text-base font-bold text-base-content"
-          >
-            {displayName}
-          </motion.h2>
-
-          {/* Twitter Handle */}
-          {recipientInfo?.twitterHandle && (
+          {/* Text Group - Tightly Spaced */}
+          <div className="space-y-0">
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.25 }}
-              className="text-[10px] text-warning/70"
+              transition={{ delay: 0.15 }}
+              className="text-[9px] uppercase tracking-widest text-base-content/50"
             >
-              @{recipientInfo.twitterHandle}
+              You&apos;re paying
             </motion.p>
+
+            <motion.h2
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="text-lg font-bold text-base-content"
+            >
+              {displayName}
+            </motion.h2>
+          </div>
+
+          {/* Twitter Handle as Verified Pill */}
+          {recipientInfo?.twitterHandle && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.25 }}
+              className="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 bg-warning/10 rounded-full"
+            >
+              <span className="text-[10px] font-medium text-warning">@{recipientInfo.twitterHandle}</span>
+            </motion.div>
           )}
         </div>
 

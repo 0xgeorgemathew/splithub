@@ -196,7 +196,7 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess }: ExpenseModalProps) 
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/60 backdrop-blur-md"
             onClick={handleClose}
           />
 
@@ -206,7 +206,7 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess }: ExpenseModalProps) 
             animate={{ y: "0%" }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="relative w-full max-w-sm bg-base-200 rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[85vh] flex flex-col mb-20 sm:mb-0"
+            className="relative w-full max-w-sm bg-gradient-to-b from-base-100 to-base-200 rounded-t-2xl sm:rounded-2xl shadow-2xl border border-white/10 max-h-[85vh] flex flex-col mb-20 sm:mb-0"
           >
             <AnimatePresence mode="wait">
               {isSuccess ? (

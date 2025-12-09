@@ -180,22 +180,26 @@ export function SettleFlow({ params, onSuccess, onError }: SettleFlowProps) {
   // Idle State - Compact Payment UI
   return (
     <div className="flex flex-col items-center pt-1">
-      {/* Compact Info Pills */}
-      <div className="flex flex-wrap justify-center gap-1.5 mb-3">
-        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-base-100 border border-primary/50 rounded-full">
-          <Coins className="w-3 h-3 text-primary" />
-          <span className="text-[11px] font-medium text-base-content">{symbol || "USDC"}</span>
+      {/* Info Badges - Filled Style */}
+      <div className="flex flex-wrap justify-center gap-2 mb-3">
+        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-base-300/50 rounded-full">
+          <Coins className="w-3.5 h-3.5 text-base-content/70" />
+          <span className="text-xs font-medium text-base-content">{symbol || "USDC"}</span>
         </div>
-        <div className="flex items-center gap-1 px-2.5 py-1 bg-base-100 border border-base-300 rounded-full">
-          <Fuel className="w-3 h-3 text-success" />
-          <span className="text-[11px] font-medium text-success">Gasless</span>
+        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-base-300/50 rounded-full">
+          {/* Active status dot */}
+          <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+          <Fuel className="w-3.5 h-3.5 text-base-content/70" />
+          <span className="text-xs font-medium text-base-content">Gasless</span>
         </div>
       </div>
 
-      {/* Amount Display */}
-      <div className="text-center mb-3">
-        <p className="text-3xl font-bold text-base-content">{params.amount}</p>
-        <p className="text-base-content/50 text-[10px]">{symbol || "USDC"}</p>
+      {/* Amount Display - Hero Number */}
+      <div className="flex items-baseline justify-center gap-1.5 mb-3">
+        <span className="text-4xl font-black font-mono tabular-nums text-base-content tracking-tight">
+          {params.amount}
+        </span>
+        <span className="text-lg font-medium text-base-content/40">{symbol || "USDC"}</span>
       </div>
 
       {/* Error Message */}
@@ -219,7 +223,7 @@ export function SettleFlow({ params, onSuccess, onError }: SettleFlowProps) {
             custom={i}
             variants={pulseRingVariants}
             animate="animate"
-            className="absolute inset-[-8px] rounded-full border border-warning/40 pointer-events-none"
+            className="absolute inset-[-6px] rounded-full border border-warning/40 pointer-events-none"
           />
         ))}
 
@@ -230,17 +234,17 @@ export function SettleFlow({ params, onSuccess, onError }: SettleFlowProps) {
           initial="idle"
           whileHover="hover"
           whileTap="tap"
-          className="relative w-[100px] h-[100px] rounded-full flex flex-col items-center justify-center text-primary-content disabled:opacity-50 disabled:cursor-not-allowed"
+          className="relative w-20 h-20 rounded-full flex flex-col items-center justify-center text-primary-content disabled:opacity-50 disabled:cursor-not-allowed"
           style={{
             background: "linear-gradient(145deg, #f2a900, #d99400)",
             border: "2px solid rgba(255, 255, 255, 0.1)",
           }}
         >
           {/* Inner ring decoration */}
-          <div className="absolute inset-[5px] rounded-full border border-white/15 pointer-events-none" />
+          <div className="absolute inset-1 rounded-full border border-white/15 pointer-events-none" />
 
-          <Nfc className="w-7 h-7 mb-0.5" />
-          <span className="text-[10px] font-bold">Tap to Pay</span>
+          <Nfc className="w-6 h-6 mb-0.5" />
+          <span className="text-[9px] font-bold">Tap to Pay</span>
         </motion.button>
       </div>
     </div>
