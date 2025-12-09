@@ -4,7 +4,7 @@
 -- When users tap & pay, expenses auto-split with their Circle members
 
 -- ============================================================================
--- CIRCLES TABLE
+-- CIRCLES TABLE Railway Deployment Update
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS circles (

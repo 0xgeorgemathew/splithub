@@ -7,8 +7,7 @@
         ".yarn/cache"
       ],
       "commands": [
-        "corepack enable",
-        "yarn install --immutable"
+        "node .yarn/releases/yarn-3.2.3.cjs install --immutable"
       ]
     },
     "build": {
@@ -26,11 +25,11 @@
         "SKIP_ENV_VALIDATION": "true"
       },
       "commands": [
-        "yarn workspace @se-2/nextjs build"
+        "node .yarn/releases/yarn-3.2.3.cjs workspace @se-2/nextjs build"
       ]
     }
   },
   "deploy": {
-    "startCommand": "yarn workspace @se-2/nextjs serve"
+    "startCommand": "node .yarn/releases/yarn-3.2.3.cjs workspace @se-2/nextjs serve"
   }
 }
