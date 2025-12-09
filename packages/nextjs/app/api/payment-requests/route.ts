@@ -153,6 +153,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Failed to create payment request" }, { status: 500 });
     }
 
+    // Send push notification to payer (fire and forget)
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://splithub.app";
+    const notificationPayload = {
+      recipientWallet: payerLower,
+      title: `Payment Request from @${requesterTwitter || "someone"}`,
+      message: `${amount} USDC${memo ? ` - ${memo}` : ""}`,
+      url: `${baseUrl}/settle/${data.id}`,
+    };
+    console.log("[PaymentRequest] Sending notification:", notificationPayload);
+
+    fetch(`${baseUrl}/api/notifications/send`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(notificationPayload),
+    })
+      .then(async res => {
+        const responseData = await res.json();
+        if (res.ok) {
+          console.log("[PaymentRequest] Notification sent:", responseData);
+        } else {
+          console.error("[PaymentRequest] Notification failed:", responseData);
+        }
+      })
+      .catch(err => {
+        console.error("[PaymentRequest] Notification error:", err);
+      });
+
     return NextResponse.json({
       requestId: data.id,
       settleUrl: `/settle/${data.id}`,
