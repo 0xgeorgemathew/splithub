@@ -1,58 +1,42 @@
 "use client";
 
+import { PaymentStatus, PaymentStatusIndicator } from "./PaymentStatusIndicator";
 import { useSettleFlow } from "./hooks/useSettleFlow";
-import { FLOW_STEPS, SettleFlowProps } from "./types";
-import { motion } from "framer-motion";
-import { AlertCircle, Check, Coins, Fuel, Loader2, Nfc, Wallet } from "lucide-react";
+import { SettleFlowProps } from "./types";
+import { AnimatePresence, motion } from "framer-motion";
+import { AlertCircle, Coins, Fuel, Wallet, X } from "lucide-react";
 import { useTargetNetwork } from "~~/hooks/scaffold-eth";
 
-// Framer motion variants for smooth pulse rings - 3 rings with staggered timing for continuous overlap
-const pulseRingVariants = {
-  animate: (i: number) => ({
-    scale: [1, 1.25, 1.5],
-    opacity: [0, 0.35, 0],
-    transition: {
-      duration: 2.1,
-      repeat: Infinity,
-      delay: i * 0.7,
-      ease: "easeOut",
-    },
-  }),
-};
-
-// NFC button breathing animation
-const nfcButtonVariants = {
-  idle: {
-    scale: 1,
-    boxShadow: "0 8px 32px rgba(242, 169, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.3)",
-  },
-  hover: {
-    scale: 1.03,
-    boxShadow: "0 12px 40px rgba(242, 169, 0, 0.5), 0 6px 20px rgba(0, 0, 0, 0.35)",
-    transition: { duration: 0.2 },
-  },
-  tap: {
-    scale: 0.97,
-    boxShadow: "0 4px 16px rgba(242, 169, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.25)",
-    transition: { duration: 0.1 },
-  },
-};
-
-export function SettleFlow({ params, onSuccess, onError }: SettleFlowProps) {
+export function SettleFlow({ params, onSuccess, onError, onClose }: SettleFlowProps) {
   const { targetNetwork } = useTargetNetwork();
-  const {
-    flowState,
-    statusMessage,
-    error,
-    txHash,
-    symbol,
-    isConnected,
-    paymentsAddress,
-    handleSettle,
-    getCurrentStepIndex,
-  } = useSettleFlow({ params, onSuccess, onError });
+  const { flowState, error, txHash, symbol, isConnected, paymentsAddress, handleSettle } = useSettleFlow({
+    params,
+    onSuccess,
+    onError,
+  });
 
-  const isProcessing = ["tapping", "signing", "submitting", "confirming"].includes(flowState);
+  // Map flowState to PaymentStatus for the indicator
+  const getPaymentStatus = (): PaymentStatus => {
+    if (flowState === "success") return "success";
+    if (["tapping", "signing", "submitting", "confirming"].includes(flowState)) return "processing";
+    return "idle";
+  };
+
+  // Get processing text based on current flow state
+  const getProcessingText = (): string => {
+    switch (flowState) {
+      case "tapping":
+        return "Tap your chip...";
+      case "signing":
+        return "Authorizing...";
+      case "submitting":
+        return "Broadcasting...";
+      case "confirming":
+        return "Confirming...";
+      default:
+        return "Processing...";
+    }
+  };
 
   if (!isConnected) {
     return (
@@ -65,179 +49,133 @@ export function SettleFlow({ params, onSuccess, onError }: SettleFlowProps) {
     );
   }
 
-  if (flowState === "success") {
-    return (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="flex flex-col items-center justify-center py-4"
-      >
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ type: "spring", stiffness: 300, damping: 15 }}
-          className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-success/20 mb-4"
-        >
-          <Check className="w-8 h-8 text-success" strokeWidth={3} />
-        </motion.div>
-        <h3 className="text-xl font-bold mb-2 text-base-content">Payment Complete</h3>
+  const paymentStatus = getPaymentStatus();
 
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-base-100 border border-success/30 rounded-full mb-3">
-          <Coins className="w-3.5 h-3.5 text-success" />
-          <span className="text-xs font-semibold text-base-content">
-            {params.amount} {symbol || "tokens"} sent
-          </span>
-        </div>
-
-        {txHash && (
-          <a
-            href={`${targetNetwork.blockExplorers?.default.url}/tx/${txHash}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-primary hover:underline font-mono"
-          >
-            View transaction →
-          </a>
-        )}
-      </motion.div>
-    );
-  }
-
-  if (isProcessing) {
-    return (
-      <div className="flex flex-col items-center justify-center py-4">
-        {/* Compact Progress Steps */}
-        <div className="flex items-center gap-1.5 mb-5">
-          {FLOW_STEPS.map((step, idx) => {
-            const currentIdx = getCurrentStepIndex();
-            const isComplete = idx < currentIdx;
-            const isCurrent = idx === currentIdx;
-            return (
-              <div key={step.key} className="flex items-center">
-                <motion.div
-                  initial={false}
-                  animate={{
-                    backgroundColor: isComplete ? "#36d399" : isCurrent ? "#f2a900" : "#3d4451",
-                    scale: isCurrent ? 1.1 : 1,
-                  }}
-                  className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold ${
-                    isComplete ? "text-success-content" : isCurrent ? "text-black" : "text-base-content/50"
-                  }`}
-                >
-                  {isComplete ? <Check className="w-3 h-3" /> : idx + 1}
-                </motion.div>
-                {idx < FLOW_STEPS.length - 1 && (
-                  <div className={`w-4 h-0.5 ${isComplete ? "bg-success" : "bg-base-300"}`} />
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Compact Processing Indicator */}
-        <div className="relative mb-4">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-            className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center"
-          >
-            <Loader2 className="w-8 h-8 text-primary" />
-          </motion.div>
-          {flowState === "tapping" && (
-            <>
-              {[0, 1, 2].map(i => (
-                <motion.div
-                  key={i}
-                  custom={i}
-                  variants={pulseRingVariants}
-                  animate="animate"
-                  className="absolute inset-[-8px] rounded-full border-2 border-warning/60"
-                />
-              ))}
-            </>
-          )}
-        </div>
-
-        <h3 className="text-base font-semibold mb-0.5 text-base-content">{statusMessage}</h3>
-        <p className="text-base-content/50 text-xs">
-          {flowState === "tapping" && "Hold device near chip"}
-          {flowState === "signing" && "Authorizing payment"}
-          {flowState === "submitting" && "Broadcasting to network"}
-          {flowState === "confirming" && "Waiting for confirmation"}
-        </p>
-      </div>
-    );
-  }
-
-  // Idle State - Compact Payment UI
   return (
-    <div className="flex flex-col items-center pt-1">
-      {/* Info Badges - Filled Style */}
-      <div className="flex flex-wrap justify-center gap-2 mb-3">
-        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-base-300/50 rounded-full">
-          <Coins className="w-3.5 h-3.5 text-base-content/70" />
-          <span className="text-xs font-medium text-base-content">{symbol || "USDC"}</span>
-        </div>
-        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-base-300/50 rounded-full">
-          {/* Active status dot */}
-          <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
-          <Fuel className="w-3.5 h-3.5 text-base-content/70" />
-          <span className="text-xs font-medium text-base-content">Gasless</span>
-        </div>
+    <div className="flex flex-col items-center pt-1 min-h-[280px]">
+      {/* Top Section - Fixed height for badges/spacer */}
+      <div className="h-8 flex items-center justify-center">
+        <AnimatePresence>
+          {paymentStatus === "idle" && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex flex-wrap justify-center gap-2"
+            >
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-base-300/50 rounded-full">
+                <Coins className="w-3.5 h-3.5 text-base-content/70" />
+                <span className="text-xs font-medium text-base-content">{symbol || "USDC"}</span>
+              </div>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-base-300/50 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+                <Fuel className="w-3.5 h-3.5 text-base-content/70" />
+                <span className="text-xs font-medium text-base-content">Gasless</span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* Amount Display - Hero Number */}
-      <div className="flex items-baseline justify-center gap-1.5 mb-3">
-        <span className="text-4xl font-black font-mono tabular-nums text-base-content tracking-tight">
-          {params.amount}
-        </span>
-        <span className="text-lg font-medium text-base-content/40">{symbol || "USDC"}</span>
+      {/* Amount/Success Section - Fixed height */}
+      <div className="h-16 flex items-center justify-center my-2">
+        <AnimatePresence mode="wait">
+          {paymentStatus !== "success" ? (
+            <motion.div
+              key="amount"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex items-baseline justify-center gap-1.5"
+            >
+              <span className="text-4xl font-black font-mono tabular-nums text-base-content tracking-tight">
+                {params.amount}
+              </span>
+              <span className="text-lg font-medium text-base-content/40">{symbol || "USDC"}</span>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="success-info"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="text-center"
+            >
+              <h3 className="text-xl font-bold mb-1 text-base-content">Payment Complete</h3>
+              <div className="flex items-center justify-center gap-2 px-3 py-1 bg-base-100 border border-success/30 rounded-full">
+                <Coins className="w-3.5 h-3.5 text-success" />
+                <span className="text-xs font-semibold text-base-content">
+                  {params.amount} {symbol || "tokens"} sent
+                </span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* Error Message */}
-      {error && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-2 px-3 py-2 bg-error/10 border border-error/30 rounded-full mb-4 max-w-[280px]"
-        >
-          <AlertCircle className="w-3.5 h-3.5 text-error flex-shrink-0" />
-          <span className="text-error text-[11px]">{error}</span>
-        </motion.div>
-      )}
+      {/* Error Message - Fixed height slot */}
+      <div className="h-8 flex items-center justify-center">
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex items-center gap-2 px-3 py-1.5 bg-error/10 border border-error/30 rounded-full max-w-[280px]"
+            >
+              <AlertCircle className="w-3.5 h-3.5 text-error flex-shrink-0" />
+              <span className="text-error text-[11px]">{error}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
-      {/* NFC Button with Framer Motion */}
-      <div className="relative">
-        {/* Animated pulse rings - 3 for smooth continuous overlap */}
-        {[0, 1, 2].map(i => (
-          <motion.div
-            key={i}
-            custom={i}
-            variants={pulseRingVariants}
-            animate="animate"
-            className="absolute inset-[-6px] rounded-full border border-warning/40 pointer-events-none"
-          />
-        ))}
-
-        <motion.button
-          onClick={handleSettle}
+      {/* Morphing Payment Status Indicator */}
+      <div className="my-2">
+        <PaymentStatusIndicator
+          status={paymentStatus}
+          processingText={getProcessingText()}
+          onTap={handleSettle}
           disabled={!paymentsAddress}
-          variants={nfcButtonVariants}
-          initial="idle"
-          whileHover="hover"
-          whileTap="tap"
-          className="relative w-20 h-20 rounded-full flex flex-col items-center justify-center text-primary-content disabled:opacity-50 disabled:cursor-not-allowed"
-          style={{
-            background: "linear-gradient(145deg, #f2a900, #d99400)",
-            border: "2px solid rgba(255, 255, 255, 0.1)",
-          }}
-        >
-          {/* Inner ring decoration */}
-          <div className="absolute inset-1 rounded-full border border-white/15 pointer-events-none" />
+          size="sm"
+        />
+      </div>
 
-          <Nfc className="w-6 h-6 mb-0.5" />
-          <span className="text-[9px] font-bold">Tap to Pay</span>
-        </motion.button>
+      {/* Bottom Section - Fixed height for tx link & close button */}
+      <div className="h-16 flex items-center justify-center">
+        <AnimatePresence>
+          {paymentStatus === "success" && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="flex flex-col items-center gap-2"
+            >
+              {txHash && (
+                <a
+                  href={`${targetNetwork.blockExplorers?.default.url}/tx/${txHash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-primary hover:underline font-mono"
+                >
+                  View transaction →
+                </a>
+              )}
+
+              {onClose && (
+                <motion.button
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.3 }}
+                  onClick={onClose}
+                  className="flex items-center gap-2 px-4 py-1.5 bg-base-300/50 hover:bg-base-300 rounded-full text-sm font-medium text-base-content transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                  Close
+                </motion.button>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

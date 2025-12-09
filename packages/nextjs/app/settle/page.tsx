@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { usePrivy } from "@privy-io/react-auth";
-import { AlertCircle, Check, Coins, Fuel, Loader2, Nfc, User, Wallet } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { AlertCircle, Coins, Fuel, RefreshCw, User, Wallet } from "lucide-react";
 import { parseUnits } from "viem";
 import { useReadContract } from "wagmi";
+import { PaymentStatus, PaymentStatusIndicator } from "~~/components/settle/PaymentStatusIndicator";
 import { TOKENS } from "~~/config/tokens";
 import deployedContracts from "~~/contracts/deployedContracts";
 import { useHaloChip } from "~~/hooks/halochip-arx/useHaloChip";
@@ -44,14 +46,6 @@ const SPLIT_HUB_PAYMENTS_ABI = [
 
 type FlowState = "idle" | "tapping" | "signing" | "submitting" | "confirming" | "success" | "error";
 
-// Progress steps for visual indicator
-const FLOW_STEPS = [
-  { key: "tapping", label: "Tap" },
-  { key: "signing", label: "Sign" },
-  { key: "submitting", label: "Send" },
-  { key: "confirming", label: "Confirm" },
-] as const;
-
 export default function SettlePage() {
   const { authenticated, user } = usePrivy();
   const { targetNetwork } = useTargetNetwork();
@@ -63,7 +57,6 @@ export default function SettlePage() {
   const isConnected = authenticated && !!address;
 
   const [flowState, setFlowState] = useState<FlowState>("idle");
-  const [statusMessage, setStatusMessage] = useState("");
   const [error, setError] = useState("");
   const [txHash, setTxHash] = useState<string | null>(null);
 
@@ -124,7 +117,6 @@ export default function SettlePage() {
 
     try {
       setFlowState("tapping");
-      setStatusMessage("Tap your chip");
 
       // Build PaymentAuth struct
       const amountInWei = parseUnits(DEFAULT_AMOUNT, decimals);
@@ -160,7 +152,6 @@ export default function SettlePage() {
 
       // Signing state
       setFlowState("signing");
-      setStatusMessage("Signing...");
 
       // Sign with NFC chip
       const chipResult = await signTypedData({
@@ -172,7 +163,6 @@ export default function SettlePage() {
 
       // Submitting state
       setFlowState("submitting");
-      setStatusMessage("Sending...");
 
       // Submit to relay API
       const response = await fetch("/api/relay/payment", {
@@ -202,7 +192,6 @@ export default function SettlePage() {
 
       // Confirming state
       setFlowState("confirming");
-      setStatusMessage("Confirming...");
       setTxHash(result.txHash);
 
       // Brief delay to show confirming state
@@ -215,27 +204,44 @@ export default function SettlePage() {
       window.dispatchEvent(new Event("refreshBalances"));
 
       setFlowState("success");
-      setStatusMessage("Complete!");
     } catch (err: any) {
       console.error("Settlement error:", err);
       setFlowState("error");
       setError(err.message || "Settlement failed. Please try again.");
-      setStatusMessage("");
     }
   };
 
-  // Helper to get current step index
-  const getCurrentStepIndex = () => {
-    const stepMap: Record<string, number> = {
-      tapping: 0,
-      signing: 1,
-      submitting: 2,
-      confirming: 3,
-    };
-    return stepMap[flowState] ?? -1;
+  // Map flowState to PaymentStatus for the indicator
+  const getPaymentStatus = (): PaymentStatus => {
+    if (flowState === "success") return "success";
+    if (["tapping", "signing", "submitting", "confirming"].includes(flowState)) return "processing";
+    return "idle";
   };
 
-  const isProcessing = ["tapping", "signing", "submitting", "confirming"].includes(flowState);
+  // Get processing text based on current flow state
+  const getProcessingText = (): string => {
+    switch (flowState) {
+      case "tapping":
+        return "Tap your chip...";
+      case "signing":
+        return "Authorizing...";
+      case "submitting":
+        return "Broadcasting...";
+      case "confirming":
+        return "Confirming...";
+      default:
+        return "Processing...";
+    }
+  };
+
+  // Reset to idle state for another payment
+  const handleReset = () => {
+    setFlowState("idle");
+    setError("");
+    setTxHash(null);
+  };
+
+  const paymentStatus = getPaymentStatus();
 
   return (
     <div className="min-h-[calc(100vh-64px)] bg-base-200 p-4 pb-24">
@@ -248,142 +254,129 @@ export default function SettlePage() {
             </div>
             <p className="text-base-content/50 text-center">Connect your wallet to settle</p>
           </div>
-        ) : flowState === "success" ? (
-          /* Success State */
-          <div className="flex flex-col items-center justify-center mt-12 fade-in-up">
-            <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-success/20 mb-6 success-glow">
-              <Check className="w-12 h-12 text-success" strokeWidth={3} />
-            </div>
-            <h3 className="text-2xl font-bold mb-3 text-base-content">Payment Complete</h3>
-
-            {/* Amount sent */}
-            <div className="flex items-center gap-2 px-4 py-2 bg-base-100 border border-success/30 rounded-full mb-4">
-              <Coins className="w-4 h-4 text-success" />
-              <span className="text-sm font-semibold text-base-content">
-                {DEFAULT_AMOUNT} {symbol || "tokens"} sent
-              </span>
-            </div>
-
-            {/* Transaction hash */}
-            {txHash && (
-              <a
-                href={`${targetNetwork.blockExplorers?.default.url}/tx/${txHash}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-primary hover:underline font-mono"
-              >
-                View transaction →
-              </a>
-            )}
-          </div>
-        ) : isProcessing ? (
-          /* Processing States */
-          <div className="flex flex-col items-center justify-center mt-12">
-            {/* Progress Steps */}
-            <div className="flex items-center gap-2 mb-8">
-              {FLOW_STEPS.map((step, idx) => {
-                const currentIdx = getCurrentStepIndex();
-                const isComplete = idx < currentIdx;
-                const isCurrent = idx === currentIdx;
-                return (
-                  <div key={step.key} className="flex items-center">
-                    <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold transition-all ${
-                        isComplete
-                          ? "bg-success text-success-content"
-                          : isCurrent
-                            ? "bg-primary text-primary-content"
-                            : "bg-base-300 text-base-content/50"
-                      }`}
-                    >
-                      {isComplete ? <Check className="w-4 h-4" /> : idx + 1}
-                    </div>
-                    {idx < FLOW_STEPS.length - 1 && (
-                      <div className={`w-6 h-0.5 ${isComplete ? "bg-success" : "bg-base-300"}`} />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Animated Processing Indicator */}
-            <div className="relative mb-6">
-              <div className="w-28 h-28 rounded-full bg-primary/20 flex items-center justify-center">
-                <Loader2 className="w-12 h-12 text-primary animate-spin" />
-              </div>
-              {flowState === "tapping" && (
-                <>
-                  <div className="nfc-pulse-ring" />
-                  <div className="nfc-pulse-ring" style={{ animationDelay: "0.5s" }} />
-                </>
-              )}
-            </div>
-
-            <h3 className="text-lg font-semibold mb-1 text-base-content">{statusMessage}</h3>
-            <p className="text-base-content/50 text-sm">
-              {flowState === "tapping" && "Hold device near chip"}
-              {flowState === "signing" && "Authorizing payment"}
-              {flowState === "submitting" && "Broadcasting to network"}
-              {flowState === "confirming" && "Waiting for confirmation"}
-            </p>
-          </div>
         ) : (
-          /* Main Payment UI - Idle State */
           <div className="flex flex-col items-center pt-6">
-            {/* Info Pills */}
-            <div className="flex flex-wrap justify-center gap-2 mb-6">
-              {/* Recipient Pill */}
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-base-100 border border-base-300 rounded-full">
-                <User className="w-3.5 h-3.5 text-primary" />
-                <span className="text-xs font-medium text-base-content">
-                  {RECIPIENT_ADDRESS.slice(0, 6)}...{RECIPIENT_ADDRESS.slice(-4)}
-                </span>
-              </div>
+            {/* Info Pills - Only show in idle state */}
+            <AnimatePresence>
+              {paymentStatus === "idle" && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10, height: 0, marginBottom: 0 }}
+                  className="flex flex-wrap justify-center gap-2 mb-6"
+                >
+                  {/* Recipient Pill */}
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-base-100 border border-base-300 rounded-full">
+                    <User className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-xs font-medium text-base-content">
+                      {RECIPIENT_ADDRESS.slice(0, 6)}...{RECIPIENT_ADDRESS.slice(-4)}
+                    </span>
+                  </div>
 
-              {/* Token Pill */}
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-base-100 border border-primary/50 rounded-full">
-                <Coins className="w-3.5 h-3.5 text-primary" />
-                <span className="text-xs font-medium text-base-content">{symbol || "Token"}</span>
-                <span className="w-1.5 h-1.5 bg-success rounded-full" />
-              </div>
+                  {/* Token Pill */}
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-base-100 border border-primary/50 rounded-full">
+                    <Coins className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-xs font-medium text-base-content">{symbol || "Token"}</span>
+                    <span className="w-1.5 h-1.5 bg-success rounded-full" />
+                  </div>
 
-              {/* Gasless Pill */}
-              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-base-100 border border-base-300 rounded-full">
-                <Fuel className="w-3.5 h-3.5 text-success" />
-                <span className="text-xs font-medium text-success">Gasless</span>
-              </div>
-            </div>
+                  {/* Gasless Pill */}
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-base-100 border border-base-300 rounded-full">
+                    <Fuel className="w-3.5 h-3.5 text-success" />
+                    <span className="text-xs font-medium text-success">Gasless</span>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-            {/* Amount Display */}
-            <div className="text-center mb-8">
-              <p className="text-6xl font-bold text-base-content mb-1">{DEFAULT_AMOUNT}</p>
-              <p className="text-base-content/50 text-sm">{symbol || "tokens"}</p>
-            </div>
+            {/* Amount Display - Morphs into success message */}
+            <AnimatePresence mode="wait">
+              {paymentStatus !== "success" ? (
+                <motion.div
+                  key="amount"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="text-center mb-8"
+                >
+                  <p className="text-6xl font-bold text-base-content mb-1">{DEFAULT_AMOUNT}</p>
+                  <p className="text-base-content/50 text-sm">{symbol || "tokens"}</p>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="success-info"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-center mb-6"
+                >
+                  <h3 className="text-2xl font-bold mb-3 text-base-content">Payment Complete</h3>
+                  <div className="flex items-center justify-center gap-2 px-4 py-2 bg-base-100 border border-success/30 rounded-full">
+                    <Coins className="w-4 h-4 text-success" />
+                    <span className="text-sm font-semibold text-base-content">
+                      {DEFAULT_AMOUNT} {symbol || "tokens"} sent
+                    </span>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Error Message */}
-            {error && (
-              <div className="flex items-center gap-2 px-4 py-2.5 bg-error/10 border border-error/30 rounded-full mb-6 max-w-xs">
-                <AlertCircle className="w-4 h-4 text-error flex-shrink-0" />
-                <span className="text-error text-xs">{error}</span>
-              </div>
-            )}
+            <AnimatePresence>
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-error/10 border border-error/30 rounded-full mb-6 max-w-xs"
+                >
+                  <AlertCircle className="w-4 h-4 text-error flex-shrink-0" />
+                  <span className="text-error text-xs">{error}</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-            {/* 3D NFC Chip Button */}
-            <div className="relative">
-              {/* Pulse rings */}
-              <div className="nfc-pulse-ring" />
-              <div className="nfc-pulse-ring" />
-              <div className="nfc-pulse-ring" />
+            {/* Morphing Payment Status Indicator */}
+            <PaymentStatusIndicator
+              status={paymentStatus}
+              processingText={getProcessingText()}
+              onTap={handleSettle}
+              disabled={!paymentsAddress}
+              size="lg"
+            />
 
-              <button
-                onClick={handleSettle}
-                disabled={!paymentsAddress}
-                className="nfc-chip-btn flex flex-col items-center justify-center text-primary-content disabled:opacity-50"
-              >
-                <Nfc className="w-12 h-12 mb-1" />
-                <span className="text-sm font-bold">Tap to Pay</span>
-              </button>
-            </div>
+            {/* Transaction Link & New Payment Button - Only on success */}
+            <AnimatePresence>
+              {paymentStatus === "success" && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="flex flex-col items-center gap-3 mt-6"
+                >
+                  {txHash && (
+                    <a
+                      href={`${targetNetwork.blockExplorers?.default.url}/tx/${txHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-primary hover:underline font-mono"
+                    >
+                      View transaction →
+                    </a>
+                  )}
+
+                  <motion.button
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.3 }}
+                    onClick={handleReset}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-base-300/50 hover:bg-base-300 rounded-full text-sm font-medium text-base-content transition-colors"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    New Payment
+                  </motion.button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         )}
       </div>

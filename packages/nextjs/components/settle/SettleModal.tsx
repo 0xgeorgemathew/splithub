@@ -29,17 +29,14 @@ export function SettleModal({ isOpen, onClose, params, onSuccess, onError }: Set
     };
   }, [isOpen, onClose]);
 
-  // Handle success with auto-dismiss
+  // Handle success - no auto-dismiss, user clicks close button
   const handleSuccess = useCallback(
     async (txHash: string) => {
       if (onSuccess) {
         await onSuccess(txHash);
       }
-      setTimeout(() => {
-        onClose();
-      }, 2000);
     },
-    [onSuccess, onClose],
+    [onSuccess],
   );
 
   if (!isOpen) return null;
@@ -132,7 +129,7 @@ export function SettleModal({ isOpen, onClose, params, onSuccess, onError }: Set
 
         {/* Content */}
         <div className="px-4 pb-4">
-          <SettleFlow params={params} onSuccess={handleSuccess} onError={onError} />
+          <SettleFlow params={params} onSuccess={handleSuccess} onError={onError} onClose={onClose} />
         </div>
       </motion.div>
     </div>

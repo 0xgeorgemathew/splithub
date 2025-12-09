@@ -71,15 +71,16 @@ export default function SettleRequestPage({ params }: { params: Promise<{ reques
         // Trigger refresh events
         window.dispatchEvent(new Event("refreshPaymentRequests"));
         window.dispatchEvent(new Event("refreshBalances"));
-
-        // Navigate immediately
-        router.push("/splits");
       } catch (err) {
         console.error("Error completing payment request:", err);
       }
     },
-    [request, requestId, router],
+    [request, requestId],
   );
+
+  const handleClose = useCallback(() => {
+    router.push("/splits");
+  }, [router]);
 
   // Loading state
   if (loading) {
@@ -253,7 +254,7 @@ export default function SettleRequestPage({ params }: { params: Promise<{ reques
 
         {/* Payment Flow */}
         <div className="px-4 pb-4">
-          <SettleFlow params={paymentParams} onSuccess={handleSuccess} />
+          <SettleFlow params={paymentParams} onSuccess={handleSuccess} onClose={handleClose} />
         </div>
       </motion.div>
     </div>
