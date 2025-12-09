@@ -290,7 +290,7 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess }: ExpenseModalProps) 
                         boxShadow: amountFocused ? "0 0 0 2px rgba(var(--primary-rgb), 0.5)" : "0 0 0 0px transparent",
                       }}
                       transition={{ duration: 0.2 }}
-                      className="flex flex-col items-center py-2.5 bg-base-100/50 rounded-lg gap-1"
+                      className="flex justify-center py-2.5 bg-base-100/50 rounded-lg"
                     >
                       <div className="relative flex items-baseline">
                         <span className="text-xl font-bold text-primary mr-0.5">$</span>
@@ -304,14 +304,18 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess }: ExpenseModalProps) 
                           className="bg-transparent text-center text-3xl font-bold outline-none w-32 placeholder:text-base-content/20 caret-primary"
                         />
                       </div>
-                      <input
-                        type="text"
-                        value={description}
-                        onChange={e => setDescription(e.target.value)}
-                        placeholder="What's this for?"
-                        className="bg-transparent text-center text-sm text-base-content/70 placeholder:text-base-content/30 outline-none w-full max-w-[200px]"
-                      />
                     </motion.div>
+                  </motion.div>
+
+                  {/* Description Input */}
+                  <motion.div variants={staggerItem} className="px-4 py-2 border-b border-base-300/50">
+                    <input
+                      type="text"
+                      value={description}
+                      onChange={e => setDescription(e.target.value)}
+                      placeholder="What's this for?"
+                      className="w-full h-9 px-3 bg-base-100 text-sm text-base-content placeholder:text-base-content/40 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                    />
                   </motion.div>
 
                   {/* Split With Section - Search */}
