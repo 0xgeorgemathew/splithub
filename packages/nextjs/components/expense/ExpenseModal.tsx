@@ -57,8 +57,18 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess }: ExpenseModalProps) 
   const [users, setUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
 
-  const { description, amount, setAmount, selectedFriends, addFriend, removeFriend, isValid, participantCount, reset } =
-    useExpenseForm();
+  const {
+    description,
+    setDescription,
+    amount,
+    setAmount,
+    selectedFriends,
+    addFriend,
+    removeFriend,
+    isValid,
+    participantCount,
+    reset,
+  } = useExpenseForm();
 
   // Fetch users from Supabase
   useEffect(() => {
@@ -280,7 +290,7 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess }: ExpenseModalProps) 
                         boxShadow: amountFocused ? "0 0 0 2px rgba(var(--primary-rgb), 0.5)" : "0 0 0 0px transparent",
                       }}
                       transition={{ duration: 0.2 }}
-                      className="flex justify-center py-2.5 bg-base-100/50 rounded-lg"
+                      className="flex flex-col items-center py-2.5 bg-base-100/50 rounded-lg gap-1"
                     >
                       <div className="relative flex items-baseline">
                         <span className="text-xl font-bold text-primary mr-0.5">$</span>
@@ -294,6 +304,13 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess }: ExpenseModalProps) 
                           className="bg-transparent text-center text-3xl font-bold outline-none w-32 placeholder:text-base-content/20 caret-primary"
                         />
                       </div>
+                      <input
+                        type="text"
+                        value={description}
+                        onChange={e => setDescription(e.target.value)}
+                        placeholder="What's this for?"
+                        className="bg-transparent text-center text-sm text-base-content/70 placeholder:text-base-content/30 outline-none w-full max-w-[200px]"
+                      />
                     </motion.div>
                   </motion.div>
 

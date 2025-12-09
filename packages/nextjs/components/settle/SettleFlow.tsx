@@ -49,7 +49,6 @@ export function SettleFlow({ params, onSuccess, onError }: SettleFlowProps) {
     isConnected,
     paymentsAddress,
     handleSettle,
-    reset,
     getCurrentStepIndex,
   } = useSettleFlow({ params, onSuccess, onError });
 
@@ -95,18 +94,11 @@ export function SettleFlow({ params, onSuccess, onError }: SettleFlowProps) {
             href={`${targetNetwork.blockExplorers?.default.url}/tx/${txHash}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-xs text-primary hover:underline font-mono mb-4"
+            className="text-xs text-primary hover:underline font-mono"
           >
             View transaction →
           </a>
         )}
-
-        <button
-          onClick={reset}
-          className="px-5 py-2 bg-primary hover:bg-primary/90 text-primary-content text-sm font-medium rounded-full transition-colors"
-        >
-          Pay Again
-        </button>
       </motion.div>
     );
   }

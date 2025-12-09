@@ -224,13 +224,6 @@ export default function SettlePage() {
     }
   };
 
-  const handleReset = () => {
-    setFlowState("idle");
-    setError("");
-    setStatusMessage("");
-    setTxHash(null);
-  };
-
   // Helper to get current step index
   const getCurrentStepIndex = () => {
     const stepMap: Record<string, number> = {
@@ -277,18 +270,11 @@ export default function SettlePage() {
                 href={`${targetNetwork.blockExplorers?.default.url}/tx/${txHash}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-primary hover:underline font-mono mb-6"
+                className="text-xs text-primary hover:underline font-mono"
               >
                 View transaction →
               </a>
             )}
-
-            <button
-              onClick={handleReset}
-              className="px-6 py-2.5 bg-primary hover:bg-primary/90 text-primary-content font-medium rounded-full transition-all duration-200 shadow-md"
-            >
-              Pay Again
-            </button>
           </div>
         ) : isProcessing ? (
           /* Processing States */

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { usePrivy } from "@privy-io/react-auth";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, Search, X } from "lucide-react";
+import { Check, Search, Users, X } from "lucide-react";
 import { type CircleWithMembers, type User, supabase } from "~~/lib/supabase";
 import { createCircle, updateCircle } from "~~/services/circleService";
 
@@ -235,18 +235,18 @@ export const CircleModal = ({ isOpen, onClose, onSuccess, editingCircle }: Circl
               </motion.div>
 
               {/* Search */}
-              <motion.div variants={staggerItem} className="px-4 py-3 border-b border-base-300/50">
-                <label className="text-xs text-base-content/50 uppercase tracking-wider mb-1.5 block">
-                  Select Members
+              <motion.div variants={staggerItem} className="px-4 py-2 border-b border-base-300/50">
+                <label className="text-[10px] text-base-content/50 uppercase tracking-wider mb-1 block flex items-center gap-1">
+                  <Users className="w-3 h-3" /> Select Members
                 </label>
                 <motion.div
                   animate={{
                     boxShadow: searchInputFocused ? "0 0 0 2px rgba(var(--primary-rgb), 0.5)" : "0 0 0 0px transparent",
                   }}
                   transition={{ duration: 0.2 }}
-                  className="relative rounded-xl overflow-hidden"
+                  className="relative rounded-lg overflow-hidden"
                 >
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-base-content/40" />
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-base-content/40" />
                   <input
                     type="text"
                     value={searchQuery}
@@ -254,7 +254,7 @@ export const CircleModal = ({ isOpen, onClose, onSuccess, editingCircle }: Circl
                     onFocus={() => setSearchInputFocused(true)}
                     onBlur={() => setSearchInputFocused(false)}
                     placeholder="Search by @handle or name..."
-                    className="w-full h-11 pl-9 pr-3 bg-base-100 text-sm text-base-content placeholder:text-base-content/40 focus:outline-none transition-all"
+                    className="w-full h-9 pl-8 pr-3 bg-base-100 text-sm text-base-content placeholder:text-base-content/40 focus:outline-none transition-all"
                   />
                 </motion.div>
               </motion.div>
@@ -266,7 +266,7 @@ export const CircleModal = ({ isOpen, onClose, onSuccess, editingCircle }: Circl
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
-                    className="px-4 py-2 border-b border-base-300/50 flex flex-wrap gap-2 overflow-hidden"
+                    className="px-4 py-1.5 border-b border-base-300/50 flex flex-wrap gap-1.5 overflow-hidden"
                   >
                     <AnimatePresence mode="popLayout">
                       {selectedMembers.map(member => (
@@ -277,31 +277,31 @@ export const CircleModal = ({ isOpen, onClose, onSuccess, editingCircle }: Circl
                           animate={{ opacity: 1, scale: 1 }}
                           exit={{ opacity: 0, scale: 0.8 }}
                           transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                          className="flex items-center gap-1.5 px-2.5 py-1 bg-primary/15 border border-primary/30 rounded-full"
+                          className="flex items-center gap-1 px-2 py-0.5 bg-primary/15 border border-primary/30 rounded-full"
                         >
                           {member.twitter_profile_url ? (
                             <Image
                               src={member.twitter_profile_url}
                               alt={member.name}
-                              width={18}
-                              height={18}
-                              className="w-4.5 h-4.5 rounded-full"
+                              width={16}
+                              height={16}
+                              className="w-4 h-4 rounded-full"
                             />
                           ) : (
-                            <div className="w-4.5 h-4.5 rounded-full bg-primary/30 flex items-center justify-center">
-                              <span className="text-[8px] font-bold text-primary">
+                            <div className="w-4 h-4 rounded-full bg-primary/30 flex items-center justify-center">
+                              <span className="text-[7px] font-bold text-primary">
                                 {member.name.charAt(0).toUpperCase()}
                               </span>
                             </div>
                           )}
-                          <span className="text-xs font-medium text-base-content">{member.name}</span>
+                          <span className="text-[11px] font-medium text-base-content">{member.name}</span>
                           <motion.button
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
                             onClick={() => handleToggleMember(member)}
-                            className="w-4 h-4 rounded-full bg-base-content/10 hover:bg-base-content/20 flex items-center justify-center"
+                            className="w-3.5 h-3.5 rounded-full bg-base-content/10 hover:bg-base-content/20 flex items-center justify-center"
                           >
-                            <X className="w-2.5 h-2.5 text-base-content/60" />
+                            <X className="w-2 h-2 text-base-content/60" />
                           </motion.button>
                         </motion.div>
                       ))}
@@ -311,19 +311,22 @@ export const CircleModal = ({ isOpen, onClose, onSuccess, editingCircle }: Circl
               </AnimatePresence>
 
               {/* User list */}
-              <motion.div variants={staggerItem} className="flex-1 overflow-y-auto px-4 py-2 min-h-[200px]">
+              <motion.div
+                variants={staggerItem}
+                className="flex-1 overflow-y-auto px-4 py-1.5 min-h-[120px] max-h-[160px]"
+              >
                 {loading ? (
-                  <div className="flex items-center justify-center py-12">
+                  <div className="flex items-center justify-center py-6">
                     <motion.div
                       animate={{ rotate: 360 }}
                       transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                      className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full"
+                      className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full"
                     />
                   </div>
                 ) : (
                   <AnimatePresence mode="popLayout">
                     {filteredUsers.length > 0 ? (
-                      <motion.div layout className="space-y-1">
+                      <motion.div layout className="space-y-0.5">
                         {filteredUsers.map((user, index) => {
                           const isSelected = isMemberSelected(user.wallet_address);
                           return (
@@ -337,7 +340,7 @@ export const CircleModal = ({ isOpen, onClose, onSuccess, editingCircle }: Circl
                               custom={index}
                               whileTap={{ scale: 1.01 }}
                               onClick={() => handleToggleMember(user)}
-                              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-colors ${
+                              className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg transition-colors ${
                                 isSelected
                                   ? "bg-primary/15 border border-primary/40"
                                   : "bg-base-100/50 hover:bg-base-100 active:bg-base-300/50"
@@ -348,13 +351,13 @@ export const CircleModal = ({ isOpen, onClose, onSuccess, editingCircle }: Circl
                                 <Image
                                   src={user.twitter_profile_url}
                                   alt={user.twitter_handle || user.name}
-                                  width={40}
-                                  height={40}
-                                  className="w-10 h-10 rounded-full flex-shrink-0"
+                                  width={32}
+                                  height={32}
+                                  className="w-8 h-8 rounded-full flex-shrink-0"
                                 />
                               ) : (
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center flex-shrink-0">
-                                  <span className="text-sm font-bold text-primary">
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center flex-shrink-0">
+                                  <span className="text-xs font-bold text-primary">
                                     {(user.twitter_handle || user.name).charAt(0).toUpperCase()}
                                   </span>
                                 </div>
@@ -362,8 +365,8 @@ export const CircleModal = ({ isOpen, onClose, onSuccess, editingCircle }: Circl
 
                               {/* User info */}
                               <div className="flex-1 text-left min-w-0">
-                                <div className="font-medium text-sm text-base-content truncate">{user.name}</div>
-                                <div className="text-xs text-base-content/60 truncate">
+                                <div className="font-medium text-[13px] text-base-content truncate">{user.name}</div>
+                                <div className="text-[11px] text-base-content/60 truncate">
                                   {user.twitter_handle ? `@${user.twitter_handle}` : user.wallet_address.slice(0, 10)}
                                 </div>
                               </div>
@@ -372,7 +375,7 @@ export const CircleModal = ({ isOpen, onClose, onSuccess, editingCircle }: Circl
                               <motion.div
                                 animate={isSelected ? { scale: [1, 1.2, 1] } : {}}
                                 transition={{ duration: 0.2 }}
-                                className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 transition-colors ${
+                                className={`w-4.5 h-4.5 rounded-full flex items-center justify-center flex-shrink-0 transition-colors ${
                                   isSelected ? "bg-primary" : "bg-base-200 border-2 border-base-content/20"
                                 }`}
                               >
@@ -384,7 +387,7 @@ export const CircleModal = ({ isOpen, onClose, onSuccess, editingCircle }: Circl
                                       exit={{ scale: 0 }}
                                       transition={{ type: "spring", stiffness: 500, damping: 25 }}
                                     >
-                                      <Check className="w-3 h-3 text-primary-content" />
+                                      <Check className="w-2.5 h-2.5 text-primary-content" />
                                     </motion.div>
                                   )}
                                 </AnimatePresence>
@@ -398,12 +401,12 @@ export const CircleModal = ({ isOpen, onClose, onSuccess, editingCircle }: Circl
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="flex flex-col items-center justify-center py-12"
+                        className="flex flex-col items-center justify-center py-6"
                       >
-                        <div className="w-12 h-12 rounded-full bg-base-100 flex items-center justify-center mb-2">
-                          <Search className="w-6 h-6 text-base-content/30" />
+                        <div className="w-10 h-10 rounded-full bg-base-100 flex items-center justify-center mb-1.5">
+                          <Search className="w-5 h-5 text-base-content/30" />
                         </div>
-                        <p className="text-sm text-base-content/50">
+                        <p className="text-xs text-base-content/50">
                           {searchQuery ? "No users found" : "No users available"}
                         </p>
                       </motion.div>
