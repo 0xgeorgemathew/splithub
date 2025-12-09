@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { usePrivy } from "@privy-io/react-auth";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { ArrowDownRight, ArrowUpRight, Bell, Plus, Sparkles, TrendingUp, Wallet } from "lucide-react";
 import { ExpenseModal } from "~~/components/expense/ExpenseModal";
 import { SettleModal } from "~~/components/settle/SettleModal";
@@ -373,125 +373,124 @@ export const FriendBalancesList = () => {
       </div>
 
       {/* Friend List Tiles or Empty State */}
-      {balances.length === 0 ? (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="text-center py-16 px-4"
-        >
+      <AnimatePresence mode="wait">
+        {balances.length === 0 ? (
           <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.1 }}
-            className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center mx-auto mb-5"
+            key="empty-state"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.3 }}
+            className="text-center py-16 px-4"
           >
-            <TrendingUp className="w-10 h-10 text-primary/40" />
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.1 }}
+              className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center mx-auto mb-5"
+            >
+              <TrendingUp className="w-10 h-10 text-primary/40" />
+            </motion.div>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="text-base-content/70 font-semibold text-lg"
+            >
+              No balances yet
+            </motion.p>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3 }}
+              className="text-sm text-base-content/40 mt-2 max-w-xs mx-auto"
+            >
+              Add an expense to start tracking who owes what
+            </motion.p>
           </motion.div>
-          <motion.p
+        ) : (
+          <motion.div
+            key="balance-list"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="text-base-content/70 font-semibold text-lg"
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-0"
           >
-            No balances yet
-          </motion.p>
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="text-sm text-base-content/40 mt-2 max-w-xs mx-auto"
-          >
-            Add an expense to start tracking who owes what
-          </motion.p>
-        </motion.div>
-      ) : (
-        <motion.div
-          className="space-y-0"
-          variants={{
-            hidden: { opacity: 0 },
-            show: {
-              opacity: 1,
-              transition: { staggerChildren: 0.1 },
-            },
-          }}
-          initial="hidden"
-          animate="show"
-        >
-          {balances.map((balance, index) => {
-            const isSettleable = canSettle(balance.net_balance);
-            const isRequestable = canRequestPayment(balance.net_balance);
-            const isClickable = isSettleable || isRequestable;
-            const isPositive = balance.net_balance > 0;
-            const isLast = index === balances.length - 1;
+            {balances.map((balance, index) => {
+              const isSettleable = canSettle(balance.net_balance);
+              const isRequestable = canRequestPayment(balance.net_balance);
+              const isClickable = isSettleable || isRequestable;
+              const isPositive = balance.net_balance > 0;
+              const isLast = index === balances.length - 1;
 
-            return (
-              <motion.div
-                key={balance.friend_wallet}
-                variants={{
-                  hidden: { opacity: 0, y: 20 },
-                  show: { opacity: 1, y: 0 },
-                }}
-                whileTap={isClickable ? { scale: 0.98 } : {}}
-                className={`group flex items-center justify-between px-4 py-5 transition-colors ${
-                  isClickable
-                    ? "cursor-pointer hover:bg-white/[0.02] active:bg-white/[0.04]"
-                    : "cursor-default opacity-60"
-                } ${!isLast ? "border-b border-white/5" : ""}`}
-                onClick={() => isClickable && handleFriendClick(balance)}
-              >
-                <div className="flex items-center gap-4">
-                  {/* Avatar */}
-                  {balance.friend_twitter_profile_url ? (
-                    <Image
-                      src={balance.friend_twitter_profile_url}
-                      alt={balance.friend_twitter_handle || balance.friend_name}
-                      width={48}
-                      height={48}
-                      className="w-12 h-12 rounded-full flex-shrink-0"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 rounded-full bg-[#2a2a2a] border border-white/10 flex items-center justify-center flex-shrink-0">
-                      <span className="text-lg font-bold text-white/80">
-                        {balance.friend_name.charAt(0).toUpperCase()}
+              return (
+                <motion.div
+                  key={balance.friend_wallet}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: index * 0.05 }}
+                  whileTap={isClickable ? { scale: 0.98 } : {}}
+                  className={`group flex items-center justify-between px-4 py-5 transition-colors ${
+                    isClickable
+                      ? "cursor-pointer hover:bg-white/[0.02] active:bg-white/[0.04]"
+                      : "cursor-default opacity-60"
+                  } ${!isLast ? "border-b border-white/5" : ""}`}
+                  onClick={() => isClickable && handleFriendClick(balance)}
+                >
+                  <div className="flex items-center gap-4">
+                    {/* Avatar */}
+                    {balance.friend_twitter_profile_url ? (
+                      <Image
+                        src={balance.friend_twitter_profile_url}
+                        alt={balance.friend_twitter_handle || balance.friend_name}
+                        width={48}
+                        height={48}
+                        className="w-12 h-12 rounded-full flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-full bg-[#2a2a2a] border border-white/10 flex items-center justify-center flex-shrink-0">
+                        <span className="text-lg font-bold text-white/80">
+                          {balance.friend_name.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Name & Status */}
+                    <div className="flex flex-col min-w-0">
+                      <span className="font-semibold text-white truncate">{balance.friend_name}</span>
+                      <span className={`text-xs ${isPositive ? "text-[#00E0B8]/70" : "text-rose-500/70"}`}>
+                        {getBalanceText(balance.net_balance)}
                       </span>
                     </div>
-                  )}
-
-                  {/* Name & Status */}
-                  <div className="flex flex-col min-w-0">
-                    <span className="font-semibold text-white truncate">{balance.friend_name}</span>
-                    <span className={`text-xs ${isPositive ? "text-[#00E0B8]/70" : "text-rose-500/70"}`}>
-                      {getBalanceText(balance.net_balance)}
-                    </span>
                   </div>
-                </div>
 
-                {/* Amount & Action */}
-                <div className="flex items-center gap-4">
-                  <span
-                    className={`font-mono text-lg font-bold tracking-wide ${isPositive ? "text-[#00E0B8]" : "text-rose-500"}`}
-                  >
-                    ${formatAmount(balance.net_balance)}
-                  </span>
-
-                  {/* Notify button - shows message that notifications are not available */}
-                  {isRequestable && (
-                    <motion.button
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                      onClick={(e: React.MouseEvent<HTMLButtonElement>) => handleNotifyFriend(balance, e)}
-                      className="btn btn-circle btn-sm btn-ghost text-warning hover:bg-warning/20"
+                  {/* Amount & Action */}
+                  <div className="flex items-center gap-4">
+                    <span
+                      className={`font-mono text-lg font-bold tracking-wide ${isPositive ? "text-[#00E0B8]" : "text-rose-500"}`}
                     >
-                      <Bell className="w-5 h-5" />
-                    </motion.button>
-                  )}
-                </div>
-              </motion.div>
-            );
-          })}
-        </motion.div>
-      )}
+                      ${formatAmount(balance.net_balance)}
+                    </span>
+
+                    {/* Notify button - shows message that notifications are not available */}
+                    {isRequestable && (
+                      <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={(e: React.MouseEvent<HTMLButtonElement>) => handleNotifyFriend(balance, e)}
+                        className="btn btn-circle btn-sm btn-ghost text-warning hover:bg-warning/20"
+                      >
+                        <Bell className="w-5 h-5" />
+                      </motion.button>
+                    )}
+                  </div>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Expense Modal */}
       <ExpenseModal
@@ -499,7 +498,7 @@ export const FriendBalancesList = () => {
         onClose={() => setIsExpenseModalOpen(false)}
         onSuccess={() => {
           // Refresh balances after adding expense
-          window.dispatchEvent(new Event("refreshBalances"));
+          refreshBalances();
         }}
       />
 

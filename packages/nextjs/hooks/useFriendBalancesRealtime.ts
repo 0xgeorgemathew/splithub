@@ -59,7 +59,6 @@ export const useFriendBalancesRealtime = () => {
     fetchBalances();
 
     // Subscribe to expense_participants changes
-    // This covers both when user creates expenses and when they're added to expenses
     const expenseParticipantsChannel = supabase
       .channel(`expense_participants_${wallet}`)
       .on(
@@ -69,11 +68,7 @@ export const useFriendBalancesRealtime = () => {
           schema: "public",
           table: "expense_participants",
         },
-        () => {
-          if (isMountedRef.current) {
-            fetchBalances();
-          }
-        },
+        fetchBalances,
       )
       .subscribe();
 
@@ -87,11 +82,7 @@ export const useFriendBalancesRealtime = () => {
           schema: "public",
           table: "settlements",
         },
-        () => {
-          if (isMountedRef.current) {
-            fetchBalances();
-          }
-        },
+        fetchBalances,
       )
       .subscribe();
 
@@ -105,11 +96,7 @@ export const useFriendBalancesRealtime = () => {
           schema: "public",
           table: "expense",
         },
-        () => {
-          if (isMountedRef.current) {
-            fetchBalances();
-          }
-        },
+        fetchBalances,
       )
       .subscribe();
 
