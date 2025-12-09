@@ -3,7 +3,10 @@
   "build": {
     "builder": "RAILPACK",
     "watchPatterns": [
-      "packages/nextjs/**"
+      "packages/nextjs/**",
+      "railpack.json",
+      "package.json",
+      ".yarnrc.yml"
     ]
   },
   "deploy": {
