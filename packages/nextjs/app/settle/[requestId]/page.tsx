@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { AlertCircle, CheckCircle2, Clock, Loader2, Sparkles, X } from "lucide-react";
+import { AlertCircle, CheckCircle2, Clock, Sparkles, X } from "lucide-react";
 import { SettleFlow } from "~~/components/settle/SettleFlow";
 import { PaymentParams } from "~~/components/settle/types";
 import { type PaymentRequest } from "~~/lib/supabase";
@@ -15,7 +15,6 @@ export default function SettleRequestPage({ params }: { params: Promise<{ reques
   const [request, setRequest] = useState<PaymentRequest | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     params.then(p => setRequestId(p.requestId));
@@ -73,8 +72,8 @@ export default function SettleRequestPage({ params }: { params: Promise<{ reques
         window.dispatchEvent(new Event("refreshPaymentRequests"));
         window.dispatchEvent(new Event("refreshBalances"));
 
-        setSuccess(true);
-        setTimeout(() => router.push("/splits"), 2500);
+        // Navigate immediately
+        router.push("/splits");
       } catch (err) {
         console.error("Error completing payment request:", err);
       }
@@ -119,45 +118,6 @@ export default function SettleRequestPage({ params }: { params: Promise<{ reques
           </motion.div>
           <h1 className="text-xl font-bold text-base-content mb-2">Error</h1>
           <p className="text-base-content/60">{error}</p>
-        </div>
-      </motion.div>
-    );
-  }
-
-  // Success state
-  if (success) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="min-h-[calc(100vh-64px)] flex items-center justify-center p-4"
-      >
-        <div className="text-center">
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: "spring", stiffness: 300, damping: 15 }}
-            className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-success/20 mb-6"
-          >
-            <CheckCircle2 className="w-12 h-12 text-success" />
-          </motion.div>
-          <motion.h1
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="text-2xl font-bold text-base-content mb-2"
-          >
-            Payment Sent!
-          </motion.h1>
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="text-base-content/60 flex items-center justify-center gap-2"
-          >
-            <Loader2 className="w-4 h-4 animate-spin" />
-            Redirecting...
-          </motion.p>
         </div>
       </motion.div>
     );

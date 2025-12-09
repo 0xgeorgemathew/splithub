@@ -184,9 +184,6 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
       setStatusMessage("Confirming...");
       setTxHash(result.txHash);
 
-      // Brief delay to show confirming state
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
       setFlowState("success");
       setStatusMessage("Complete!");
 

@@ -1,4 +1,4 @@
-import withPWA from "@ducanh2912/next-pwa";
+import withSerwist from "@serwist/next";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
@@ -45,8 +45,8 @@ if (isIpfs) {
   };
 }
 
-module.exports = withPWA({
-  dest: "public",
-  disable: false,
-  register: true,
+module.exports = withSerwist({
+  swSrc: "app/sw.ts",
+  swDest: "public/sw.js",
+  disable: true, // Temporarily disabled to test OneSignal notifications
 })(nextConfig);

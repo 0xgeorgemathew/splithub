@@ -9,6 +9,7 @@ Tap-to-pay bill splitting app on blockchain. NFC Arx Halo Chips sign EIP-712 mes
 - **Contracts:** Foundry, Solidity 0.8.19, Base Sepolia (Chain ID: 84532)
 - **Database:** Supabase (PostgreSQL)
 - **State:** Zustand
+- **Push Notifications:** OneSignal (react-onesignal)
 
 ## Project Structure
 
@@ -29,7 +30,6 @@ packages/foundry/          # Smart contracts
 | SplitHubRegistry | Links NFC chips to wallet addresses |
 | SplitHubPayments | Executes gasless token transfers |
 | CreditToken | ERC-20 credits (1 USDC = 10 credits) |
-| MockUSDC | Test USDC (6 decimals) |
 
 ## Database Schema
 
@@ -64,7 +64,7 @@ packages/foundry/          # Smart contracts
 | `/settle/[id]` | Payment request link |
 | `/expense/add` | Create expense split |
 | `/credits` | Buy credits |
-| `/activity/[id]` | Spend credits |
+| `/activity/[activityId]` | Spend credits |
 
 ## API Endpoints
 
@@ -79,6 +79,11 @@ packages/foundry/          # Smart contracts
 - `POST /api/onboarding/finalize` - Atomic onboarding completion
   - Request: `{ userId, action: 'skip' | 'register', chipAddress? }`
   - Response: `{ nextRoute: '/approve' | '/splits', status: 'ok' }`
+
+### Push Notifications
+- `POST /api/notifications/send` - Send push notification to user
+  - Request: `{ recipientWallet, title, message, url? }`
+  - Response: `{ success: true, id: string }`
 
 ## Core Flows
 
@@ -163,6 +168,6 @@ yarn start          # Start frontend
 
 - `packages/nextjs/app/api/relay/payment/route.ts` - Payment relayer
 - `packages/nextjs/services/balanceService.ts` - Balance calculation
-- `packages/nextjs/hooks/useHaloChip.ts` - NFC signing
+- `packages/nextjs/hooks/halochip-arx/useHaloChip.ts` - NFC signing
 - `packages/nextjs/components/UserSyncWrapper.tsx` - Onboarding logic
 - `packages/foundry/contracts/SplitHubPayments.sol` - Payment contract

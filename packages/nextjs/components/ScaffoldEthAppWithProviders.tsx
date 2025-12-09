@@ -1,5 +1,6 @@
 "use client";
 
+import { OneSignalProvider } from "./OneSignalProvider";
 import { UserSyncWrapper } from "./UserSyncWrapper";
 import { PrivyProvider } from "@privy-io/react-auth";
 import { WagmiProvider } from "@privy-io/wagmi";
@@ -58,9 +59,11 @@ export const ScaffoldEthAppWithProviders = ({ children }: { children: React.Reac
       <QueryClientProvider client={queryClient}>
         <WagmiProvider config={wagmiConfig}>
           <ProgressBar height="3px" color="#2299dd" />
-          <UserSyncWrapper>
-            <ScaffoldEthApp>{children}</ScaffoldEthApp>
-          </UserSyncWrapper>
+          <OneSignalProvider>
+            <UserSyncWrapper>
+              <ScaffoldEthApp>{children}</ScaffoldEthApp>
+            </UserSyncWrapper>
+          </OneSignalProvider>
         </WagmiProvider>
       </QueryClientProvider>
     </PrivyProvider>
