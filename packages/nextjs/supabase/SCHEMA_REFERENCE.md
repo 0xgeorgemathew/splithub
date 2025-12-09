@@ -1,3 +1,5 @@
+# Ready for Railway
+
 # SplitHub Database Schema Reference
 
 This document reflects the **actual** schema as verified from Supabase Dashboard on 2025-12-04.
