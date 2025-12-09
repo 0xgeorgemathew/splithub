@@ -1,23 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import { usePrivy } from "@privy-io/react-auth";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { ArrowDownRight, ArrowUpRight, Bell, Plus, Sparkles, TrendingUp, Wallet } from "lucide-react";
 import { ExpenseModal } from "~~/components/expense/ExpenseModal";
 import { SettleModal } from "~~/components/settle/SettleModal";
 import { type PaymentParams } from "~~/components/settle/types";
+import { useFriendBalancesRealtime } from "~~/hooks/useFriendBalancesRealtime";
 import { useUSDCBalance } from "~~/hooks/useUSDCBalance";
 import { type FriendBalance } from "~~/lib/supabase";
-import { getFriendBalances, getOverallBalance } from "~~/services/balanceService";
 
 export const FriendBalancesList = () => {
   const { user } = usePrivy();
-  const [balances, setBalances] = useState<FriendBalance[]>([]);
-  const [overallBalance, setOverallBalance] = useState<number>(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { balances, overallBalance, loading, error, refresh: refreshBalances } = useFriendBalancesRealtime();
 
   // Modal states
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
@@ -27,48 +24,12 @@ export const FriendBalancesList = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isCreatingRequest, setIsCreatingRequest] = useState(false);
   const [requestSuccess, setRequestSuccess] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const walletAddress = user?.wallet?.address;
 
   // Fetch actual USDC wallet balance
   const { formattedBalance: walletBalance, isLoading: isWalletBalanceLoading } = useUSDCBalance();
-
-  useEffect(() => {
-    const fetchBalances = async () => {
-      if (!walletAddress) return;
-
-      setLoading(true);
-      setError(null);
-
-      try {
-        const [friendBalances, overall] = await Promise.all([
-          getFriendBalances(walletAddress),
-          getOverallBalance(walletAddress),
-        ]);
-
-        setBalances(friendBalances);
-        setOverallBalance(overall);
-      } catch (err) {
-        console.error("Error fetching balances:", err);
-        setError(err instanceof Error ? err.message : "Failed to load balances");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchBalances();
-
-    // Listen for refresh events (e.g., when a payment request is completed)
-    const handleRefresh = () => {
-      console.log("Balance refresh event received, reloading balances...");
-      fetchBalances();
-    };
-    window.addEventListener("refreshBalances", handleRefresh);
-
-    return () => {
-      window.removeEventListener("refreshBalances", handleRefresh);
-    };
-  }, [walletAddress]);
 
   const formatAmount = (amount: number): string => {
     return Math.abs(amount).toFixed(2);
@@ -111,7 +72,7 @@ export const FriendBalancesList = () => {
 
     setSelectedFriend(friend);
     setIsCreatingRequest(true);
-    setError(null);
+    setActionError(null);
 
     try {
       // Fetch token address from their expenses
@@ -162,7 +123,7 @@ export const FriendBalancesList = () => {
       }, 2000);
     } catch (err) {
       console.error("Error creating request:", err);
-      setError(err instanceof Error ? err.message : "Failed to create payment request");
+      setActionError(err instanceof Error ? err.message : "Failed to create payment request");
       setIsCreatingRequest(false);
       setRequestSuccess(false);
     }
@@ -200,7 +161,7 @@ export const FriendBalancesList = () => {
       setIsSettleModalOpen(true);
     } catch (err) {
       console.error("Error preparing settlement:", err);
-      setError(err instanceof Error ? err.message : "Failed to prepare settlement");
+      setActionError(err instanceof Error ? err.message : "Failed to prepare settlement");
     }
   };
 
@@ -228,37 +189,15 @@ export const FriendBalancesList = () => {
         throw new Error("Failed to record settlement");
       }
 
-      console.log("Settlement recorded successfully, refreshing balances...");
+      console.log("Settlement recorded successfully");
 
-      // Trigger global balance refresh event
-      window.dispatchEvent(new Event("refreshBalances"));
-
-      // Small delay to ensure database consistency
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Refresh balances to show updated amounts
-      const [friendBalances, overall] = await Promise.all([
-        getFriendBalances(walletAddress),
-        getOverallBalance(walletAddress),
-      ]);
-
-      setBalances(friendBalances);
-      setOverallBalance(overall);
-
-      console.log("Balances refreshed:", { friendBalances, overall });
+      // Realtime will auto-update, but trigger manual refresh for immediate feedback
+      await new Promise(resolve => setTimeout(resolve, 500));
+      refreshBalances();
     } catch (err) {
       console.error("Error handling settlement success:", err);
-      // Still refresh balances even if there's an error
-      try {
-        const [friendBalances, overall] = await Promise.all([
-          getFriendBalances(walletAddress),
-          getOverallBalance(walletAddress),
-        ]);
-        setBalances(friendBalances);
-        setOverallBalance(overall);
-      } catch (refreshErr) {
-        console.error("Failed to refresh balances:", refreshErr);
-      }
+      // Still try to refresh balances
+      refreshBalances();
     }
   };
 
@@ -434,125 +373,124 @@ export const FriendBalancesList = () => {
       </div>
 
       {/* Friend List Tiles or Empty State */}
-      {balances.length === 0 ? (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="text-center py-16 px-4"
-        >
+      <AnimatePresence mode="wait">
+        {balances.length === 0 ? (
           <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.1 }}
-            className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center mx-auto mb-5"
+            key="empty-state"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.3 }}
+            className="text-center py-16 px-4"
           >
-            <TrendingUp className="w-10 h-10 text-primary/40" />
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.1 }}
+              className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center mx-auto mb-5"
+            >
+              <TrendingUp className="w-10 h-10 text-primary/40" />
+            </motion.div>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="text-base-content/70 font-semibold text-lg"
+            >
+              No balances yet
+            </motion.p>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3 }}
+              className="text-sm text-base-content/40 mt-2 max-w-xs mx-auto"
+            >
+              Add an expense to start tracking who owes what
+            </motion.p>
           </motion.div>
-          <motion.p
+        ) : (
+          <motion.div
+            key="balance-list"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="text-base-content/70 font-semibold text-lg"
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-0"
           >
-            No balances yet
-          </motion.p>
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="text-sm text-base-content/40 mt-2 max-w-xs mx-auto"
-          >
-            Add an expense to start tracking who owes what
-          </motion.p>
-        </motion.div>
-      ) : (
-        <motion.div
-          className="space-y-0"
-          variants={{
-            hidden: { opacity: 0 },
-            show: {
-              opacity: 1,
-              transition: { staggerChildren: 0.1 },
-            },
-          }}
-          initial="hidden"
-          animate="show"
-        >
-          {balances.map((balance, index) => {
-            const isSettleable = canSettle(balance.net_balance);
-            const isRequestable = canRequestPayment(balance.net_balance);
-            const isClickable = isSettleable || isRequestable;
-            const isPositive = balance.net_balance > 0;
-            const isLast = index === balances.length - 1;
+            {balances.map((balance, index) => {
+              const isSettleable = canSettle(balance.net_balance);
+              const isRequestable = canRequestPayment(balance.net_balance);
+              const isClickable = isSettleable || isRequestable;
+              const isPositive = balance.net_balance > 0;
+              const isLast = index === balances.length - 1;
 
-            return (
-              <motion.div
-                key={balance.friend_wallet}
-                variants={{
-                  hidden: { opacity: 0, y: 20 },
-                  show: { opacity: 1, y: 0 },
-                }}
-                whileTap={isClickable ? { scale: 0.98 } : {}}
-                className={`group flex items-center justify-between px-4 py-5 transition-colors ${
-                  isClickable
-                    ? "cursor-pointer hover:bg-white/[0.02] active:bg-white/[0.04]"
-                    : "cursor-default opacity-60"
-                } ${!isLast ? "border-b border-white/5" : ""}`}
-                onClick={() => isClickable && handleFriendClick(balance)}
-              >
-                <div className="flex items-center gap-4">
-                  {/* Avatar */}
-                  {balance.friend_twitter_profile_url ? (
-                    <Image
-                      src={balance.friend_twitter_profile_url}
-                      alt={balance.friend_twitter_handle || balance.friend_name}
-                      width={48}
-                      height={48}
-                      className="w-12 h-12 rounded-full flex-shrink-0"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 rounded-full bg-[#2a2a2a] border border-white/10 flex items-center justify-center flex-shrink-0">
-                      <span className="text-lg font-bold text-white/80">
-                        {balance.friend_name.charAt(0).toUpperCase()}
+              return (
+                <motion.div
+                  key={balance.friend_wallet}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: index * 0.05 }}
+                  whileTap={isClickable ? { scale: 0.98 } : {}}
+                  className={`group flex items-center justify-between px-4 py-5 transition-colors ${
+                    isClickable
+                      ? "cursor-pointer hover:bg-white/[0.02] active:bg-white/[0.04]"
+                      : "cursor-default opacity-60"
+                  } ${!isLast ? "border-b border-white/5" : ""}`}
+                  onClick={() => isClickable && handleFriendClick(balance)}
+                >
+                  <div className="flex items-center gap-4">
+                    {/* Avatar */}
+                    {balance.friend_twitter_profile_url ? (
+                      <Image
+                        src={balance.friend_twitter_profile_url}
+                        alt={balance.friend_twitter_handle || balance.friend_name}
+                        width={48}
+                        height={48}
+                        className="w-12 h-12 rounded-full flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-full bg-[#2a2a2a] border border-white/10 flex items-center justify-center flex-shrink-0">
+                        <span className="text-lg font-bold text-white/80">
+                          {balance.friend_name.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Name & Status */}
+                    <div className="flex flex-col min-w-0">
+                      <span className="font-semibold text-white truncate">{balance.friend_name}</span>
+                      <span className={`text-xs ${isPositive ? "text-[#00E0B8]/70" : "text-rose-500/70"}`}>
+                        {getBalanceText(balance.net_balance)}
                       </span>
                     </div>
-                  )}
-
-                  {/* Name & Status */}
-                  <div className="flex flex-col min-w-0">
-                    <span className="font-semibold text-white truncate">{balance.friend_name}</span>
-                    <span className={`text-xs ${isPositive ? "text-[#00E0B8]/70" : "text-rose-500/70"}`}>
-                      {getBalanceText(balance.net_balance)}
-                    </span>
                   </div>
-                </div>
 
-                {/* Amount & Action */}
-                <div className="flex items-center gap-4">
-                  <span
-                    className={`font-mono text-lg font-bold tracking-wide ${isPositive ? "text-[#00E0B8]" : "text-rose-500"}`}
-                  >
-                    ${formatAmount(balance.net_balance)}
-                  </span>
-
-                  {/* Notify button - shows message that notifications are not available */}
-                  {isRequestable && (
-                    <motion.button
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                      onClick={(e: React.MouseEvent<HTMLButtonElement>) => handleNotifyFriend(balance, e)}
-                      className="btn btn-circle btn-sm btn-ghost text-warning hover:bg-warning/20"
+                  {/* Amount & Action */}
+                  <div className="flex items-center gap-4">
+                    <span
+                      className={`font-mono text-lg font-bold tracking-wide ${isPositive ? "text-[#00E0B8]" : "text-rose-500"}`}
                     >
-                      <Bell className="w-5 h-5" />
-                    </motion.button>
-                  )}
-                </div>
-              </motion.div>
-            );
-          })}
-        </motion.div>
-      )}
+                      ${formatAmount(balance.net_balance)}
+                    </span>
+
+                    {/* Notify button - shows message that notifications are not available */}
+                    {isRequestable && (
+                      <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={(e: React.MouseEvent<HTMLButtonElement>) => handleNotifyFriend(balance, e)}
+                        className="btn btn-circle btn-sm btn-ghost text-warning hover:bg-warning/20"
+                      >
+                        <Bell className="w-5 h-5" />
+                      </motion.button>
+                    )}
+                  </div>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Expense Modal */}
       <ExpenseModal
@@ -560,7 +498,7 @@ export const FriendBalancesList = () => {
         onClose={() => setIsExpenseModalOpen(false)}
         onSuccess={() => {
           // Refresh balances after adding expense
-          window.dispatchEvent(new Event("refreshBalances"));
+          refreshBalances();
         }}
       />
 
@@ -600,6 +538,23 @@ export const FriendBalancesList = () => {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Error Toast */}
+      {actionError && (
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="bg-error text-error-content px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 max-w-md">
+            <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <span className="font-medium text-sm">{actionError}</span>
           </div>
         </div>
       )}

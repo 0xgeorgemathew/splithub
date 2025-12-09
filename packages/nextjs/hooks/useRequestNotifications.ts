@@ -1,61 +1,116 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePrivy } from "@privy-io/react-auth";
+import { PaymentRequest, RealtimeChannel, supabase } from "~~/lib/supabase";
 
 export const useRequestNotifications = () => {
   const { user, authenticated } = usePrivy();
   const [count, setCount] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const walletRef = useRef<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Keep wallet address in ref to avoid callback recreation
-  walletRef.current = authenticated ? (user?.wallet?.address ?? null) : null;
+  const channelRef = useRef<RealtimeChannel | null>(null);
+  const isMountedRef = useRef(true);
 
-  const fetchNotificationCount = useCallback(async () => {
-    const walletAddress = walletRef.current;
-    if (!walletAddress) {
+  const wallet = authenticated ? (user?.wallet?.address?.toLowerCase() ?? null) : null;
+
+  // Fetch current pending count
+  const fetchCount = useCallback(async () => {
+    if (!wallet) {
       setCount(0);
+      setLoading(false);
       return;
     }
 
-    setLoading(true);
     try {
-      const response = await fetch(`/api/payment-requests?wallet=${walletAddress}&type=incoming`);
-      const data = await response.json();
+      const { data, error } = await supabase
+        .from("payment_requests")
+        .select("id")
+        .eq("payer", wallet)
+        .eq("status", "pending");
 
-      if (response.ok && data.data) {
-        // Count only pending incoming requests
-        const pendingCount = data.data.filter((req: any) => req.status === "pending").length;
-        setCount(pendingCount);
+      if (!error && isMountedRef.current) {
+        setCount(data?.length ?? 0);
       }
-    } catch (error) {
-      console.error("Error fetching notification count:", error);
-      setCount(0);
+    } catch (err) {
+      console.error("Error fetching notification count:", err);
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
-  }, []);
+  }, [wallet]);
 
   useEffect(() => {
-    // Only fetch if we have a wallet address
-    if (!walletRef.current) return;
+    isMountedRef.current = true;
 
-    fetchNotificationCount();
+    if (!wallet) {
+      setCount(0);
+      setLoading(false);
+      return;
+    }
 
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchNotificationCount, 30000);
+    // Initial fetch
+    fetchCount();
 
-    // Listen for custom refresh events
-    const handleRefresh = () => {
-      fetchNotificationCount();
-    };
+    // Subscribe to Realtime changes
+    const channel = supabase
+      .channel(`payment_requests_${wallet}`)
+      .on<PaymentRequest>(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "payment_requests",
+          filter: `payer=eq.${wallet}`,
+        },
+        payload => {
+          if (!isMountedRef.current) return;
+
+          const { eventType, new: newRec, old: oldRec } = payload;
+          const newRecord = newRec as PaymentRequest;
+          const oldRecord = oldRec as PaymentRequest;
+
+          if (eventType === "INSERT") {
+            if (newRecord.status === "pending") {
+              setCount(prev => prev + 1);
+            }
+          } else if (eventType === "UPDATE") {
+            const wasPending = oldRecord.status === "pending";
+            const isPending = newRecord.status === "pending";
+            if (wasPending && !isPending) {
+              setCount(prev => Math.max(0, prev - 1));
+            } else if (!wasPending && isPending) {
+              setCount(prev => prev + 1);
+            }
+          } else if (eventType === "DELETE") {
+            if (oldRecord.status === "pending") {
+              setCount(prev => Math.max(0, prev - 1));
+            }
+          }
+        },
+      )
+      .subscribe();
+
+    channelRef.current = channel;
+
+    // Re-sync on window focus (fallback)
+    const handleFocus = () => fetchCount();
+    window.addEventListener("focus", handleFocus);
+
+    // Legacy event support
+    const handleRefresh = () => fetchCount();
     window.addEventListener("refreshPaymentRequests", handleRefresh);
 
+    // Cleanup
     return () => {
-      clearInterval(interval);
+      isMountedRef.current = false;
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+      window.removeEventListener("focus", handleFocus);
       window.removeEventListener("refreshPaymentRequests", handleRefresh);
     };
-  }, [fetchNotificationCount, authenticated, user?.wallet?.address]);
+  }, [wallet, fetchCount]);
 
-  // Expose refresh function for manual updates
-  return { count, loading, refresh: fetchNotificationCount };
+  return { count, loading, refresh: fetchCount };
 };
