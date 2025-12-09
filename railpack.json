@@ -26,11 +26,12 @@
         "SKIP_ENV_VALIDATION": "true"
       },
       "commands": [
+        "corepack enable",
         "yarn workspace @se-2/nextjs build"
       ]
     }
   },
   "deploy": {
-    "startCommand": "yarn workspace @se-2/nextjs serve"
+    "startCommand": "corepack enable && yarn workspace @se-2/nextjs serve"
   }
 }
