@@ -7,7 +7,7 @@ import { Friend } from "./hooks/useExpenseForm";
 import { useExpenseForm } from "./hooks/useExpenseForm";
 import { usePrivy } from "@privy-io/react-auth";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertCircle, Check, CircleDollarSign, FileText, Search, Sparkles, Users, X } from "lucide-react";
+import { AlertCircle, Check, CircleDollarSign, Search, Sparkles, Users, X } from "lucide-react";
 import { TOKENS } from "~~/config/tokens";
 import { type User, supabase } from "~~/lib/supabase";
 import { createExpense } from "~~/services/expenseService";
@@ -50,7 +50,6 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess }: ExpenseModalProps) 
 
   // Input focus states
   const [amountFocused, setAmountFocused] = useState(false);
-  const [descriptionFocused, setDescriptionFocused] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
 
   // Friend list states
@@ -58,18 +57,8 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess }: ExpenseModalProps) 
   const [users, setUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
 
-  const {
-    description,
-    setDescription,
-    amount,
-    setAmount,
-    selectedFriends,
-    addFriend,
-    removeFriend,
-    isValid,
-    participantCount,
-    reset,
-  } = useExpenseForm();
+  const { description, amount, setAmount, selectedFriends, addFriend, removeFriend, isValid, participantCount, reset } =
+    useExpenseForm();
 
   // Fetch users from Supabase
   useEffect(() => {
@@ -202,10 +191,10 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess }: ExpenseModalProps) 
 
           {/* Modal */}
           <motion.div
-            initial={{ y: "100%" }}
-            animate={{ y: "0%" }}
-            exit={{ y: "100%" }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: -20 }}
+            transition={{ type: "spring", stiffness: 400, damping: 30 }}
             className="relative w-full max-w-sm bg-gradient-to-b from-base-100 to-base-200 rounded-2xl shadow-2xl border border-white/10 max-h-[85vh] flex flex-col"
           >
             <AnimatePresence mode="wait">
@@ -303,35 +292,8 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess }: ExpenseModalProps) 
                           onBlur={() => setAmountFocused(false)}
                           placeholder="0.00"
                           className="bg-transparent text-center text-3xl font-bold outline-none w-32 placeholder:text-base-content/20 caret-primary"
-                          autoFocus
                         />
                       </div>
-                    </motion.div>
-                  </motion.div>
-
-                  {/* Description */}
-                  <motion.div variants={staggerItem} className="px-4 py-2 border-b border-base-300/50">
-                    <label className="text-[10px] text-base-content/50 uppercase tracking-wider mb-1 block flex items-center gap-1">
-                      <FileText className="w-3 h-3" /> Description
-                    </label>
-                    <motion.div
-                      animate={{
-                        boxShadow: descriptionFocused
-                          ? "0 0 0 2px rgba(var(--primary-rgb), 0.5)"
-                          : "0 0 0 0px transparent",
-                      }}
-                      transition={{ duration: 0.2 }}
-                      className="rounded-lg overflow-hidden"
-                    >
-                      <input
-                        type="text"
-                        value={description}
-                        onChange={e => setDescription(e.target.value)}
-                        onFocus={() => setDescriptionFocused(true)}
-                        onBlur={() => setDescriptionFocused(false)}
-                        placeholder="What's this for?"
-                        className="w-full h-9 px-3 bg-base-100 text-sm text-base-content placeholder:text-base-content/40 focus:outline-none transition-all"
-                      />
                     </motion.div>
                   </motion.div>
 

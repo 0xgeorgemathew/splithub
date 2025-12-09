@@ -179,10 +179,10 @@ export const CircleModal = ({ isOpen, onClose, onSuccess, editingCircle }: Circl
 
           {/* Modal */}
           <motion.div
-            initial={{ y: "100%" }}
-            animate={{ y: "0%" }}
-            exit={{ y: "100%" }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: -20 }}
+            transition={{ type: "spring", stiffness: 400, damping: 30 }}
             className="relative w-full max-w-sm bg-base-200 rounded-2xl shadow-xl max-h-[85vh] flex flex-col"
           >
             {/* Staggered Content Container */}
