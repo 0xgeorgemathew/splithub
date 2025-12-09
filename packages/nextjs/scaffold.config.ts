@@ -1,6 +1,6 @@
 import * as chains from "viem/chains";
 
-// Trigger this build
+// Trigger this build test
 export type BaseConfig = {
   targetNetworks: readonly chains.Chain[];
   pollingInterval: number;

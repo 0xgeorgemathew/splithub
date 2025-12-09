@@ -7,8 +7,7 @@
         ".yarn/cache"
       ],
       "commands": [
-        "corepack enable",
-        "yarn install --immutable"
+        "corepack enable && yarn install --immutable"
       ]
     },
     "build": {
@@ -26,8 +25,7 @@
         "SKIP_ENV_VALIDATION": "true"
       },
       "commands": [
-        "corepack enable",
-        "yarn workspace @se-2/nextjs build"
+        "corepack enable && yarn workspace @se-2/nextjs build"
       ]
     }
   },
