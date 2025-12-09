@@ -1,9 +1,17 @@
+// Recipient display info (for showing avatar/name in UI)
+export interface RecipientInfo {
+  name?: string;
+  twitterHandle?: string;
+  profileUrl?: string;
+}
+
 // Payment parameters passed to the settle component
 export interface PaymentParams {
   recipient: `0x${string}`;
   token: `0x${string}`;
   amount: string;
   memo?: string;
+  recipientInfo?: RecipientInfo;
 }
 
 // Flow states for the settle process
