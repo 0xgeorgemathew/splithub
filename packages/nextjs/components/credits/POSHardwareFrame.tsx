@@ -3,11 +3,14 @@
 import { ReactNode, useEffect, useState } from "react";
 import { LedState, POSLed } from "./POSLed";
 import { AnimatePresence, motion, useAnimationControls } from "framer-motion";
+import { Gamepad2, Power } from "lucide-react";
 import { CreditFlowState } from "~~/hooks/credits/useCreditPurchase";
 
 interface POSHardwareFrameProps {
   children: ReactNode;
   flowState: CreditFlowState;
+  onClose?: () => void;
+  onOpenMenu?: () => void;
 }
 
 // Map flow state to LED state
@@ -32,7 +35,7 @@ const shakeAnimation = {
   x: [0, -10, 10, -10, 10, -5, 5, -2, 2, 0],
 };
 
-export function POSHardwareFrame({ children, flowState }: POSHardwareFrameProps) {
+export function POSHardwareFrame({ children, flowState, onClose, onOpenMenu }: POSHardwareFrameProps) {
   const controls = useAnimationControls();
   const [mousePosition, setMousePosition] = useState({ x: 0.5, y: 0.5 });
   const ledState = mapToLedState(flowState);
@@ -136,6 +139,38 @@ export function POSHardwareFrame({ children, flowState }: POSHardwareFrameProps)
             boxShadow: "inset 0 4px 8px rgba(0, 0, 0, 0.6)",
           }}
         />
+      </div>
+
+      {/* Hardware Control Bar (Chin) */}
+      <div className="pos-hardware-chin">
+        {/* Game/Activities Button - Left */}
+        {onOpenMenu && (
+          <motion.button
+            className="pos-chin-btn pos-chin-btn-game"
+            onClick={onOpenMenu}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            aria-label="Open activities menu"
+          >
+            <Gamepad2 className="w-5 h-5" />
+          </motion.button>
+        )}
+
+        {/* Spacer */}
+        <div className="pos-chin-spacer" />
+
+        {/* Power Button - Right */}
+        {onClose && (
+          <motion.button
+            className="pos-chin-btn pos-chin-btn-power"
+            onClick={onClose}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            aria-label="Close terminal"
+          >
+            <Power className="w-5 h-5" />
+          </motion.button>
+        )}
       </div>
     </motion.div>
   );

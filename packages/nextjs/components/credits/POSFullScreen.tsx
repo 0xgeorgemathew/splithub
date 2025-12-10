@@ -5,7 +5,7 @@ import { POSAmountEntry } from "./POSAmountEntry";
 import { POSHardwareFrame } from "./POSHardwareFrame";
 import { POSReceiptPrinter } from "./POSReceiptPrinter";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertCircle, ArrowLeft, Gamepad2, Nfc, Power } from "lucide-react";
+import { AlertCircle, ArrowLeft, Gamepad2, Nfc } from "lucide-react";
 import { ActivityDeviceFrame, ActivityReceiptPrinter } from "~~/components/activity";
 import { Activity, getAllActivities } from "~~/config/activities";
 import { CreditFlowState } from "~~/hooks/credits/useCreditPurchase";
@@ -373,19 +373,8 @@ export function POSFullScreen({
             exit={{ y: "20%", opacity: 0 }}
             transition={devicePhysics}
           >
-            {/* Power Off Button */}
-            <motion.button
-              className="pos-power-btn"
-              onClick={handleDismiss}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              aria-label="Close terminal"
-            >
-              <Power className="w-5 h-5" />
-            </motion.button>
-
             {/* Hardware Frame - now receives flowState for LED and shake animations */}
-            <POSHardwareFrame flowState={flowState}>
+            <POSHardwareFrame flowState={flowState} onClose={handleDismiss} onOpenMenu={handleOpenMenu}>
               <AnimatePresence mode="wait">
                 {isIdle ? (
                   <motion.div
@@ -427,17 +416,6 @@ export function POSFullScreen({
                 )}
               </AnimatePresence>
             </POSHardwareFrame>
-
-            {/* Activities Navigation Button - Below Terminal */}
-            <motion.button
-              className="activities-nav-btn-inline"
-              onClick={handleOpenMenu}
-              aria-label="View Activities"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <Gamepad2 className="w-6 h-6" />
-            </motion.button>
           </motion.div>
 
           {/* Radial Menu Overlay */}

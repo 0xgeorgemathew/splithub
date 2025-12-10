@@ -95,7 +95,7 @@ export function POSAmountEntry({ amount, onAmountChange, onSubmit, disabled }: P
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
       >
-        <div className="pos-preview-row">
+        <div className="pos-preview-row pos-preview-row-centered">
           <span className="pos-preview-label">CREDITS (10x)</span>
           <AnimatePresence mode="wait">
             <motion.span
@@ -109,10 +109,6 @@ export function POSAmountEntry({ amount, onAmountChange, onSubmit, disabled }: P
               +{creditsToReceive}
             </motion.span>
           </AnimatePresence>
-        </div>
-        <div className="pos-preview-row">
-          <span className="pos-preview-label">NETWORK FEE</span>
-          <span className="pos-preview-free">FREE</span>
         </div>
       </motion.div>
 

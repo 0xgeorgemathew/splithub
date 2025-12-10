@@ -1054,18 +1054,49 @@ Trigger Build Compatibility Styles
   position: relative;
   width: clamp(320px, 88vw, 380px);
   height: clamp(520px, 75vh, 640px);
-  background: linear-gradient(180deg, #1f1f1f 0%, #0a0a0a 100%);
+  /* Textured matte surface - radial gradient for depth */
+  background:
+    radial-gradient(ellipse 120% 80% at 50% 20%, #252525 0%, #1a1a1a 40%, #0f0f0f 100%),
+    linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 100%);
   border-radius: 32px;
-  border: 3px solid #2a2a2a;
+  /* Rim light border simulation */
+  border: 1px solid transparent;
+  background-clip: padding-box;
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.05),
-    0 25px 80px rgba(0, 0, 0, 0.8),
-    0 10px 30px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    /* Outer rim light - simulates edge catching light */
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 -1px 0 0 rgba(255, 255, 255, 0.12),
+    /* Ambient shadows - lifts device from void */
+    0 40px 100px -20px rgba(0, 0, 0, 0.9),
+    0 20px 60px -10px rgba(0, 0, 0, 0.8),
+    0 8px 24px rgba(0, 0, 0, 0.6),
+    /* Inner highlights for 3D depth */
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.3),
+    inset 1px 0 0 rgba(255, 255, 255, 0.03),
+    inset -1px 0 0 rgba(255, 255, 255, 0.03);
   display: flex;
   flex-direction: column;
   padding: 16px;
   overflow: hidden;
+}
+
+/* Pseudo-element for additional rim lighting effect */
+.pos-hardware-frame::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 33px;
+  background: linear-gradient(
+    165deg,
+    rgba(255, 255, 255, 0.15) 0%,
+    rgba(255, 255, 255, 0.05) 20%,
+    transparent 40%,
+    transparent 80%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  pointer-events: none;
+  z-index: 0;
 }
 
 /* Speaker grille at top */
@@ -1089,13 +1120,52 @@ Trigger Build Compatibility Styles
   position: absolute;
   top: 20px;
   right: 24px;
+  z-index: 10;
 }
 
+/* Hyper-realistic LED indicator - 3 layer effect */
 .pos-led {
-  width: 8px;
-  height: 8px;
+  position: relative;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  /* Animations handled by Framer Motion in POSLed.tsx */
+  /* Base housing shadow - recessed look */
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(0, 0, 0, 0.3);
+}
+
+/* Layer 1: Core LED light (applied via inline styles from component) */
+
+/* Layer 2: Glass dome reflection - simulates studio light */
+.pos-led::after {
+  content: "";
+  position: absolute;
+  top: 1px;
+  left: 2px;
+  width: 4px;
+  height: 3px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.7) 0%,
+    rgba(255, 255, 255, 0.3) 50%,
+    transparent 100%
+  );
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* Layer 3: Secondary subtle reflection for glass depth */
+.pos-led::before {
+  content: "";
+  position: absolute;
+  bottom: 1px;
+  right: 1px;
+  width: 2px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 50%;
+  pointer-events: none;
 }
 
 /* Screen area */
@@ -1176,6 +1246,214 @@ Trigger Build Compatibility Styles
   height: 2px;
   background: #2a2a2a;
   border-radius: 1px;
+}
+
+/* Hardware Control Bar (Chin) - embedded buttons at bottom */
+.pos-hardware-chin {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px 20px;
+  margin: 8px -16px -16px -16px;
+  /* Textured matte surface matching device frame upper portion */
+  background:
+    radial-gradient(ellipse 120% 100% at 50% 100%, rgba(50, 50, 50, 0.4) 0%, transparent 60%),
+    linear-gradient(180deg, #1e1e1e 0%, #161616 50%, #111111 100%);
+  border-radius: 0 0 28px 28px;
+  /* Multi-layer depth effect matching upper frame */
+  box-shadow:
+    /* Outer rim light - bottom and sides catching light */
+    0 1px 0 0 rgba(255, 255, 255, 0.08),
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    /* Left/right inner edge highlights */
+    inset 1px 0 0 rgba(255, 255, 255, 0.06),
+    inset -1px 0 0 rgba(255, 255, 255, 0.06),
+    /* Bottom inner rim light */
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1),
+    /* Top edge groove for separation */
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 3px 8px rgba(0, 0, 0, 0.5),
+    /* Ambient shadow to lift from void */
+    0 12px 32px rgba(0, 0, 0, 0.6),
+    0 24px 64px rgba(0, 0, 0, 0.4);
+}
+
+/* Chin rim light gradient overlay - matches device frame lighting */
+.pos-hardware-chin::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 0 0 28px 28px;
+  background: linear-gradient(
+    195deg,
+    transparent 0%,
+    transparent 50%,
+    rgba(255, 255, 255, 0.03) 70%,
+    rgba(255, 255, 255, 0.07) 90%,
+    rgba(255, 255, 255, 0.1) 100%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Chin top separator line with gradient fade */
+.pos-hardware-chin::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 16px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.15) 15%,
+    rgba(255, 255, 255, 0.2) 50%,
+    rgba(255, 255, 255, 0.15) 85%,
+    transparent 100%
+  );
+  z-index: 1;
+}
+
+.pos-chin-spacer {
+  flex: 1;
+}
+
+/* Base button styles - capacitive touch point aesthetic */
+.pos-chin-btn {
+  position: relative;
+  z-index: 2; /* Above chin overlay */
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  /* Recessed socket effect */
+  box-shadow:
+    /* Outer ring - recessed into surface */
+    0 0 0 3px rgba(0, 0, 0, 0.4),
+    /* Inner shadow for depth */
+    inset 0 2px 4px rgba(0, 0, 0, 0.5),
+    inset 0 -1px 2px rgba(255, 255, 255, 0.05),
+    /* Ambient shadow */
+    0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* Button glass dome reflection */
+.pos-chin-btn::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 8px;
+  width: 14px;
+  height: 8px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.2) 0%,
+    rgba(255, 255, 255, 0.05) 50%,
+    transparent 100%
+  );
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* Game button - green accent with LED-like glow */
+.pos-chin-btn-game {
+  background:
+    radial-gradient(circle at 30% 30%, #1f5432 0%, #0d2818 70%),
+    linear-gradient(180deg, #1a472a 0%, #0a1f12 100%);
+  color: #4ade80;
+  /* Subtle green ambient glow */
+  box-shadow:
+    0 0 0 3px rgba(0, 0, 0, 0.4),
+    0 0 0 4px rgba(34, 197, 94, 0.1),
+    inset 0 2px 4px rgba(0, 0, 0, 0.5),
+    inset 0 -1px 2px rgba(34, 197, 94, 0.1),
+    0 4px 12px rgba(0, 0, 0, 0.4),
+    0 0 20px rgba(34, 197, 94, 0.08);
+}
+
+.pos-chin-btn-game:hover {
+  background:
+    radial-gradient(circle at 30% 30%, #22c55e 0%, #166534 50%, #0d2818 100%);
+  color: #86efac;
+  box-shadow:
+    0 0 0 3px rgba(0, 0, 0, 0.3),
+    0 0 0 5px rgba(34, 197, 94, 0.2),
+    inset 0 2px 4px rgba(0, 0, 0, 0.4),
+    inset 0 -1px 2px rgba(34, 197, 94, 0.2),
+    0 4px 16px rgba(0, 0, 0, 0.5),
+    0 0 30px rgba(34, 197, 94, 0.25),
+    0 0 60px rgba(34, 197, 94, 0.1);
+}
+
+.pos-chin-btn-game:active {
+  transform: scale(0.95);
+  box-shadow:
+    0 0 0 3px rgba(0, 0, 0, 0.5),
+    inset 0 3px 6px rgba(0, 0, 0, 0.6),
+    0 0 25px rgba(34, 197, 94, 0.3);
+}
+
+.pos-chin-btn-game svg {
+  filter: drop-shadow(0 0 6px rgba(34, 197, 94, 0.6));
+  transition: filter 0.2s ease;
+}
+
+.pos-chin-btn-game:hover svg {
+  filter: drop-shadow(0 0 10px rgba(34, 197, 94, 0.9));
+}
+
+/* Power button - red accent with LED-like glow */
+.pos-chin-btn-power {
+  background:
+    radial-gradient(circle at 30% 30%, #4a1a1a 0%, #1a0808 70%),
+    linear-gradient(180deg, #3d1515 0%, #0f0505 100%);
+  color: #f87171;
+  /* Subtle red ambient glow */
+  box-shadow:
+    0 0 0 3px rgba(0, 0, 0, 0.4),
+    0 0 0 4px rgba(239, 68, 68, 0.1),
+    inset 0 2px 4px rgba(0, 0, 0, 0.5),
+    inset 0 -1px 2px rgba(239, 68, 68, 0.1),
+    0 4px 12px rgba(0, 0, 0, 0.4),
+    0 0 20px rgba(239, 68, 68, 0.08);
+}
+
+.pos-chin-btn-power:hover {
+  background:
+    radial-gradient(circle at 30% 30%, #ef4444 0%, #991b1b 50%, #1a0808 100%);
+  color: #fca5a5;
+  box-shadow:
+    0 0 0 3px rgba(0, 0, 0, 0.3),
+    0 0 0 5px rgba(239, 68, 68, 0.2),
+    inset 0 2px 4px rgba(0, 0, 0, 0.4),
+    inset 0 -1px 2px rgba(239, 68, 68, 0.2),
+    0 4px 16px rgba(0, 0, 0, 0.5),
+    0 0 30px rgba(239, 68, 68, 0.25),
+    0 0 60px rgba(239, 68, 68, 0.1);
+}
+
+.pos-chin-btn-power:active {
+  transform: scale(0.95);
+  box-shadow:
+    0 0 0 3px rgba(0, 0, 0, 0.5),
+    inset 0 3px 6px rgba(0, 0, 0, 0.6),
+    0 0 25px rgba(239, 68, 68, 0.3);
+}
+
+.pos-chin-btn-power svg {
+  filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.6));
+  transition: filter 0.2s ease;
+}
+
+.pos-chin-btn-power:hover svg {
+  filter: drop-shadow(0 0 10px rgba(239, 68, 68, 0.9));
 }
 
 /* ========================================
@@ -1781,6 +2059,11 @@ Trigger Build Compatibility Styles
   justify-content: space-between;
   align-items: center;
   padding: 6px 0;
+}
+
+.pos-preview-row-centered {
+  justify-content: center;
+  gap: 12px;
 }
 
 .pos-preview-label {
