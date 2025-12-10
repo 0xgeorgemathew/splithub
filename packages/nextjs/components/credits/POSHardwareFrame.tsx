@@ -4,13 +4,15 @@ import { ReactNode, useEffect, useState } from "react";
 import { LedState, POSLed } from "./POSLed";
 import { AnimatePresence, motion, useAnimationControls } from "framer-motion";
 import { Gamepad2, Power } from "lucide-react";
+import { Activity } from "~~/config/activities";
 import { CreditFlowState } from "~~/hooks/credits/useCreditPurchase";
 
 interface POSHardwareFrameProps {
   children: ReactNode;
   flowState: CreditFlowState;
   onClose?: () => void;
-  onOpenMenu?: () => void;
+  activities?: Activity[];
+  onSelectActivity?: (activity: Activity) => void;
 }
 
 // Map flow state to LED state
@@ -35,10 +37,60 @@ const shakeAnimation = {
   x: [0, -10, 10, -10, 10, -5, 5, -2, 2, 0],
 };
 
-export function POSHardwareFrame({ children, flowState, onClose, onOpenMenu }: POSHardwareFrameProps) {
+// Shared spring config for ALL animations - ensures symmetry
+const springConfig = {
+  type: "spring" as const,
+  stiffness: 350,
+  damping: 30,
+};
+
+// Capsule container variants - simple width expansion/contraction
+// Activity icons are already in place, just revealed by the expanding capsule
+const capsuleVariants = {
+  closed: {
+    width: 52, // Closed = circle size
+    borderRadius: 26,
+    transition: springConfig,
+  },
+  open: {
+    width: "auto",
+    borderRadius: 26,
+    transition: springConfig,
+  },
+};
+
+// Icon rotation variants
+const iconRotationVariants = {
+  closed: {
+    rotate: 0,
+    transition: springConfig,
+  },
+  open: {
+    rotate: 90,
+    transition: springConfig,
+  },
+};
+
+export function POSHardwareFrame({
+  children,
+  flowState,
+  onClose,
+  activities,
+  onSelectActivity,
+}: POSHardwareFrameProps) {
   const controls = useAnimationControls();
   const [mousePosition, setMousePosition] = useState({ x: 0.5, y: 0.5 });
+  const [isGameMenuOpen, setIsGameMenuOpen] = useState(false);
   const ledState = mapToLedState(flowState);
+
+  const handleToggleGameMenu = () => {
+    setIsGameMenuOpen(prev => !prev);
+  };
+
+  const handleSelectActivity = (activity: Activity) => {
+    setIsGameMenuOpen(false);
+    onSelectActivity?.(activity);
+  };
 
   // Trigger shake animation on error
   useEffect(() => {
@@ -143,23 +195,49 @@ export function POSHardwareFrame({ children, flowState, onClose, onOpenMenu }: P
 
       {/* Hardware Control Bar (Chin) */}
       <div className="pos-hardware-chin">
-        {/* Game/Activities Button - Left */}
-        {onOpenMenu && (
-          <motion.button
-            className="pos-chin-btn pos-chin-btn-game"
-            onClick={onOpenMenu}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            aria-label="Open activities menu"
+        {/* Unified Game Capsule - expands from circle to pill seamlessly */}
+        {activities && activities.length > 0 && (
+          <motion.div
+            className={`pos-chin-capsule ${isGameMenuOpen ? "pos-chin-capsule-expanded" : ""}`}
+            variants={capsuleVariants}
+            initial="closed"
+            animate={isGameMenuOpen ? "open" : "closed"}
           >
-            <Gamepad2 className="w-5 h-5" />
-          </motion.button>
+            {/* Game Icon Toggle - always visible as left cap */}
+            <motion.button
+              className="pos-capsule-toggle"
+              onClick={handleToggleGameMenu}
+              whileTap={{ scale: 0.92 }}
+              aria-label={isGameMenuOpen ? "Close activities menu" : "Open activities menu"}
+              aria-expanded={isGameMenuOpen}
+            >
+              <motion.div
+                variants={iconRotationVariants}
+                style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
+              >
+                <Gamepad2 className="w-5 h-5" />
+              </motion.div>
+            </motion.button>
+
+            {/* Activity buttons - static, revealed by capsule expansion */}
+            <div className="pos-capsule-activities">
+              {activities.map(activity => {
+                const ActivityIcon = activity.icon;
+                return (
+                  <button
+                    key={activity.id}
+                    className={`pos-chin-activity-btn pos-chin-activity-${activity.color}`}
+                    onClick={() => handleSelectActivity(activity)}
+                  >
+                    <ActivityIcon className="w-4 h-4" />
+                  </button>
+                );
+              })}
+            </div>
+          </motion.div>
         )}
 
-        {/* Spacer */}
-        <div className="pos-chin-spacer" />
-
-        {/* Power Button - Right */}
+        {/* Power Button - Right (absolutely positioned) */}
         {onClose && (
           <motion.button
             className="pos-chin-btn pos-chin-btn-power"

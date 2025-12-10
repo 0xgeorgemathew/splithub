@@ -5,7 +5,7 @@ import { POSAmountEntry } from "./POSAmountEntry";
 import { POSHardwareFrame } from "./POSHardwareFrame";
 import { POSReceiptPrinter } from "./POSReceiptPrinter";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertCircle, ArrowLeft, Gamepad2, Nfc } from "lucide-react";
+import { AlertCircle, ArrowLeft, Nfc } from "lucide-react";
 import { ActivityDeviceFrame, ActivityReceiptPrinter } from "~~/components/activity";
 import { Activity, getAllActivities } from "~~/config/activities";
 import { CreditFlowState } from "~~/hooks/credits/useCreditPurchase";
@@ -21,7 +21,7 @@ const devicePhysics = {
 };
 
 // View state for the hub navigation
-type ViewState = "pos-active" | "menu-open" | "activity-open";
+type ViewState = "pos-active" | "activity-open";
 
 interface POSFullScreenProps {
   isOpen: boolean;
@@ -47,92 +47,6 @@ const triggerHaptic = (pattern: number | number[] = 10) => {
     window.navigator.vibrate(pattern);
   }
 };
-
-// Radial Menu Component
-interface RadialMenuProps {
-  activities: Activity[];
-  onSelectActivity: (activity: Activity) => void;
-  onClose: () => void;
-}
-
-function RadialMenu({ activities, onSelectActivity, onClose }: RadialMenuProps) {
-  // Calculate positions in a semi-circle above the button
-  const getPosition = (index: number, total: number) => {
-    // Spread activities in a 180° arc (from -90° to +90°, i.e., above the button)
-    const startAngle = -Math.PI; // -180° (left)
-    const endAngle = 0; // 0° (right)
-    const angleStep = (endAngle - startAngle) / (total + 1);
-    const angle = startAngle + angleStep * (index + 1);
-
-    const radius = 120; // Distance from center
-    const x = Math.cos(angle) * radius;
-    const y = Math.sin(angle) * radius;
-
-    return { x, y };
-  };
-
-  return (
-    <>
-      {/* Backdrop */}
-      <motion.div
-        className="radial-menu-backdrop"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-      />
-
-      {/* Menu items */}
-      <div className="radial-menu-container">
-        {activities.map((activity, index) => {
-          const { x, y } = getPosition(index, activities.length);
-          const ActivityIcon = activity.icon;
-          const colorClass = `radial-menu-item-${activity.color}`;
-
-          return (
-            <motion.button
-              key={activity.id}
-              className={`radial-menu-item ${colorClass}`}
-              initial={{ scale: 0, x: 0, y: 0, opacity: 0 }}
-              animate={{
-                scale: 1,
-                x,
-                y,
-                opacity: 1,
-              }}
-              exit={{ scale: 0, x: 0, y: 0, opacity: 0 }}
-              transition={{
-                ...devicePhysics,
-                delay: index * 0.05,
-              }}
-              onClick={() => onSelectActivity(activity)}
-              whileHover={{ scale: 1.15 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <ActivityIcon className="w-6 h-6" />
-              <span className="radial-menu-item-label">{activity.name}</span>
-              <span className="radial-menu-item-credits">{activity.credits} CR</span>
-            </motion.button>
-          );
-        })}
-
-        {/* Center close button */}
-        <motion.button
-          className="radial-menu-center"
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.8, opacity: 0 }}
-          transition={devicePhysics}
-          onClick={onClose}
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-        >
-          <Gamepad2 className="w-6 h-6" />
-        </motion.button>
-      </div>
-    </>
-  );
-}
 
 // Activity Terminal Overlay Component
 interface ActivityTerminalProps {
@@ -318,16 +232,6 @@ export function POSFullScreen({
     onClose();
   }, [onReset, onClose]);
 
-  const handleOpenMenu = useCallback(() => {
-    triggerHaptic(10);
-    setViewState("menu-open");
-  }, []);
-
-  const handleCloseMenu = useCallback(() => {
-    triggerHaptic(10);
-    setViewState("pos-active");
-  }, []);
-
   const handleSelectActivity = useCallback((activity: Activity) => {
     triggerHaptic(10);
     setSelectedActivity(activity);
@@ -336,7 +240,7 @@ export function POSFullScreen({
 
   const handleCloseActivity = useCallback(() => {
     triggerHaptic(10);
-    setViewState("menu-open");
+    setViewState("pos-active");
     setSelectedActivity(null);
   }, []);
 
@@ -374,7 +278,12 @@ export function POSFullScreen({
             transition={devicePhysics}
           >
             {/* Hardware Frame - now receives flowState for LED and shake animations */}
-            <POSHardwareFrame flowState={flowState} onClose={handleDismiss} onOpenMenu={handleOpenMenu}>
+            <POSHardwareFrame
+              flowState={flowState}
+              onClose={handleDismiss}
+              activities={activities}
+              onSelectActivity={handleSelectActivity}
+            >
               <AnimatePresence mode="wait">
                 {isIdle ? (
                   <motion.div
@@ -417,13 +326,6 @@ export function POSFullScreen({
               </AnimatePresence>
             </POSHardwareFrame>
           </motion.div>
-
-          {/* Radial Menu Overlay */}
-          <AnimatePresence>
-            {viewState === "menu-open" && (
-              <RadialMenu activities={activities} onSelectActivity={handleSelectActivity} onClose={handleCloseMenu} />
-            )}
-          </AnimatePresence>
 
           {/* Activity Terminal Overlay */}
           <AnimatePresence>

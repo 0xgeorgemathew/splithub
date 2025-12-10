@@ -1269,9 +1269,16 @@ Trigger Build Compatibility Styles
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 16px 24px 20px;
+  justify-content: center; /* Center the slider/spacer */
+  /* FIXED HEIGHT - prevents layout shift during slider animation */
+  height: 82px;
+  min-height: 82px;
+  max-height: 82px;
+  padding: 0 24px;
   margin: 8px -16px -16px -16px;
+  /* Layout isolation - prevents influence on upper DOM */
+  flex-shrink: 0;
+  overflow: visible; /* Allow glows to extend */
   /* Textured matte surface matching device frame upper portion */
   background:
     radial-gradient(ellipse 120% 100% at 50% 100%, rgba(50, 50, 50, 0.4) 0%, transparent 60%),
@@ -1332,42 +1339,69 @@ Trigger Build Compatibility Styles
   z-index: 1;
 }
 
-.pos-chin-spacer {
-  flex: 1;
-}
+/* ========================================
+   UNIFIED CAPSULE - Game button + slider as one element
+   ======================================== */
 
-/* Base button styles - capacitive touch point aesthetic */
-.pos-chin-btn {
-  position: relative;
-  z-index: 2; /* Above chin overlay */
-  width: 46px;
-  height: 46px;
-  border-radius: 50%;
-  border: none;
+/* The unified capsule container - expands from circle to pill */
+.pos-chin-capsule {
+  position: absolute;
+  left: 24px;
+  z-index: 2;
   display: flex;
   align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  /* Recessed socket effect */
+  height: 52px;
+  /* 3D effect matching power button - green accent */
+  background:
+    radial-gradient(circle at 30% 30%, #1f5432 0%, #0d2818 70%),
+    linear-gradient(180deg, #1a472a 0%, #0a1f12 100%);
+  border: none;
+  /* NO GLOW in default state - just 3D depth */
   box-shadow:
-    /* Outer ring - recessed into surface */
     0 0 0 3px rgba(0, 0, 0, 0.4),
-    /* Inner shadow for depth */
+    0 0 0 4px rgba(34, 197, 94, 0.05),
     inset 0 2px 4px rgba(0, 0, 0, 0.5),
-    inset 0 -1px 2px rgba(255, 255, 255, 0.05),
-    /* Ambient shadow */
+    inset 0 -1px 2px rgba(34, 197, 94, 0.05),
     0 4px 12px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  transition: box-shadow 0.2s ease, background 0.2s ease;
 }
 
-/* Button glass dome reflection */
-.pos-chin-btn::after {
+/* Expanded state - add EVEN green glow (centered, not offset) */
+.pos-chin-capsule.pos-chin-capsule-expanded {
+  background:
+    linear-gradient(180deg, #1a5c30 0%, #0d2818 100%);
+  box-shadow:
+    0 0 0 3px rgba(0, 0, 0, 0.3),
+    0 0 0 5px rgba(34, 197, 94, 0.12),
+    inset 0 1px 2px rgba(0, 0, 0, 0.3),
+    inset 0 -1px 2px rgba(34, 197, 94, 0.1),
+    0 4px 16px rgba(0, 0, 0, 0.4),
+    0 0 20px rgba(34, 197, 94, 0.25),
+    0 0 40px rgba(34, 197, 94, 0.15);
+}
+
+/* Hover state when NOT expanded */
+.pos-chin-capsule:not(.pos-chin-capsule-expanded):hover {
+  background:
+    radial-gradient(circle at 30% 30%, #22c55e 0%, #166534 50%, #0d2818 100%);
+  box-shadow:
+    0 0 0 3px rgba(0, 0, 0, 0.3),
+    0 0 0 5px rgba(34, 197, 94, 0.15),
+    inset 0 2px 4px rgba(0, 0, 0, 0.4),
+    inset 0 -1px 2px rgba(34, 197, 94, 0.15),
+    0 4px 16px rgba(0, 0, 0, 0.5),
+    0 0 25px rgba(34, 197, 94, 0.2);
+}
+
+/* Glass dome reflection on capsule */
+.pos-chin-capsule::after {
   content: "";
   position: absolute;
-  top: 4px;
-  left: 8px;
-  width: 14px;
-  height: 8px;
+  top: 5px;
+  left: 9px;
+  width: 16px;
+  height: 9px;
   background: linear-gradient(
     135deg,
     rgba(255, 255, 255, 0.2) 0%,
@@ -1378,55 +1412,105 @@ Trigger Build Compatibility Styles
   pointer-events: none;
 }
 
-/* Game button - green accent with LED-like glow */
-.pos-chin-btn-game {
-  background:
-    radial-gradient(circle at 30% 30%, #1f5432 0%, #0d2818 70%),
-    linear-gradient(180deg, #1a472a 0%, #0a1f12 100%);
+/* The toggle button (game icon) - left cap of capsule */
+.pos-capsule-toggle {
+  flex-shrink: 0;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
   color: #4ade80;
-  /* Subtle green ambient glow */
-  box-shadow:
-    0 0 0 3px rgba(0, 0, 0, 0.4),
-    0 0 0 4px rgba(34, 197, 94, 0.1),
-    inset 0 2px 4px rgba(0, 0, 0, 0.5),
-    inset 0 -1px 2px rgba(34, 197, 94, 0.1),
-    0 4px 12px rgba(0, 0, 0, 0.4),
-    0 0 20px rgba(34, 197, 94, 0.08);
+  transition: color 0.2s ease;
 }
 
-.pos-chin-btn-game:hover {
-  background:
-    radial-gradient(circle at 30% 30%, #22c55e 0%, #166534 50%, #0d2818 100%);
+.pos-chin-capsule-expanded .pos-capsule-toggle {
   color: #86efac;
-  box-shadow:
-    0 0 0 3px rgba(0, 0, 0, 0.3),
-    0 0 0 5px rgba(34, 197, 94, 0.2),
-    inset 0 2px 4px rgba(0, 0, 0, 0.4),
-    inset 0 -1px 2px rgba(34, 197, 94, 0.2),
-    0 4px 16px rgba(0, 0, 0, 0.5),
-    0 0 30px rgba(34, 197, 94, 0.25),
-    0 0 60px rgba(34, 197, 94, 0.1);
 }
 
-.pos-chin-btn-game:active {
-  transform: scale(0.95);
-  box-shadow:
-    0 0 0 3px rgba(0, 0, 0, 0.5),
-    inset 0 3px 6px rgba(0, 0, 0, 0.6),
-    0 0 25px rgba(34, 197, 94, 0.3);
+.pos-capsule-toggle:hover {
+  color: #86efac;
 }
 
-.pos-chin-btn-game svg {
-  filter: drop-shadow(0 0 6px rgba(34, 197, 94, 0.6));
+/* Icon glow only when expanded */
+.pos-capsule-toggle svg {
+  filter: none;
   transition: filter 0.2s ease;
 }
 
-.pos-chin-btn-game:hover svg {
-  filter: drop-shadow(0 0 10px rgba(34, 197, 94, 0.9));
+.pos-chin-capsule-expanded .pos-capsule-toggle svg,
+.pos-capsule-toggle:hover svg {
+  filter: drop-shadow(0 0 8px rgba(34, 197, 94, 0.8));
+}
+
+/* Container for activity buttons inside capsule */
+.pos-capsule-activities {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 4px; /* Ensures icons are fully hidden when capsule is closed */
+  padding-right: 12px;
+  /* Prevent interaction when capsule is closed */
+  pointer-events: none;
+}
+
+/* Enable interaction only when expanded */
+.pos-chin-capsule-expanded .pos-capsule-activities {
+  pointer-events: auto;
+}
+
+/* ========================================
+   POWER BUTTON - Separate, fixed position
+   ======================================== */
+
+/* Base button styles for power button */
+.pos-chin-btn {
+  position: absolute;
+  z-index: 2;
+  width: 52px;
+  height: 52px;
+  min-width: 52px;
+  min-height: 52px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+  /* Recessed socket effect */
+  box-shadow:
+    0 0 0 3px rgba(0, 0, 0, 0.4),
+    inset 0 2px 4px rgba(0, 0, 0, 0.5),
+    inset 0 -1px 2px rgba(255, 255, 255, 0.05),
+    0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* Button glass dome reflection */
+.pos-chin-btn::after {
+  content: "";
+  position: absolute;
+  top: 5px;
+  left: 9px;
+  width: 16px;
+  height: 9px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.2) 0%,
+    rgba(255, 255, 255, 0.05) 50%,
+    transparent 100%
+  );
+  border-radius: 50%;
+  pointer-events: none;
 }
 
 /* Power button - red accent with LED-like glow */
 .pos-chin-btn-power {
+  right: 24px; /* Fixed position on right */
   background:
     radial-gradient(circle at 30% 30%, #4a1a1a 0%, #1a0808 70%),
     linear-gradient(180deg, #3d1515 0%, #0f0505 100%);
@@ -1470,6 +1554,198 @@ Trigger Build Compatibility Styles
 
 .pos-chin-btn-power:hover svg {
   filter: drop-shadow(0 0 10px rgba(239, 68, 68, 0.9));
+}
+
+/* Activity button in capsule - circular hardware buttons (smaller than main buttons) */
+.pos-chin-activity-btn {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  min-height: 42px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  /* Base dark background */
+  background:
+    radial-gradient(circle at 30% 30%, #2a2a2a 0%, #1a1a1a 70%),
+    linear-gradient(180deg, #222222 0%, #111111 100%);
+  color: rgba(255, 255, 255, 0.7);
+  /* Recessed socket effect - matching main buttons */
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.4),
+    inset 0 2px 4px rgba(0, 0, 0, 0.5),
+    inset 0 -1px 2px rgba(255, 255, 255, 0.05),
+    0 3px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* Glass dome reflection on activity buttons */
+.pos-chin-activity-btn::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 6px;
+  width: 12px;
+  height: 6px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.15) 0%,
+    rgba(255, 255, 255, 0.03) 50%,
+    transparent 100%
+  );
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.pos-chin-activity-btn svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+/* Activity button color variants - Laser Tag (Red) */
+.pos-chin-activity-red {
+  background:
+    radial-gradient(circle at 30% 30%, #4a1a1a 0%, #1a0808 70%),
+    linear-gradient(180deg, #3d1515 0%, #0f0505 100%);
+  color: #f87171;
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.4),
+    0 0 0 3px rgba(239, 68, 68, 0.1),
+    inset 0 2px 4px rgba(0, 0, 0, 0.5),
+    inset 0 -1px 2px rgba(239, 68, 68, 0.1),
+    0 3px 8px rgba(0, 0, 0, 0.4),
+    0 0 15px rgba(239, 68, 68, 0.08);
+}
+
+.pos-chin-activity-red:hover {
+  background:
+    radial-gradient(circle at 30% 30%, #ef4444 0%, #991b1b 50%, #1a0808 100%);
+  color: #fca5a5;
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.3),
+    0 0 0 4px rgba(239, 68, 68, 0.2),
+    inset 0 2px 4px rgba(0, 0, 0, 0.4),
+    inset 0 -1px 2px rgba(239, 68, 68, 0.2),
+    0 4px 12px rgba(0, 0, 0, 0.5),
+    0 0 25px rgba(239, 68, 68, 0.3),
+    0 0 50px rgba(239, 68, 68, 0.15);
+}
+
+.pos-chin-activity-red svg {
+  color: #f87171;
+  filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.6));
+}
+
+.pos-chin-activity-red:hover svg {
+  filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.9));
+}
+
+/* Activity button color variants - Bowling (Blue) */
+.pos-chin-activity-blue {
+  background:
+    radial-gradient(circle at 30% 30%, #1e3a5f 0%, #0a1628 70%),
+    linear-gradient(180deg, #1e3a8a 0%, #0c1929 100%);
+  color: #60a5fa;
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.4),
+    0 0 0 3px rgba(59, 130, 246, 0.1),
+    inset 0 2px 4px rgba(0, 0, 0, 0.5),
+    inset 0 -1px 2px rgba(59, 130, 246, 0.1),
+    0 3px 8px rgba(0, 0, 0, 0.4),
+    0 0 15px rgba(59, 130, 246, 0.08);
+}
+
+.pos-chin-activity-blue:hover {
+  background:
+    radial-gradient(circle at 30% 30%, #3b82f6 0%, #1d4ed8 50%, #0a1628 100%);
+  color: #93c5fd;
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.3),
+    0 0 0 4px rgba(59, 130, 246, 0.2),
+    inset 0 2px 4px rgba(0, 0, 0, 0.4),
+    inset 0 -1px 2px rgba(59, 130, 246, 0.2),
+    0 4px 12px rgba(0, 0, 0, 0.5),
+    0 0 25px rgba(59, 130, 246, 0.3),
+    0 0 50px rgba(59, 130, 246, 0.15);
+}
+
+.pos-chin-activity-blue svg {
+  color: #60a5fa;
+  filter: drop-shadow(0 0 4px rgba(59, 130, 246, 0.6));
+}
+
+.pos-chin-activity-blue:hover svg {
+  filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.9));
+}
+
+/* Activity button color variants - Air Hockey (Cyan) */
+.pos-chin-activity-cyan {
+  background:
+    radial-gradient(circle at 30% 30%, #164e63 0%, #082f39 70%),
+    linear-gradient(180deg, #155e75 0%, #051c24 100%);
+  color: #22d3ee;
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.4),
+    0 0 0 3px rgba(6, 182, 212, 0.1),
+    inset 0 2px 4px rgba(0, 0, 0, 0.5),
+    inset 0 -1px 2px rgba(6, 182, 212, 0.1),
+    0 3px 8px rgba(0, 0, 0, 0.4),
+    0 0 15px rgba(6, 182, 212, 0.08);
+}
+
+.pos-chin-activity-cyan:hover {
+  background:
+    radial-gradient(circle at 30% 30%, #06b6d4 0%, #0891b2 50%, #082f39 100%);
+  color: #67e8f9;
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.3),
+    0 0 0 4px rgba(6, 182, 212, 0.2),
+    inset 0 2px 4px rgba(0, 0, 0, 0.4),
+    inset 0 -1px 2px rgba(6, 182, 212, 0.2),
+    0 4px 12px rgba(0, 0, 0, 0.5),
+    0 0 25px rgba(6, 182, 212, 0.3),
+    0 0 50px rgba(6, 182, 212, 0.15);
+}
+
+.pos-chin-activity-cyan svg {
+  color: #22d3ee;
+  filter: drop-shadow(0 0 4px rgba(6, 182, 212, 0.6));
+}
+
+.pos-chin-activity-cyan:hover svg {
+  filter: drop-shadow(0 0 8px rgba(6, 182, 212, 0.9));
+}
+
+/* Pressed/Active state for activity buttons - depress effect */
+.pos-chin-activity-btn:active {
+  transform: scale(0.95);
+}
+
+.pos-chin-activity-red:active {
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.5),
+    inset 0 3px 6px rgba(0, 0, 0, 0.6),
+    0 0 20px rgba(239, 68, 68, 0.4);
+}
+
+.pos-chin-activity-blue:active {
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.5),
+    inset 0 3px 6px rgba(0, 0, 0, 0.6),
+    0 0 20px rgba(59, 130, 246, 0.4);
+}
+
+.pos-chin-activity-cyan:active {
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.5),
+    inset 0 3px 6px rgba(0, 0, 0, 0.6),
+    0 0 20px rgba(6, 182, 212, 0.4);
 }
 
 /* ========================================
