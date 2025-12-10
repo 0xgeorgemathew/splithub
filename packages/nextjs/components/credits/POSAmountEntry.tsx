@@ -42,10 +42,11 @@ export function POSAmountEntry({ amount, onAmountChange, onSubmit, disabled }: P
   const creditsToReceive = amount * 10;
 
   return (
-    <div className="pos-amount-entry">
+    <motion.div className="pos-amount-entry" layout transition={{ type: "spring", stiffness: 300, damping: 30 }}>
       {/* Amount Display */}
       <motion.div
         className="pos-amount-display"
+        layout
         key={amount}
         initial={{ scale: 0.98, opacity: 0.8 }}
         animate={{ scale: 1, opacity: 1 }}
@@ -91,9 +92,10 @@ export function POSAmountEntry({ amount, onAmountChange, onSubmit, disabled }: P
       {/* Credits Preview */}
       <motion.div
         className="pos-credits-preview"
+        layout
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
+        transition={{ delay: 0.3, layout: { type: "spring", stiffness: 300, damping: 30 } }}
       >
         <div className="pos-preview-row pos-preview-row-centered">
           <span className="pos-preview-label">CREDITS (10x)</span>
@@ -124,25 +126,16 @@ export function POSAmountEntry({ amount, onAmountChange, onSubmit, disabled }: P
           disabled={disabled}
           className="pos-tap-pay-btn"
           aria-label="Tap to pay"
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+          whileHover={{ scale: 1.02, y: -2 }}
+          whileTap={{ scale: 0.95, y: 1 }}
+          transition={{ type: "spring", stiffness: 400, damping: 25 }}
         >
-          <motion.div
-            className="pos-tap-icon-wrapper"
-            animate={{
-              boxShadow: ["0 0 0 0 rgba(34, 197, 94, 0.4)", "0 0 0 12px rgba(34, 197, 94, 0)"],
-            }}
-            transition={{
-              duration: 1.5,
-              repeat: Infinity,
-              ease: "easeOut",
-            }}
-          >
+          <div className="pos-tap-icon-wrapper">
             <Nfc className="w-8 h-8" strokeWidth={1.5} />
-          </motion.div>
+          </div>
           <span className="pos-tap-text">TAP TO PAY</span>
         </motion.button>
       </motion.div>
-    </div>
+    </motion.div>
   );
 }

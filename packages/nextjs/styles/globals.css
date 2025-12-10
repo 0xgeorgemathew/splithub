@@ -1168,16 +1168,25 @@ Trigger Build Compatibility Styles
   pointer-events: none;
 }
 
-/* Screen area */
+/* Screen area - glassmorphic display */
 .pos-screen {
   flex: 1;
   position: relative;
-  background: linear-gradient(180deg, #0d0d0d 0%, #151515 100%);
+  /* Glassmorphic dark glass effect */
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(40, 40, 45, 0.4) 0%, transparent 60%),
+    linear-gradient(180deg, rgba(20, 20, 22, 0.95) 0%, rgba(12, 12, 14, 0.98) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border-radius: 20px;
-  border: 2px solid #252525;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow:
+    /* Inner depth */
     inset 0 2px 8px rgba(0, 0, 0, 0.5),
-    0 1px 0 rgba(255, 255, 255, 0.03);
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    /* Outer glow */
+    0 1px 0 rgba(255, 255, 255, 0.03),
+    0 4px 16px rgba(0, 0, 0, 0.2);
   overflow: hidden;
 }
 
@@ -1185,7 +1194,14 @@ Trigger Build Compatibility Styles
   position: absolute;
   inset: 0;
   border-radius: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.03);
+  /* Subtle inner bezel highlight */
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.02) 0%,
+    transparent 20%,
+    transparent 100%
+  );
   pointer-events: none;
 }
 
@@ -1936,20 +1952,31 @@ Trigger Build Compatibility Styles
   color: rgba(255, 255, 255, 0.4);
 }
 
-/* Amount display */
+/* Amount display - glassmorphic container */
 .pos-amount-display {
   display: flex;
   flex-direction: column;
   align-items: center;
   margin: 12px 0;
+  padding: 16px 24px;
+  /* Glassmorphic panel */
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .pos-amount-label {
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 2px;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.5);
   margin-bottom: 8px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .pos-amount-value {
@@ -1960,8 +1987,9 @@ Trigger Build Compatibility Styles
 .pos-currency {
   font-size: 28px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.7);
   margin-right: 2px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .pos-amount-number {
@@ -1970,20 +1998,23 @@ Trigger Build Compatibility Styles
   color: #fff;
   line-height: 1;
   font-family: "SF Mono", Monaco, "Courier New", monospace;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 .pos-amount-decimal {
   font-size: 28px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.35);
+  color: rgba(255, 255, 255, 0.45);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .pos-amount-token {
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 1px;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.55);
   margin-top: 4px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 /* Keypad grid */
@@ -1996,62 +2027,94 @@ Trigger Build Compatibility Styles
   margin: 8px 0;
 }
 
+/* Glassmorphic preset buttons */
 .pos-keypad-btn {
   position: relative;
   padding: 14px 8px;
-  background: rgba(50, 50, 50, 0.6);
+  /* Glassmorphism effect */
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 14px;
   font-size: 16px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.7);
   cursor: pointer;
   transition: all 0.2s ease;
+  /* Subtle glass edge highlight */
   box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    0 2px 8px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.02);
 }
 
 .pos-keypad-btn:hover:not(:disabled) {
-  background: rgba(60, 60, 60, 0.8);
-  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
   transform: translateY(-2px);
   box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    0 6px 16px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .pos-keypad-btn:active:not(:disabled) {
-  transform: translateY(0);
+  transform: translateY(0) scale(0.97);
+  background: rgba(255, 255, 255, 0.04);
   box-shadow:
     0 1px 4px rgba(0, 0, 0, 0.2),
-    inset 0 2px 4px rgba(0, 0, 0, 0.1);
+    inset 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
+/* Active/selected state - glass with inner amber glow */
 .pos-keypad-btn-active {
-  background: linear-gradient(145deg, rgba(242, 169, 0, 0.25), rgba(242, 169, 0, 0.1));
-  border-color: rgba(242, 169, 0, 0.5);
+  background: rgba(242, 169, 0, 0.12);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-color: rgba(242, 169, 0, 0.4);
   color: #f2a900;
   box-shadow:
-    0 0 20px rgba(242, 169, 0, 0.2),
-    0 4px 12px rgba(0, 0, 0, 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    /* Inner glow effect */
+    inset 0 0 20px rgba(242, 169, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    /* Outer subtle glow */
+    0 0 24px rgba(242, 169, 0, 0.12),
+    0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.pos-keypad-btn-active:hover:not(:disabled) {
+  background: rgba(242, 169, 0, 0.18);
+  border-color: rgba(242, 169, 0, 0.5);
+  box-shadow:
+    inset 0 0 24px rgba(242, 169, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 0 30px rgba(242, 169, 0, 0.18),
+    0 6px 16px rgba(0, 0, 0, 0.25);
 }
 
 .pos-keypad-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+  backdrop-filter: blur(8px);
 }
 
-/* Credits preview */
+/* Credits preview - glassmorphic panel */
 .pos-credits-preview {
   width: 100%;
   max-width: 280px;
-  padding: 12px 16px;
-  background: rgba(35, 35, 35, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 14px 18px;
+  /* Glassmorphic effect */
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 14px;
   margin: 4px 0;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1),
+    0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .pos-preview-row {
@@ -2070,14 +2133,16 @@ Trigger Build Compatibility Styles
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.5px;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.6);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .pos-preview-value {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
-  color: #f2a900;
+  color: #fbbf24;
   font-family: "SF Mono", Monaco, "Courier New", monospace;
+  text-shadow: 0 0 12px rgba(251, 191, 36, 0.4);
 }
 
 .pos-preview-free {
@@ -2095,41 +2160,69 @@ Trigger Build Compatibility Styles
   margin-top: 8px;
 }
 
+/* Tactile metallic button */
 .pos-tap-pay-btn {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 28px;
-  background: linear-gradient(145deg, #ffd54f 0%, #f2a900 40%, #d99400 70%, #c08000 100%);
+  padding: 16px 32px;
+  /* Rich metallic gradient */
+  background: linear-gradient(
+    165deg,
+    #ffe082 0%,
+    #ffd54f 15%,
+    #f2a900 40%,
+    #d99400 70%,
+    #bf8000 90%,
+    #a66e00 100%
+  );
   border: none;
   border-radius: 50px;
   cursor: pointer;
+  /* 3D button depth */
   box-shadow:
-    0 0 0 3px rgba(180, 140, 60, 0.4),
-    0 0 30px rgba(242, 169, 0, 0.3),
-    0 8px 24px rgba(0, 0, 0, 0.4),
-    inset 0 2px 4px rgba(255, 255, 255, 0.3),
-    inset 0 -2px 6px rgba(0, 0, 0, 0.2);
-  transition: all 0.2s ease;
+    /* Outer rim */
+    0 0 0 2px rgba(160, 120, 40, 0.5),
+    /* Ambient glow */
+    0 0 30px rgba(242, 169, 0, 0.25),
+    /* Drop shadow */
+    0 6px 20px rgba(0, 0, 0, 0.4),
+    0 2px 8px rgba(0, 0, 0, 0.3),
+    /* Inner top highlight */
+    inset 0 2px 4px rgba(255, 255, 255, 0.4),
+    /* Inner bottom shadow */
+    inset 0 -2px 4px rgba(0, 0, 0, 0.15);
+  transition: box-shadow 0.15s ease;
 }
 
 .pos-tap-pay-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
   box-shadow:
-    0 0 0 3px rgba(200, 160, 80, 0.5),
-    0 0 45px rgba(242, 169, 0, 0.45),
-    0 12px 32px rgba(0, 0, 0, 0.45),
-    inset 0 2px 4px rgba(255, 255, 255, 0.35),
-    inset 0 -2px 6px rgba(0, 0, 0, 0.2);
+    0 0 0 2px rgba(180, 140, 60, 0.6),
+    0 0 40px rgba(242, 169, 0, 0.35),
+    0 10px 28px rgba(0, 0, 0, 0.45),
+    0 4px 12px rgba(0, 0, 0, 0.35),
+    inset 0 2px 4px rgba(255, 255, 255, 0.45),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.15);
 }
 
+/* Tactile pressed state - deeper inset */
 .pos-tap-pay-btn:active:not(:disabled) {
-  transform: translateY(1px);
+  background: linear-gradient(
+    165deg,
+    #e6c872 0%,
+    #e6bf3d 15%,
+    #d99400 40%,
+    #c08000 70%,
+    #a66e00 90%,
+    #8c5e00 100%
+  );
   box-shadow:
-    0 0 0 2px rgba(160, 120, 50, 0.3),
-    0 0 20px rgba(242, 169, 0, 0.2),
-    0 4px 12px rgba(0, 0, 0, 0.35),
-    inset 0 3px 6px rgba(0, 0, 0, 0.15);
+    0 0 0 2px rgba(140, 100, 30, 0.4),
+    0 0 15px rgba(242, 169, 0, 0.15),
+    0 2px 6px rgba(0, 0, 0, 0.3),
+    /* Deep inset for pressed feel */
+    inset 0 3px 8px rgba(0, 0, 0, 0.25),
+    inset 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .pos-tap-pay-btn:disabled {
