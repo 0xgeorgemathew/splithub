@@ -62,20 +62,22 @@ export default async function StallPage({ params }: StallPageProps) {
       {/* BACKGROUND LAYER END */}
 
       {/* FOREGROUND CONTENT */}
-      <div className="relative z-10 flex flex-col items-center justify-center py-4 w-full h-full">
-        {/* Terminal Wrapper - Physical constraints sizing
-            - w-full max-w-[400px]: Mimics the width of a Max-sized iPhone
-            - h-[85vh]: Tries to be tall on desktop
-            - min-h-[660px]: Prevents crushing on short screens
-            - max-h-[900px]: Prevents it from becoming huge on giant monitors
-            - No aspect-ratio: Physical dimensions drive the shape
+      {/* DESIGN FIX: Added p-6 (24px padding) on all sides for mobile.
+          This creates the necessary breathing room so the terminal doesn't touch the screen edges.
+      */}
+      <div className="relative z-10 flex flex-col items-center justify-center w-full h-full p-6 md:py-4">
+        {/* Terminal Wrapper
+            - max-w-[400px]: Maximum width for larger screens
+            - max-h-[80dvh]: Prevents terminal from being too tall
+            - aspect-[9/19.5]: Maintains the phone shape - this drives the sizing
+            - The aspect ratio ensures consistent proportions regardless of content
         */}
-        <div className="relative w-full max-w-[400px] h-[85vh] min-h-[660px] max-h-[900px]">
+        <div className="relative w-full max-w-[400px] max-h-[80dvh] aspect-[9/19.5] mx-auto">
           <StallTerminal stall={stall} event={event} />
         </div>
 
         {/* Footer Branding */}
-        <div className="mt-4 text-center opacity-40 hover:opacity-100 transition-opacity">
+        <div className="mt-6 text-center opacity-40 hover:opacity-100 transition-opacity">
           <span className="text-xs font-mono tracking-widest text-amber-500/80">POWERED BY SPLITHUB</span>
         </div>
       </div>

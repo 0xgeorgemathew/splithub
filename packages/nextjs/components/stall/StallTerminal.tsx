@@ -79,19 +79,13 @@ const cardVariants = {
   },
 };
 
-// Screen glow states - warm amber glow for SplitHub brand
+// Screen glow states - clean, no glow
 function getScreenGlow(phase: CardPhase): string {
   switch (phase) {
-    case "entry":
-    case "success": // Success matches entry - clean, no glow
-      return "0 0 0 rgba(251, 191, 36, 0)";
-    case "tapping":
-    case "processing":
-      return "0 0 40px rgba(251, 191, 36, 0.25), inset 0 0 60px rgba(251, 191, 36, 0.05)";
     case "error":
       return "0 0 50px rgba(239, 68, 68, 0.35), inset 0 0 60px rgba(239, 68, 68, 0.05)";
     default:
-      return "0 0 0 rgba(251, 191, 36, 0)";
+      return "none";
   }
 }
 
@@ -160,18 +154,6 @@ export function StallTerminal({ stall, event }: StallTerminalProps) {
     <motion.div className="stall-terminal" variants={terminalVariants} initial="hidden" animate="visible">
       {/* Terminal Frame */}
       <motion.div className="stall-terminal-frame" animate={controls}>
-        {/* Ambient glow effect - warm amber */}
-        <motion.div
-          className="absolute -inset-1 rounded-[2.75rem] opacity-0 pointer-events-none"
-          style={{
-            background: "radial-gradient(ellipse at 50% 0%, rgba(251, 191, 36, 0.2) 0%, transparent 70%)",
-          }}
-          animate={{
-            opacity: phase === "success" ? 0.8 : phase === "processing" || phase === "tapping" ? 0.4 : 0,
-          }}
-          transition={{ duration: 0.5 }}
-        />
-
         {/* Speaker grille - staggered reveal */}
         <motion.div className="stall-speaker-grille" variants={headerVariants}>
           {[0, 1, 2].map(i => (

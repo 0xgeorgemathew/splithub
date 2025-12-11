@@ -4278,12 +4278,15 @@ Trigger Build Compatibility Styles
   height: 100%;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 /* Terminal frame - Matte hardware finish with top-down lighting */
 .stall-terminal-frame {
   position: relative;
-  flex: 1;
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: 100%;
   display: flex;
   flex-direction: column;
   background: linear-gradient(to bottom, #27272a 0%, #18181b 100%);
@@ -4291,6 +4294,7 @@ Trigger Build Compatibility Styles
   -webkit-backdrop-filter: blur(24px);
   border-radius: 2.5rem;
   padding: 1.5rem;
+  overflow: hidden;
   /* Physical bezel shadow with top rim light */
   box-shadow:
     inset 0 1px 0 0 rgba(255, 255, 255, 0.15),
@@ -4298,7 +4302,7 @@ Trigger Build Compatibility Styles
     0 20px 50px -12px rgba(0, 0, 0, 1);
 }
 
-/* Glass finish overlay with subtle amber tint */
+/* Glass finish overlay */
 .stall-terminal-frame::before {
   content: "";
   position: absolute;
@@ -4306,9 +4310,7 @@ Trigger Build Compatibility Styles
   pointer-events: none;
   z-index: 50;
   border-radius: 2.5rem;
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, transparent 40%),
-    linear-gradient(315deg, rgba(251, 191, 36, 0.03) 0%, transparent 30%);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, transparent 40%);
 }
 
 /* Speaker grille */
@@ -4384,34 +4386,18 @@ Trigger Build Compatibility Styles
   }
 }
 
-/* Main screen - Charcoal surface with amber accent, fills frame */
+/* Main screen - Charcoal surface, fills frame */
 .stall-screen {
   position: relative;
-  flex: 1;
+  flex: 1 1 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  background:
-    radial-gradient(ellipse at 50% 0%, rgba(251, 191, 36, 0.03) 0%, transparent 50%),
-    linear-gradient(180deg, #18181b 0%, #09090b 100%);
+  background: linear-gradient(180deg, #18181b 0%, #09090b 100%);
   border-radius: 1.25rem;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.06);
   transition: box-shadow 0.5s ease;
-}
-
-/* Idle breathing glow - applied via JS */
-.stall-screen-breathing {
-  animation: screen-breathe 3s ease-in-out infinite;
-}
-
-@keyframes screen-breathe {
-  0%,
-  100% {
-    box-shadow: 0 0 0 rgba(251, 191, 36, 0);
-  }
-  50% {
-    box-shadow: 0 0 30px rgba(251, 191, 36, 0.08);
-  }
 }
 
 .stall-screen-bezel {
@@ -4468,14 +4454,17 @@ Trigger Build Compatibility Styles
   margin-top: 8px;
 }
 
-/* Screen content area - fills remaining space */
+/* Screen content area - fills remaining space but doesn't push boundaries */
 .stall-screen-content {
   padding: 16px;
-  flex: 1;
+  flex: 1 1 0;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  min-height: 0; /* Allow shrinking in flex context */
+  align-items: stretch;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
 }
 
 /* Branding */
