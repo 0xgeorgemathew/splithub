@@ -2,7 +2,7 @@
 
 import { ReactNode, useEffect, useState } from "react";
 import { LedState, POSLed } from "./POSLed";
-import { AnimatePresence, motion, useAnimationControls } from "framer-motion";
+import { motion, useAnimationControls } from "framer-motion";
 import { Gamepad2, Power } from "lucide-react";
 import { Activity } from "~~/config/activities";
 import { CreditFlowState } from "~~/hooks/credits/useCreditPurchase";
@@ -13,6 +13,12 @@ interface POSHardwareFrameProps {
   onClose?: () => void;
   activities?: Activity[];
   onSelectActivity?: (activity: Activity) => void;
+  /** Currently selected activity - used to highlight in capsule */
+  selectedActivity?: Activity | null;
+  /** When in activity mode, this flow state controls the LED */
+  activityFlowState?: CreditFlowState;
+  /** Called when user wants to go back from activity mode to purchase mode */
+  onActivityBack?: () => void;
 }
 
 // Map flow state to LED state
@@ -20,12 +26,15 @@ function mapToLedState(flowState: CreditFlowState): LedState {
   switch (flowState) {
     case "tapping":
     case "signing":
+    case "preparing":
+    case "confirming_signature":
     case "submitting":
     case "confirming":
       return "processing";
     case "success":
       return "success";
     case "error":
+      return "error";
     case "idle":
     default:
       return "idle";
@@ -77,18 +86,54 @@ export function POSHardwareFrame({
   onClose,
   activities,
   onSelectActivity,
+  selectedActivity,
+  activityFlowState,
+  onActivityBack,
 }: POSHardwareFrameProps) {
   const controls = useAnimationControls();
   const [mousePosition, setMousePosition] = useState({ x: 0.5, y: 0.5 });
   const [isGameMenuOpen, setIsGameMenuOpen] = useState(false);
-  const ledState = mapToLedState(flowState);
+
+  // Use activity flow state for LED when in activity mode, otherwise purchase flow state
+  const effectiveFlowState = activityFlowState ?? flowState;
+  const ledState = mapToLedState(effectiveFlowState);
+
+  // Only block during active transactions (tapping, signing, submitting, confirming)
+  // Allow interaction during idle, success, and error states
+  const activeTransactionStates = [
+    "tapping",
+    "signing",
+    "preparing",
+    "confirming_signature",
+    "submitting",
+    "confirming",
+  ];
+  const isPurchaseTransactionInProgress = activeTransactionStates.includes(flowState);
+  const isActivityTransactionInProgress =
+    activityFlowState !== undefined && activeTransactionStates.includes(activityFlowState);
+  const isTransactionInProgress = isPurchaseTransactionInProgress || isActivityTransactionInProgress;
+
+  // Activity mode is when an activity is selected
+  const isActivityMode = selectedActivity !== null && selectedActivity !== undefined;
 
   const handleToggleGameMenu = () => {
+    if (isTransactionInProgress) return;
+
+    // If in activity mode, tapping the game icon should go back to POS
+    // This works whether the menu is open or closed
+    if (isActivityMode) {
+      setIsGameMenuOpen(false); // Ensure menu is closed
+      onActivityBack?.();
+      return;
+    }
+
+    // Otherwise, toggle the menu open/closed
     setIsGameMenuOpen(prev => !prev);
   };
 
   const handleSelectActivity = (activity: Activity) => {
-    setIsGameMenuOpen(false);
+    // Don't close the menu, just select the activity
+    // This keeps the capsule expanded so user can see the selection
     onSelectActivity?.(activity);
   };
 
@@ -112,6 +157,14 @@ export function POSHardwareFrame({
 
   return (
     <motion.div className="pos-hardware-frame" animate={controls} onMouseMove={handleMouseMove}>
+      {/* Glass finish overlay - subtle gradient across entire frame */}
+      <div
+        className="absolute inset-0 pointer-events-none z-50 rounded-[2.5rem]"
+        style={{
+          background: "linear-gradient(to top right, rgba(255, 255, 255, 0.03) 0%, transparent 60%)",
+        }}
+      />
+
       {/* Top speaker grille */}
       <div className="pos-speaker-grille">
         <div className="pos-speaker-slot" />
@@ -160,21 +213,8 @@ export function POSHardwareFrame({
           transition={{ duration: 0.1 }}
         />
 
-        {/* Content with AnimatePresence for crossfade */}
-        <div className="pos-screen-content">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={flowState === "idle" || flowState === "error" ? "entry" : "receipt"}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
-              style={{ width: "100%", height: "100%" }}
-            >
-              {children}
-            </motion.div>
-          </AnimatePresence>
-        </div>
+        {/* Content area - animations handled by parent component */}
+        <div className="pos-screen-content">{children}</div>
       </div>
 
       {/* Bottom branding area */}
@@ -196,6 +236,7 @@ export function POSHardwareFrame({
       {/* Hardware Control Bar (Chin) */}
       <div className="pos-hardware-chin">
         {/* Unified Game Capsule - expands from circle to pill seamlessly */}
+        {/* Show capsule when activities available */}
         {activities && activities.length > 0 && (
           <motion.div
             className={`pos-chin-capsule ${isGameMenuOpen ? "pos-chin-capsule-expanded" : ""}`}
@@ -205,17 +246,18 @@ export function POSHardwareFrame({
           >
             {/* Game Icon Toggle - always visible as left cap */}
             <motion.button
-              className="pos-capsule-toggle"
+              className={`pos-capsule-toggle ${isTransactionInProgress ? "opacity-40 cursor-not-allowed" : ""}`}
               onClick={handleToggleGameMenu}
-              whileTap={{ scale: 0.92 }}
+              whileTap={isTransactionInProgress ? undefined : { scale: 0.92 }}
               aria-label={isGameMenuOpen ? "Close activities menu" : "Open activities menu"}
               aria-expanded={isGameMenuOpen}
+              aria-disabled={isTransactionInProgress}
             >
               <motion.div
                 variants={iconRotationVariants}
                 style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
               >
-                <Gamepad2 className="w-5 h-5" />
+                <Gamepad2 />
               </motion.div>
             </motion.button>
 
@@ -223,14 +265,17 @@ export function POSHardwareFrame({
             <div className="pos-capsule-activities">
               {activities.map(activity => {
                 const ActivityIcon = activity.icon;
+                const isSelected = selectedActivity?.id === activity.id;
                 return (
-                  <button
+                  <motion.button
                     key={activity.id}
-                    className={`pos-chin-activity-btn pos-chin-activity-${activity.color}`}
+                    className={`pos-chin-activity-btn pos-chin-activity-${activity.color} ${isSelected ? "pos-chin-activity-selected" : ""}`}
                     onClick={() => handleSelectActivity(activity)}
+                    disabled={isTransactionInProgress}
+                    whileTap={isTransactionInProgress ? undefined : { scale: 0.95 }}
                   >
                     <ActivityIcon className="w-4 h-4" />
-                  </button>
+                  </motion.button>
                 );
               })}
             </div>

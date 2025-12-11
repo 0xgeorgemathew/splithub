@@ -4,8 +4,17 @@ import deployedContracts from "~~/contracts/deployedContracts";
 import { useHaloChip } from "~~/hooks/halochip-arx/useHaloChip";
 import { useTargetNetwork } from "~~/hooks/scaffold-eth";
 
-// Flow states
-export type CreditFlowState = "idle" | "tapping" | "signing" | "submitting" | "confirming" | "success" | "error";
+// Flow states - granular for better UI feedback
+export type CreditFlowState =
+  | "idle"
+  | "tapping" // Waiting for first chip tap
+  | "signing" // First signature in progress
+  | "preparing" // Fetching owner/nonce from contracts
+  | "confirming_signature" // Waiting for second chip tap
+  | "submitting" // Sending to relay API
+  | "confirming" // Waiting for tx confirmation
+  | "success"
+  | "error";
 
 // Registry ABI for owner lookup
 const SPLIT_HUB_REGISTRY_ABI = [
@@ -82,6 +91,7 @@ export function useCreditSpend({ onSuccess, onError }: UseCreditSpendOptions = {
       }
 
       try {
+        // Step 1: Waiting for first chip tap
         setFlowState("tapping");
         setStatusMessage("Tap your chip");
 
@@ -107,7 +117,7 @@ export function useCreditSpend({ onSuccess, onError }: UseCreditSpendOptions = {
           ],
         };
 
-        // Signing state - first tap to get chip address
+        // Step 2: First signature in progress
         setFlowState("signing");
         setStatusMessage("Signing...");
 
@@ -126,6 +136,10 @@ export function useCreditSpend({ onSuccess, onError }: UseCreditSpendOptions = {
         });
 
         const chipAddress = chipResult.address as `0x${string}`;
+
+        // Step 3: Fetching owner/nonce from contracts
+        setFlowState("preparing");
+        setStatusMessage("Preparing transaction...");
 
         // Lookup owner from registry
         const owner = (await publicClient.readContract({
@@ -157,6 +171,10 @@ export function useCreditSpend({ onSuccess, onError }: UseCreditSpendOptions = {
           nonce: nonce,
           deadline: deadline,
         };
+
+        // Step 4: Waiting for second chip tap (final signature)
+        setFlowState("confirming_signature");
+        setStatusMessage("Tap again to confirm");
 
         // Sign the real message with correct values
         const finalChipResult = await signTypedData({
@@ -230,7 +248,6 @@ export function useCreditSpend({ onSuccess, onError }: UseCreditSpendOptions = {
           onSuccess(result.txHash, activityId, owner);
         }
       } catch (err: unknown) {
-        console.error("Credit spend error:", err);
         setFlowState("error");
         const errorMessage = err instanceof Error ? err.message : "Spend failed. Please try again.";
         setError(errorMessage);

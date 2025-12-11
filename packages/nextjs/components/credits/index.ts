@@ -1,5 +1,7 @@
 export { POSFullScreen } from "./POSFullScreen";
 export { POSHardwareFrame } from "./POSHardwareFrame";
 export { POSAmountEntry } from "./POSAmountEntry";
-export { POSTransactionDisplay } from "./POSTransactionDisplay";
+export { POSCardStack } from "./POSCardStack";
 export { POSLed, type LedState } from "./POSLed";
+export { ActivityPanel } from "./ActivityPanel";
+export { ActivityCardStack } from "./ActivityCardStack";

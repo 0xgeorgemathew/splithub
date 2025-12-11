@@ -1066,12 +1066,10 @@ Trigger Build Compatibility Styles
     /* Outer rim light - simulates edge catching light */
     0 0 0 1px rgba(255, 255, 255, 0.08),
     0 -1px 0 0 rgba(255, 255, 255, 0.12),
-    /* Ambient shadows - lifts device from void */
-    0 40px 100px -20px rgba(0, 0, 0, 0.9),
+    /* Ambient shadows - lifts device from void */ 0 40px 100px -20px rgba(0, 0, 0, 0.9),
     0 20px 60px -10px rgba(0, 0, 0, 0.8),
     0 8px 24px rgba(0, 0, 0, 0.6),
-    /* Inner highlights for 3D depth */
-    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    /* Inner highlights for 3D depth */ inset 0 1px 0 rgba(255, 255, 255, 0.1),
     inset 0 -1px 0 rgba(0, 0, 0, 0.3),
     inset 1px 0 0 rgba(255, 255, 255, 0.03),
     inset -1px 0 0 rgba(255, 255, 255, 0.03);
@@ -1145,12 +1143,7 @@ Trigger Build Compatibility Styles
   left: 2px;
   width: 4px;
   height: 3px;
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.7) 0%,
-    rgba(255, 255, 255, 0.3) 50%,
-    transparent 100%
-  );
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%);
   border-radius: 50%;
   pointer-events: none;
 }
@@ -1184,8 +1177,7 @@ Trigger Build Compatibility Styles
     /* Inner depth */
     inset 0 2px 8px rgba(0, 0, 0, 0.5),
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    /* Outer glow */
-    0 1px 0 rgba(255, 255, 255, 0.03),
+    /* Outer glow */ 0 1px 0 rgba(255, 255, 255, 0.03),
     0 4px 16px rgba(0, 0, 0, 0.2);
   overflow: hidden;
 }
@@ -1196,12 +1188,7 @@ Trigger Build Compatibility Styles
   border-radius: 18px;
   /* Subtle inner bezel highlight */
   border: 1px solid rgba(255, 255, 255, 0.04);
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.02) 0%,
-    transparent 20%,
-    transparent 100%
-  );
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, transparent 20%, transparent 100%);
   pointer-events: none;
 }
 
@@ -1289,16 +1276,12 @@ Trigger Build Compatibility Styles
     /* Outer rim light - bottom and sides catching light */
     0 1px 0 0 rgba(255, 255, 255, 0.08),
     0 0 0 1px rgba(255, 255, 255, 0.05),
-    /* Left/right inner edge highlights */
-    inset 1px 0 0 rgba(255, 255, 255, 0.06),
+    /* Left/right inner edge highlights */ inset 1px 0 0 rgba(255, 255, 255, 0.06),
     inset -1px 0 0 rgba(255, 255, 255, 0.06),
-    /* Bottom inner rim light */
-    inset 0 -1px 0 rgba(255, 255, 255, 0.1),
-    /* Top edge groove for separation */
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    /* Bottom inner rim light */ inset 0 -1px 0 rgba(255, 255, 255, 0.1),
+    /* Top edge groove for separation */ inset 0 1px 0 rgba(255, 255, 255, 0.08),
     inset 0 3px 8px rgba(0, 0, 0, 0.5),
-    /* Ambient shadow to lift from void */
-    0 12px 32px rgba(0, 0, 0, 0.6),
+    /* Ambient shadow to lift from void */ 0 12px 32px rgba(0, 0, 0, 0.6),
     0 24px 64px rgba(0, 0, 0, 0.4);
 }
 
@@ -1353,8 +1336,7 @@ Trigger Build Compatibility Styles
   height: 52px;
   /* 3D effect matching power button - green accent */
   background:
-    radial-gradient(circle at 30% 30%, #1f5432 0%, #0d2818 70%),
-    linear-gradient(180deg, #1a472a 0%, #0a1f12 100%);
+    radial-gradient(circle at 30% 30%, #1f5432 0%, #0d2818 70%), linear-gradient(180deg, #1a472a 0%, #0a1f12 100%);
   border: none;
   /* NO GLOW in default state - just 3D depth */
   box-shadow:
@@ -1364,13 +1346,14 @@ Trigger Build Compatibility Styles
     inset 0 -1px 2px rgba(34, 197, 94, 0.05),
     0 4px 12px rgba(0, 0, 0, 0.4);
   overflow: hidden;
-  transition: box-shadow 0.2s ease, background 0.2s ease;
+  transition:
+    box-shadow 0.2s ease,
+    background 0.2s ease;
 }
 
 /* Expanded state - add EVEN green glow (centered, not offset) */
 .pos-chin-capsule.pos-chin-capsule-expanded {
-  background:
-    linear-gradient(180deg, #1a5c30 0%, #0d2818 100%);
+  background: linear-gradient(180deg, #134524 0%, #0a1e12 100%);
   box-shadow:
     0 0 0 3px rgba(0, 0, 0, 0.3),
     0 0 0 5px rgba(34, 197, 94, 0.12),
@@ -1383,8 +1366,7 @@ Trigger Build Compatibility Styles
 
 /* Hover state when NOT expanded */
 .pos-chin-capsule:not(.pos-chin-capsule-expanded):hover {
-  background:
-    radial-gradient(circle at 30% 30%, #22c55e 0%, #166534 50%, #0d2818 100%);
+  background: radial-gradient(circle at 30% 30%, #22c55e 0%, #166534 50%, #0d2818 100%);
   box-shadow:
     0 0 0 3px rgba(0, 0, 0, 0.3),
     0 0 0 5px rgba(34, 197, 94, 0.15),
@@ -1402,48 +1384,89 @@ Trigger Build Compatibility Styles
   left: 9px;
   width: 16px;
   height: 9px;
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.2) 0%,
-    rgba(255, 255, 255, 0.05) 50%,
-    transparent 100%
-  );
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.05) 50%, transparent 100%);
   border-radius: 50%;
   pointer-events: none;
 }
 
-/* The toggle button (game icon) - left cap of capsule */
+/* The toggle button (game icon) - matches power button styling */
 .pos-capsule-toggle {
+  position: relative;
   flex-shrink: 0;
-  width: 50px;
-  height: 50px;
+  width: 52px;
+  height: 52px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: transparent;
+  border-radius: 50%;
   border: none;
   cursor: pointer;
   color: #4ade80;
-  transition: color 0.2s ease;
+  transition:
+    background 0.2s ease,
+    box-shadow 0.2s ease,
+    color 0.2s ease;
+  /* Match power button filled style with green accent */
+  background:
+    radial-gradient(circle at 30% 30%, #1a3d26 0%, #0a1f10 70%), linear-gradient(180deg, #153d22 0%, #051a0a 100%);
+  /* Match power button box-shadow structure */
+  box-shadow:
+    0 0 0 3px rgba(0, 0, 0, 0.4),
+    0 0 0 4px rgba(34, 197, 94, 0.1),
+    inset 0 2px 4px rgba(0, 0, 0, 0.5),
+    inset 0 -1px 2px rgba(34, 197, 94, 0.1),
+    0 4px 12px rgba(0, 0, 0, 0.4),
+    0 0 20px rgba(34, 197, 94, 0.08);
 }
 
-.pos-chin-capsule-expanded .pos-capsule-toggle {
-  color: #86efac;
+/* Glass dome reflection on toggle - match power button */
+.pos-capsule-toggle::after {
+  content: "";
+  position: absolute;
+  top: 5px;
+  left: 9px;
+  width: 16px;
+  height: 9px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.05) 50%, transparent 100%);
+  border-radius: 50%;
+  pointer-events: none;
 }
 
+.pos-chin-capsule-expanded .pos-capsule-toggle,
 .pos-capsule-toggle:hover {
   color: #86efac;
+  background: radial-gradient(circle at 30% 30%, #22c55e 0%, #166534 50%, #0a1f10 100%);
+  box-shadow:
+    0 0 0 3px rgba(0, 0, 0, 0.3),
+    0 0 0 5px rgba(34, 197, 94, 0.2),
+    inset 0 2px 4px rgba(0, 0, 0, 0.4),
+    inset 0 -1px 2px rgba(34, 197, 94, 0.2),
+    0 4px 16px rgba(0, 0, 0, 0.5),
+    0 0 30px rgba(34, 197, 94, 0.25),
+    0 0 60px rgba(34, 197, 94, 0.1);
 }
 
-/* Icon glow only when expanded */
+/* Pressed/active state */
+.pos-capsule-toggle:active {
+  transform: scale(0.95);
+  box-shadow:
+    0 0 0 3px rgba(0, 0, 0, 0.5),
+    inset 0 3px 6px rgba(0, 0, 0, 0.6),
+    0 0 25px rgba(34, 197, 94, 0.3);
+}
+
+/* Icon styling - subtle glow like power button */
 .pos-capsule-toggle svg {
-  filter: none;
+  width: 20px;
+  height: 20px;
+  filter: drop-shadow(0 0 6px rgba(34, 197, 94, 0.6));
   transition: filter 0.2s ease;
 }
 
+/* Enhanced glow when expanded or hovered */
 .pos-chin-capsule-expanded .pos-capsule-toggle svg,
 .pos-capsule-toggle:hover svg {
-  filter: drop-shadow(0 0 8px rgba(34, 197, 94, 0.8));
+  filter: drop-shadow(0 0 10px rgba(34, 197, 94, 0.9));
 }
 
 /* Container for activity buttons inside capsule */
@@ -1451,7 +1474,7 @@ Trigger Build Compatibility Styles
   display: flex;
   align-items: center;
   gap: 10px;
-  padding-left: 4px; /* Ensures icons are fully hidden when capsule is closed */
+  padding-left: 12px; /* Space between game icon and activity icons */
   padding-right: 12px;
   /* Prevent interaction when capsule is closed */
   pointer-events: none;
@@ -1481,7 +1504,10 @@ Trigger Build Compatibility Styles
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+  transition:
+    background 0.2s ease,
+    box-shadow 0.2s ease,
+    color 0.2s ease;
   /* Recessed socket effect */
   box-shadow:
     0 0 0 3px rgba(0, 0, 0, 0.4),
@@ -1498,12 +1524,7 @@ Trigger Build Compatibility Styles
   left: 9px;
   width: 16px;
   height: 9px;
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.2) 0%,
-    rgba(255, 255, 255, 0.05) 50%,
-    transparent 100%
-  );
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.05) 50%, transparent 100%);
   border-radius: 50%;
   pointer-events: none;
 }
@@ -1512,8 +1533,7 @@ Trigger Build Compatibility Styles
 .pos-chin-btn-power {
   right: 24px; /* Fixed position on right */
   background:
-    radial-gradient(circle at 30% 30%, #4a1a1a 0%, #1a0808 70%),
-    linear-gradient(180deg, #3d1515 0%, #0f0505 100%);
+    radial-gradient(circle at 30% 30%, #4a1a1a 0%, #1a0808 70%), linear-gradient(180deg, #3d1515 0%, #0f0505 100%);
   color: #f87171;
   /* Subtle red ambient glow */
   box-shadow:
@@ -1526,8 +1546,7 @@ Trigger Build Compatibility Styles
 }
 
 .pos-chin-btn-power:hover {
-  background:
-    radial-gradient(circle at 30% 30%, #ef4444 0%, #991b1b 50%, #1a0808 100%);
+  background: radial-gradient(circle at 30% 30%, #ef4444 0%, #991b1b 50%, #1a0808 100%);
   color: #fca5a5;
   box-shadow:
     0 0 0 3px rgba(0, 0, 0, 0.3),
@@ -1573,8 +1592,7 @@ Trigger Build Compatibility Styles
   transition: all 0.2s ease;
   /* Base dark background */
   background:
-    radial-gradient(circle at 30% 30%, #2a2a2a 0%, #1a1a1a 70%),
-    linear-gradient(180deg, #222222 0%, #111111 100%);
+    radial-gradient(circle at 30% 30%, #2a2a2a 0%, #1a1a1a 70%), linear-gradient(180deg, #222222 0%, #111111 100%);
   color: rgba(255, 255, 255, 0.7);
   /* Recessed socket effect - matching main buttons */
   box-shadow:
@@ -1592,12 +1610,7 @@ Trigger Build Compatibility Styles
   left: 6px;
   width: 12px;
   height: 6px;
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.15) 0%,
-    rgba(255, 255, 255, 0.03) 50%,
-    transparent 100%
-  );
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.03) 50%, transparent 100%);
   border-radius: 50%;
   pointer-events: none;
 }
@@ -1611,8 +1624,7 @@ Trigger Build Compatibility Styles
 /* Activity button color variants - Laser Tag (Red) */
 .pos-chin-activity-red {
   background:
-    radial-gradient(circle at 30% 30%, #4a1a1a 0%, #1a0808 70%),
-    linear-gradient(180deg, #3d1515 0%, #0f0505 100%);
+    radial-gradient(circle at 30% 30%, #4a1a1a 0%, #1a0808 70%), linear-gradient(180deg, #3d1515 0%, #0f0505 100%);
   color: #f87171;
   box-shadow:
     0 0 0 2px rgba(0, 0, 0, 0.4),
@@ -1624,8 +1636,7 @@ Trigger Build Compatibility Styles
 }
 
 .pos-chin-activity-red:hover {
-  background:
-    radial-gradient(circle at 30% 30%, #ef4444 0%, #991b1b 50%, #1a0808 100%);
+  background: radial-gradient(circle at 30% 30%, #ef4444 0%, #991b1b 50%, #1a0808 100%);
   color: #fca5a5;
   box-shadow:
     0 0 0 2px rgba(0, 0, 0, 0.3),
@@ -1649,8 +1660,7 @@ Trigger Build Compatibility Styles
 /* Activity button color variants - Bowling (Blue) */
 .pos-chin-activity-blue {
   background:
-    radial-gradient(circle at 30% 30%, #1e3a5f 0%, #0a1628 70%),
-    linear-gradient(180deg, #1e3a8a 0%, #0c1929 100%);
+    radial-gradient(circle at 30% 30%, #1e3a5f 0%, #0a1628 70%), linear-gradient(180deg, #1e3a8a 0%, #0c1929 100%);
   color: #60a5fa;
   box-shadow:
     0 0 0 2px rgba(0, 0, 0, 0.4),
@@ -1662,8 +1672,7 @@ Trigger Build Compatibility Styles
 }
 
 .pos-chin-activity-blue:hover {
-  background:
-    radial-gradient(circle at 30% 30%, #3b82f6 0%, #1d4ed8 50%, #0a1628 100%);
+  background: radial-gradient(circle at 30% 30%, #3b82f6 0%, #1d4ed8 50%, #0a1628 100%);
   color: #93c5fd;
   box-shadow:
     0 0 0 2px rgba(0, 0, 0, 0.3),
@@ -1687,8 +1696,7 @@ Trigger Build Compatibility Styles
 /* Activity button color variants - Air Hockey (Cyan) */
 .pos-chin-activity-cyan {
   background:
-    radial-gradient(circle at 30% 30%, #164e63 0%, #082f39 70%),
-    linear-gradient(180deg, #155e75 0%, #051c24 100%);
+    radial-gradient(circle at 30% 30%, #164e63 0%, #082f39 70%), linear-gradient(180deg, #155e75 0%, #051c24 100%);
   color: #22d3ee;
   box-shadow:
     0 0 0 2px rgba(0, 0, 0, 0.4),
@@ -1700,8 +1708,7 @@ Trigger Build Compatibility Styles
 }
 
 .pos-chin-activity-cyan:hover {
-  background:
-    radial-gradient(circle at 30% 30%, #06b6d4 0%, #0891b2 50%, #082f39 100%);
+  background: radial-gradient(circle at 30% 30%, #06b6d4 0%, #0891b2 50%, #082f39 100%);
   color: #67e8f9;
   box-shadow:
     0 0 0 2px rgba(0, 0, 0, 0.3),
@@ -1746,6 +1753,73 @@ Trigger Build Compatibility Styles
     0 0 0 2px rgba(0, 0, 0, 0.5),
     inset 0 3px 6px rgba(0, 0, 0, 0.6),
     0 0 20px rgba(6, 182, 212, 0.4);
+}
+
+/* Selected activity button state - SAME AS HOVER STATE */
+.pos-chin-activity-selected {
+  /* No transform */
+}
+
+.pos-chin-activity-red.pos-chin-activity-selected,
+.pos-chin-activity-red.pos-chin-activity-selected:hover {
+  background: radial-gradient(circle at 30% 30%, #ef4444 0%, #991b1b 50%, #1a0808 100%);
+  color: #fca5a5;
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.3),
+    0 0 0 4px rgba(239, 68, 68, 0.2),
+    inset 0 2px 4px rgba(0, 0, 0, 0.4),
+    inset 0 -1px 2px rgba(239, 68, 68, 0.2),
+    0 4px 12px rgba(0, 0, 0, 0.5),
+    0 0 25px rgba(239, 68, 68, 0.3),
+    0 0 50px rgba(239, 68, 68, 0.15);
+}
+
+.pos-chin-activity-blue.pos-chin-activity-selected,
+.pos-chin-activity-blue.pos-chin-activity-selected:hover {
+  background: radial-gradient(circle at 30% 30%, #3b82f6 0%, #1d4ed8 50%, #0a1628 100%);
+  color: #93c5fd;
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.3),
+    0 0 0 4px rgba(59, 130, 246, 0.2),
+    inset 0 2px 4px rgba(0, 0, 0, 0.4),
+    inset 0 -1px 2px rgba(59, 130, 246, 0.2),
+    0 4px 12px rgba(0, 0, 0, 0.5),
+    0 0 25px rgba(59, 130, 246, 0.3),
+    0 0 50px rgba(59, 130, 246, 0.15);
+}
+
+.pos-chin-activity-cyan.pos-chin-activity-selected,
+.pos-chin-activity-cyan.pos-chin-activity-selected:hover {
+  background: radial-gradient(circle at 30% 30%, #06b6d4 0%, #0891b2 50%, #082f39 100%);
+  color: #67e8f9;
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.3),
+    0 0 0 4px rgba(6, 182, 212, 0.2),
+    inset 0 2px 4px rgba(0, 0, 0, 0.4),
+    inset 0 -1px 2px rgba(6, 182, 212, 0.2),
+    0 4px 12px rgba(0, 0, 0, 0.5),
+    0 0 25px rgba(6, 182, 212, 0.3),
+    0 0 50px rgba(6, 182, 212, 0.15);
+}
+
+/* Selected state SVG icons - same as hover */
+.pos-chin-activity-red.pos-chin-activity-selected svg {
+  filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.9));
+}
+
+.pos-chin-activity-blue.pos-chin-activity-selected svg {
+  filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.9));
+}
+
+.pos-chin-activity-cyan.pos-chin-activity-selected svg {
+  filter: drop-shadow(0 0 8px rgba(6, 182, 212, 0.9));
+}
+
+/* Disabled state for activity buttons during transactions */
+.pos-chin-activity-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
 }
 
 /* ========================================
@@ -2354,8 +2428,7 @@ Trigger Build Compatibility Styles
     /* Inner glow effect */
     inset 0 0 20px rgba(242, 169, 0, 0.15),
     inset 0 1px 0 rgba(255, 255, 255, 0.15),
-    /* Outer subtle glow */
-    0 0 24px rgba(242, 169, 0, 0.12),
+    /* Outer subtle glow */ 0 0 24px rgba(242, 169, 0, 0.12),
     0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
@@ -2443,15 +2516,7 @@ Trigger Build Compatibility Styles
   gap: 12px;
   padding: 16px 32px;
   /* Rich metallic gradient */
-  background: linear-gradient(
-    165deg,
-    #ffe082 0%,
-    #ffd54f 15%,
-    #f2a900 40%,
-    #d99400 70%,
-    #bf8000 90%,
-    #a66e00 100%
-  );
+  background: linear-gradient(165deg, #ffe082 0%, #ffd54f 15%, #f2a900 40%, #d99400 70%, #bf8000 90%, #a66e00 100%);
   border: none;
   border-radius: 50px;
   cursor: pointer;
@@ -2459,15 +2524,11 @@ Trigger Build Compatibility Styles
   box-shadow:
     /* Outer rim */
     0 0 0 2px rgba(160, 120, 40, 0.5),
-    /* Ambient glow */
-    0 0 30px rgba(242, 169, 0, 0.25),
-    /* Drop shadow */
-    0 6px 20px rgba(0, 0, 0, 0.4),
+    /* Ambient glow */ 0 0 30px rgba(242, 169, 0, 0.25),
+    /* Drop shadow */ 0 6px 20px rgba(0, 0, 0, 0.4),
     0 2px 8px rgba(0, 0, 0, 0.3),
-    /* Inner top highlight */
-    inset 0 2px 4px rgba(255, 255, 255, 0.4),
-    /* Inner bottom shadow */
-    inset 0 -2px 4px rgba(0, 0, 0, 0.15);
+    /* Inner top highlight */ inset 0 2px 4px rgba(255, 255, 255, 0.4),
+    /* Inner bottom shadow */ inset 0 -2px 4px rgba(0, 0, 0, 0.15);
   transition: box-shadow 0.15s ease;
 }
 
@@ -2483,21 +2544,12 @@ Trigger Build Compatibility Styles
 
 /* Tactile pressed state - deeper inset */
 .pos-tap-pay-btn:active:not(:disabled) {
-  background: linear-gradient(
-    165deg,
-    #e6c872 0%,
-    #e6bf3d 15%,
-    #d99400 40%,
-    #c08000 70%,
-    #a66e00 90%,
-    #8c5e00 100%
-  );
+  background: linear-gradient(165deg, #e6c872 0%, #e6bf3d 15%, #d99400 40%, #c08000 70%, #a66e00 90%, #8c5e00 100%);
   box-shadow:
     0 0 0 2px rgba(140, 100, 30, 0.4),
     0 0 15px rgba(242, 169, 0, 0.15),
     0 2px 6px rgba(0, 0, 0, 0.3),
-    /* Deep inset for pressed feel */
-    inset 0 3px 8px rgba(0, 0, 0, 0.25),
+    /* Deep inset for pressed feel */ inset 0 3px 8px rgba(0, 0, 0, 0.25),
     inset 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
