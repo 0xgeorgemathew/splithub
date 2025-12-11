@@ -4279,6 +4279,7 @@ Trigger Build Compatibility Styles
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  border-radius: 2.5rem;
 }
 
 /* Terminal frame - Matte hardware finish with top-down lighting */
@@ -4495,16 +4496,17 @@ Trigger Build Compatibility Styles
 .stall-card-slot {
   background: linear-gradient(180deg, #18181b 0%, #09090b 100%);
   height: 16px;
-  border-radius: 0 0 4px 4px;
+  border-radius: 8px;
   margin: 0 48px;
   position: relative;
+  overflow: hidden;
 }
 
 .stall-card-slot-inner {
   position: absolute;
   inset: 2px 4px;
   background: #09090b;
-  border-radius: 2px;
+  border-radius: 4px;
   box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.6);
 }
 
@@ -4692,6 +4694,96 @@ Trigger Build Compatibility Styles
   font-weight: 800;
   letter-spacing: 3px;
   color: #18181b;
+}
+
+/* Terminal wrapper - controls sizing and aspect ratio */
+.stall-terminal-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  max-height: 80dvh;
+  aspect-ratio: 9 / 19.5;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Mobile phone override (covers iPhone 12 mini through iPhone Pro Max)
+   Safari browser chrome reduces actual viewport height significantly
+   Makes the terminal fill the screen better on all phones */
+@media only screen and (max-width: 430px) {
+  .stall-terminal-wrapper {
+    max-width: 100%;
+    max-height: 88dvh;
+    aspect-ratio: 9 / 19;
+  }
+
+  /* Reduce outer padding on phones */
+  .stall-page-content {
+    padding: 10px !important;
+  }
+
+  /* Tighter frame padding */
+  .stall-terminal {
+    border-radius: 1.75rem;
+  }
+
+  .stall-terminal-frame {
+    padding: 1rem;
+    border-radius: 1.75rem;
+  }
+
+  .stall-terminal-frame::before {
+    border-radius: 1.75rem;
+  }
+
+  /* Compact header */
+  .stall-header {
+    padding: 14px 14px 10px;
+  }
+
+  .stall-header-name {
+    font-size: 20px;
+  }
+
+  .stall-header-event {
+    font-size: 11px;
+    margin-bottom: 6px;
+  }
+
+  .stall-header-operator {
+    font-size: 13px;
+    margin-top: 6px;
+  }
+
+  /* Reduce branding margins */
+  .stall-branding {
+    margin-top: 10px;
+    margin-bottom: 6px;
+  }
+
+  .stall-speaker-grille {
+    margin-bottom: 8px;
+  }
+
+  /* Tighter content padding */
+  .stall-screen-content {
+    padding: 12px;
+  }
+}
+
+/* Extra small phones (iPhone 12 mini, SE) - even tighter */
+@media only screen and (max-width: 375px) {
+  .stall-terminal-wrapper {
+    max-height: 92dvh;
+  }
+
+  .stall-page-content {
+    padding: 8px !important;
+  }
+
+  .stall-header-name {
+    font-size: 18px;
+  }
 }
 
 /* ============================================
