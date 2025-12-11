@@ -24,6 +24,8 @@ export const getMetadata = ({
     manifest: "/manifest.json",
     openGraph: {
       type: "website",
+      url: baseUrl,
+      locale: "en_US",
       siteName: "SplitHub",
       title: {
         default: title,
