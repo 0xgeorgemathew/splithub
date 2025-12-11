@@ -1,173 +1,121 @@
 # SplitHub
 
-Tap-to-pay bill splitting app on blockchain. NFC Arx Halo Chips sign EIP-712 messages; relayer pays gas fees.
+Tap-to-pay bill splitting on blockchain. NFC Halo Chips sign EIP-712 messages; relayer pays gas.
 
-## Tech Stack
+## Stack
 
-- **Frontend:** Next.js 15 (App Router), React 19, Wagmi/Viem, Privy (Twitter OAuth), TailwindCSS + DaisyUI
-- **NFC:** @arx-research/libhalo for Halo Chip signing
-- **Contracts:** Foundry, Solidity 0.8.19, Base Sepolia (Chain ID: 84532)
+- **Frontend:** Next.js 15, React 19, Wagmi/Viem, Privy (Twitter OAuth), TailwindCSS + DaisyUI
+- **NFC:** @arx-research/libhalo
+- **Contracts:** Foundry, Solidity 0.8.19, Base Sepolia (84532)
 - **Database:** Supabase (PostgreSQL)
 - **State:** Zustand
-- **Push Notifications:** OneSignal (react-onesignal)
 
-## Project Structure
+## Structure
 
 ```
-packages/nextjs/           # Frontend
-  app/api/relay/           # Gasless transaction endpoints
-  app/api/onboarding/      # Onboarding finalization
-  services/                # Business logic (balanceService, expenseService, etc.)
-  hooks/                   # React hooks (useHaloChip, etc.)
-packages/foundry/          # Smart contracts
-  contracts/               # Solidity source
+packages/nextjs/
+  app/api/relay/       # Gasless transaction endpoints
+  services/            # balanceService, expenseService, etc.
+  hooks/               # useHaloChip, etc.
+packages/foundry/
+  contracts/           # SplitHubRegistry, SplitHubPayments, CreditToken
 ```
 
-## Smart Contracts
+## Contracts
 
-| Contract | Purpose |
-|----------|---------|
-| SplitHubRegistry | Links NFC chips to wallet addresses |
-| SplitHubPayments | Executes gasless token transfers |
-| CreditToken | ERC-20 credits (1 USDC = 10 credits) |
+- **SplitHubRegistry** - Links NFC chips to wallets
+- **SplitHubPayments** - Gasless token transfers via EIP-712
+- **CreditToken** - ERC-20 credits (1 USDC = 10 credits)
 
-## Database Schema
+## Database Tables
 
 **users**
-- `wallet_address` (PK), `chip_address` (UNIQUE, nullable)
+- `wallet_address` (PK), `chip_address` (UNIQUE), `name`, `email`
 - `chip_registration_status`: pending | registered | skipped | null
 - `approval_status`: pending | completed | null
-- `privy_user_id`, `twitter_handle`, `twitter_profile_url`
+- `privy_user_id`, `twitter_handle`, `twitter_profile_url`, `twitter_user_id`
 
-**expense** - Bill to split
-- `creator_wallet` (FK), `description`, `total_amount`, `token_address`, `status`
+**expense**
+- `id` (PK), `creator_wallet` (FK), `description`, `total_amount`, `token_address`
+- `status`: active | settled | cancelled
 
-**expense_participants** - Who owes what
-- `expense_id`, `wallet_address`, `share_amount`, `is_creator`
+**expense_participants**
+- `expense_id` (FK), `wallet_address` (FK), `share_amount`, `is_creator`
+- UNIQUE(expense_id, wallet_address)
 
-**settlements** - On-chain payment records
-- `payer_wallet`, `payee_wallet`, `amount`, `tx_hash`, `status`
+**settlements**
+- `payer_wallet` (FK), `payee_wallet` (FK), `amount`, `token_address`, `tx_hash`
+- `status`: pending | completed | failed
 
-**payment_requests** - Shareable payment links
-- `id` (UUID), `payer`, `recipient`, `amount`, `memo`, `status`, `expires_at`
+**payment_requests**
+- `id` (UUID PK), `payer` (FK), `recipient` (FK), `token`, `amount`, `memo`
+- `status`: pending | completed | expired
+- `expires_at`, `tx_hash`, `requester_twitter`, `payer_twitter`
 
-**circles / circle_members** - Friend groups for auto-splitting
+**circles**
+- `id` (UUID PK), `name`, `creator_wallet` (FK), `is_active`
 
-## Key Routes
-
-| Route | Purpose |
-|-------|---------|
-| `/register` | NFC chip registration (can skip) |
-| `/approve` | ERC-20 token approvals |
-| `/splits` | Friend balances dashboard |
-| `/settle` | Quick payment page |
-| `/settle/[id]` | Payment request link |
-| `/expense/add` | Create expense split |
-| `/credits` | Buy credits |
-| `/activity/[activityId]` | Spend credits |
-
-## API Endpoints
-
-### Relayer (Gasless)
-- `POST /api/relay/register` - Register chip → `{ signer, owner, signature }`
-- `POST /api/relay/payment` - Execute payment → `{ auth: PaymentAuth, signature }`
-- `POST /api/relay/batch-payment` - Multi-payment
-- `POST /api/relay/credit-purchase` - Buy credits
-- `POST /api/relay/credit-spend` - Spend credits
-
-### Onboarding
-- `POST /api/onboarding/finalize` - Atomic onboarding completion
-  - Request: `{ userId, action: 'skip' | 'register', chipAddress? }`
-  - Response: `{ nextRoute: '/approve' | '/splits', status: 'ok' }`
-
-### Push Notifications
-- `POST /api/notifications/send` - Send push notification to user
-  - Request: `{ recipientWallet, title, message, url? }`
-  - Response: `{ success: true, id: string }`
+**circle_members**
+- `circle_id` (FK), `member_wallet` (FK)
+- UNIQUE(circle_id, member_wallet)
 
 ## Core Flows
 
-### 1. Onboarding
-1. Twitter login via Privy → embedded wallet created
-2. `UserSyncWrapper` syncs user to database
-3. Chip registration (or skip) → calls `/api/onboarding/finalize`
-4. Redirects to `/approve` or `/splits`
-
-### 2. Payments
-1. Build EIP-712 PaymentAuth: `{ payer, recipient, token, amount, nonce, deadline }`
+### Payment Flow
+1. Build EIP-712 `PaymentAuth`: `{ payer, recipient, token, amount, nonce, deadline }`
 2. User taps NFC chip → signs typed data
-3. POST to `/api/relay/payment` with auth + signature
-4. Relayer calls `SplitHubPayments.executePayment()`
-5. Contract verifies: deadline, nonce, signature, chip ownership
-6. Transfers tokens via `safeTransferFrom`
+3. POST `/api/relay/payment` with auth + signature
+4. Contract verifies deadline, nonce, signature, chip ownership
+5. Executes `safeTransferFrom`
 
-### 3. Balance Calculation (`balanceService.ts`)
+### Balance Calculation (balanceService.ts)
 - Expenses where user is creator → friends owe user
 - Expenses where user is participant → user owes creator
 - Subtract completed settlements
-- Positive = friend owes you, negative = you owe friend
+- Positive = owed to you, negative = you owe
 
-## EIP-712 Structures
+### Onboarding
+1. Twitter login → Privy creates embedded wallet
+2. `UserSyncWrapper` syncs to database
+3. Chip registration (or skip) → `/api/onboarding/finalize`
+4. Redirects to `/approve` or `/splits`
 
-```typescript
-// PaymentAuth
-{ payer, recipient, token, amount, nonce, deadline }
+## Security
 
-// CreditPurchase
-{ buyer, usdcAmount, nonce, deadline }
+- **Nonce** - Prevents replay; must match contract state
+- **Deadline** - Signatures expire (~1 hour)
+- **Registry** - Contract verifies `registry.ownerOf(chipAddress) == payer`
 
-// CreditSpend
-{ spender, amount, activityId, nonce, deadline }
-```
+## Key Files
 
-## Security Model
-
-- **Nonce:** Prevents replay attacks, must match contract state
-- **Deadline:** Signatures expire (typically 1 hour)
-- **Registry:** Contract verifies `registry.ownerOf(chipAddress) == payer`
-- **Relayer:** Cannot modify signed data (signature becomes invalid)
-
-## Frontend Patterns
-
-- **Minimal `loading.tsx`:** Prevents flash; pages handle granular loading states
-- **`skipLoadingStates`:** SessionStorage flag prevents redundant loaders during onboarding
-- **`UserSyncWrapper`:** Single source of truth for onboarding routing
-- **Dynamic imports:** Code-splitting for NFC/Wagmi components
-
-## Environment Variables
-
-```bash
-# Required
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-RELAYER_PRIVATE_KEY=           # Server-side only
-
-# Optional
-NEXT_PUBLIC_ALCHEMY_API_KEY=
-```
+- `app/api/relay/payment/route.ts` - Payment relayer
+- `services/balanceService.ts` - Balance calculation
+- `hooks/halochip-arx/useHaloChip.ts` - NFC signing
+- `components/UserSyncWrapper.tsx` - Onboarding logic
+- `foundry/contracts/SplitHubPayments.sol` - Payment contract
 
 ## Commands
 
 ```bash
 yarn chain          # Local Anvil
-yarn deploy         # Deploy to localhost
-yarn deploy:base    # Deploy to Base Sepolia
+yarn deploy         # Deploy localhost
+yarn deploy:base    # Deploy Base Sepolia
 yarn start          # Start frontend
 ```
 
 ## Common Errors
 
-| Error | Cause | Fix |
-|-------|-------|-----|
-| `InvalidNonce` | Stale nonce | Refetch from contract |
-| `ExpiredSignature` | Deadline passed | Generate new signature |
-| `UnauthorizedSigner` | Chip not registered | Register chip first |
-| `insufficient allowance` | No approval | Navigate to `/approve` |
+| Error | Fix |
+|-------|-----|
+| `InvalidNonce` | Refetch nonce from contract |
+| `ExpiredSignature` | Generate new signature |
+| `UnauthorizedSigner` | Register chip first |
+| `insufficient allowance` | Navigate to `/approve` |
 
-## Key Files
+## Routes
 
-- `packages/nextjs/app/api/relay/payment/route.ts` - Payment relayer
-- `packages/nextjs/services/balanceService.ts` - Balance calculation
-- `packages/nextjs/hooks/halochip-arx/useHaloChip.ts` - NFC signing
-- `packages/nextjs/components/UserSyncWrapper.tsx` - Onboarding logic
-- `packages/foundry/contracts/SplitHubPayments.sol` - Payment contract
+- `/register` - Chip registration
+- `/approve` - ERC-20 approvals
+- `/splits` - Balances dashboard
+- `/settle` - Quick payment
+- `/expense/add` - Create expense
