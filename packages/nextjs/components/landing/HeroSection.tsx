@@ -40,7 +40,7 @@ export function HeroSection() {
       <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="text-center mb-8 sm:mb-10">
         <motion.h1
           variants={textReveal}
-          className="font-[family-name:var(--font-bricolage)] text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-4"
+          className="font-[family-name:var(--font-archivo)] text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight mb-4"
         >
           <span className="inline-block">Tap-to-Pay.</span> <span className="inline-block text-primary">On-Chain.</span>{" "}
           <span className="inline-block">Instant.</span>
@@ -48,10 +48,10 @@ export function HeroSection() {
 
         <motion.p
           variants={textReveal}
-          className="text-base-content/60 text-base sm:text-lg md:text-xl max-w-2xl mx-auto leading-relaxed"
+          className="font-[family-name:var(--font-outfit)] text-base-content/60 text-base sm:text-lg md:text-xl max-w-2xl mx-auto leading-relaxed font-light"
         >
-          Bridge your stablecoins to the real world with the ease of Apple Pay
-          <br className="hidden sm:block" /> and the security of a hardware wallet.
+          Spend stablecoins in the real world
+          <br className="hidden sm:block" /> with the speed and secuity of a credit card.
         </motion.p>
       </motion.div>
 
@@ -75,7 +75,7 @@ export function HeroSection() {
         <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
           <Link
             href="/register"
-            className="h-12 px-8 text-base font-bold bg-primary text-primary-content hover:bg-primary/90 rounded-full transition-all duration-200 flex items-center justify-center gap-2"
+            className="font-[family-name:var(--font-archivo)] h-12 px-8 text-base font-bold bg-primary text-primary-content hover:bg-primary/90 rounded-full transition-all duration-200 flex items-center justify-center gap-2"
             style={{
               boxShadow: "0 4px 14px rgba(242, 169, 0, 0.4), inset 0 1px 1px rgba(255,255,255,0.2)",
             }}
@@ -98,7 +98,7 @@ export function HeroSection() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1, duration: 0.5 }}
-        className="mt-8 sm:mt-12 flex items-center gap-6 text-xs text-base-content/40"
+        className="font-[family-name:var(--font-outfit)] mt-8 sm:mt-12 flex items-center gap-6 text-xs text-base-content/40"
       >
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-success animate-pulse" />

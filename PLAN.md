@@ -1,346 +1,185 @@
-# OneSignal Integration Plan for Payment Request Notifications
+Plan: Single-Tap POS Terminal for Credit Operations
+Problem Statement
+Current flow requires two NFC taps for every credit operation:
+TAP 1: Sign dummy message → extract chip address → lookup wallet owner → fetch nonce
+TAP 2: Sign real transaction with correct owner address and nonce
+This creates friction for a public POS terminal experience.
+Root Cause
+The signed message requires the owner's wallet address, but the chip doesn't know it:
+// Current - requires owner address upfront
+struct CreditPurchase {
+address buyer; // ← Must know this before signing
+uint256 usdcAmount;
+uint256 nonce;
+uint256 deadline;
+}
+Solution: Chip-Centric Signatures + Signature-Based Replay Protection
+Two changes:
+Remove owner address from signed message (contract looks it up)
+Replace nonce with signature hash tracking (eliminates need to know chip address beforehand)
+// New - no owner address, no nonce
+struct CreditPurchase {
+uint256 usdcAmount;
+uint256 deadline;
+}
+Why remove nonce?
+Nonce requires knowing chip address BEFORE signing
+Public POS terminal doesn't know chip address until user taps
+Chicken-and-egg: need chip to fetch nonce, need nonce to create valid signature
+Single-tap flow:
+User enters amount on POS terminal
+Terminal creates message: { usdcAmount, deadline }
+User taps chip → signs message → returns signature + chip address
+Terminal submits to relayer
+Contract: recovers chip → looks up owner → checks signature not used → executes
+Security maintained:
+Replay protection via signature hash tracking (usedSignatures[sigHash] = true)
+Deadline expiry prevents indefinite signature validity
+Chip ownership verified in contract via registry lookup
+Relayer cannot forge signatures
+Files to Modify
 
-## Overview
+1. Contract: packages/foundry/contracts/CreditToken.sol
+   Replace structs (remove address and nonce fields):
+   struct CreditPurchase {
+   uint256 usdcAmount;
+   uint256 deadline;
+   }
 
-Integrate OneSignal to send push notifications when a user receives a payment request. Using OneSignal's **User Model with Aliases**, we target users by wallet address directly - **no database changes needed**.
+struct CreditSpend {
+uint256 amount;
+uint256 activityId;
+uint256 deadline;
+}
+Update typehashes:
+bytes32 public constant CREDIT_PURCHASE_TYPEHASH =
+keccak256("CreditPurchase(uint256 usdcAmount,uint256 deadline)");
 
-**Key Insight**: OneSignal's new User Model eliminates the need to store `player_id` in our database. Instead, we use `OneSignal.login(walletAddress)` to link devices to wallet addresses. OneSignal handles multi-device support automatically.
+bytes32 public constant CREDIT_SPEND_TYPEHASH =
+keccak256("CreditSpend(uint256 amount,uint256 activityId,uint256 deadline)");
+Replace nonce mapping with signature tracking:
+// Remove: mapping(address user => uint256 nonce) public nonces;
+// Add:
+mapping(bytes32 => bool) public usedSignatures;
 
----
+error SignatureAlreadyUsed();
+Update purchaseCredits:
+function purchaseCredits(CreditPurchase calldata purchase, bytes calldata signature) external {
+// 1. Check deadline
+if (block.timestamp > purchase.deadline) revert ExpiredSignature();
 
-## Implementation Steps
+    // 2. Check signature not already used (replay protection)
+    bytes32 sigHash = keccak256(signature);
+    if (usedSignatures[sigHash]) revert SignatureAlreadyUsed();
+    usedSignatures[sigHash] = true;
 
-### 1. Install OneSignal SDK
-
-```bash
-yarn add react-onesignal
-```
-
-### 2. Create OneSignal Service Worker
-
-Create `packages/nextjs/public/OneSignalSDKWorker.js`:
-
-```javascript
-importScripts("https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js");
-```
-
-**Critical**: Update `next.config.ts` to prevent `@ducanh2912/next-pwa` from conflicting:
-
-```typescript
-module.exports = withPWA({
-  dest: "public",
-  publicExcludes: ["!OneSignalSDKWorker.js"],
-})(nextConfig);
-```
-
-### 3. Initialize OneSignal with Identity (Login)
-
-Create `packages/nextjs/lib/onesignal.ts`:
-
-```typescript
-import OneSignal from "react-onesignal";
-
-let initialized = false;
-
-export const initOneSignal = async () => {
-  if (initialized || typeof window === "undefined") return;
-
-  await OneSignal.init({
-    appId: process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID!,
-    allowLocalhostAsSecureOrigin: true,
-  });
-  initialized = true;
-};
-
-// Call when user connects wallet (after Privy auth)
-// This links the device to the wallet address
-export const loginOneSignal = (walletAddress: string) => {
-  OneSignal.login(walletAddress.toLowerCase());
-};
-
-// Call when user disconnects wallet
-export const logoutOneSignal = () => {
-  OneSignal.logout();
-};
-
-// Request push permission (call from UI button)
-export const requestNotificationPermission = async (): Promise<boolean> => {
-  const permission = await OneSignal.Notifications.requestPermission();
-  return permission;
-};
-
-// Check current permission state
-export const getNotificationPermission = (): boolean => {
-  return OneSignal.Notifications.permission;
-};
-```
-
-Create `packages/nextjs/components/OneSignalProvider.tsx`:
-
-```typescript
-"use client";
-
-import { useEffect, useState } from "react";
-import { usePrivy } from "@privy-io/react-auth";
-import {
-  initOneSignal,
-  loginOneSignal,
-  logoutOneSignal,
-} from "~/lib/onesignal";
-
-export const OneSignalProvider = ({
-  children,
-}: {
-  children: React.ReactNode;
-}) => {
-  const { ready, authenticated, user } = usePrivy();
-  const walletAddress = user?.wallet?.address;
-  const [sdkReady, setSdkReady] = useState(false);
-
-  // Initialize OneSignal SDK first
-  useEffect(() => {
-    const init = async () => {
-      await initOneSignal();
-      setSdkReady(true);
-    };
-    init();
-  }, []);
-
-  // Only call login/logout after SDK is ready
-  useEffect(() => {
-    if (!sdkReady || !ready) return;
-
-    if (authenticated && walletAddress) {
-      loginOneSignal(walletAddress);
-    } else {
-      logoutOneSignal();
-    }
-  }, [sdkReady, ready, authenticated, walletAddress]);
-
-  return <>{children}</>;
-};
-```
-
-> **Note**: The `sdkReady` state prevents race conditions where `login()` could be called before the SDK finishes initializing.
-
-### 4. Create Notification Toggle UI
-
-Create `packages/nextjs/components/NotificationToggle.tsx`:
-
-- Show current notification state (enabled/disabled/denied)
-- Button to request permission
-- Handle browser permission denied state gracefully
-
-Location: Replace debug notifications link in TopNav dropdown
-
-### 5. Create Notification API Endpoint
-
-Create `packages/nextjs/app/api/notifications/send/route.ts`:
-
-```typescript
-import { NextRequest, NextResponse } from "next/server";
-
-export async function POST(request: NextRequest) {
-  try {
-    const { recipientWallet, title, message, url } = await request.json();
-
-    if (!recipientWallet || !title || !message) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      );
-    }
-
-    const response = await fetch("https://onesignal.com/api/v1/notifications", {
-      method: "POST",
-      headers: {
-        Authorization: `Basic ${process.env.ONESIGNAL_REST_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        app_id: process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID,
-        include_aliases: {
-          external_id: [recipientWallet.toLowerCase()],
-        },
-        target_channel: "push",
-        headings: { en: title },
-        contents: { en: message },
-        url: url || undefined,
-      }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error("OneSignal API error:", data);
-      return NextResponse.json(
-        { error: "Failed to send notification" },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({ success: true, id: data.id });
-  } catch (error) {
-    console.error("Notification send error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
+    // 3. Recover chip address from signature
+    bytes32 structHash = keccak256(
+        abi.encode(CREDIT_PURCHASE_TYPEHASH, purchase.usdcAmount, purchase.deadline)
     );
-  }
+    bytes32 digest = _hashTypedDataV4(structHash);
+    address chip = digest.recover(signature);
+
+    // 4. Look up owner from registry
+    address owner = registry.ownerOf(chip);
+    if (owner == address(0)) revert UnauthorizedSigner();
+
+    // 5. Transfer USDC from owner, mint credits to owner
+    usdc.safeTransferFrom(owner, address(this), purchase.usdcAmount);
+    uint256 creditAmount = (purchase.usdcAmount * CREDIT_RATE * 1e18) / 1e6;
+    _mint(owner, creditAmount);
+
+    emit CreditsPurchased(owner, purchase.usdcAmount, creditAmount, chip);
+
 }
-```
+Update spendCredits:
+function spendCredits(CreditSpend calldata spend, bytes calldata signature) external {
+// 1. Check deadline
+if (block.timestamp > spend.deadline) revert ExpiredSignature();
 
-### 6. Integrate with Payment Request Creation
+    // 2. Check signature not already used (replay protection)
+    bytes32 sigHash = keccak256(signature);
+    if (usedSignatures[sigHash]) revert SignatureAlreadyUsed();
+    usedSignatures[sigHash] = true;
 
-Modify `packages/nextjs/app/api/payment-requests/route.ts` POST handler:
+    // 3. Recover chip address from signature
+    bytes32 structHash = keccak256(
+        abi.encode(CREDIT_SPEND_TYPEHASH, spend.amount, spend.activityId, spend.deadline)
+    );
+    bytes32 digest = _hashTypedDataV4(structHash);
+    address chip = digest.recover(signature);
 
-```typescript
-// After successful insert, send notification (fire and forget)
-try {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://splithub.space";
-  await fetch(`${baseUrl}/api/notifications/send`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      recipientWallet: payerLower,
-      title: `Payment Request from @${requesterTwitter || "someone"}`,
-      message: `${amount} USDC${memo ? ` - ${memo}` : ""}`,
-      url: `${baseUrl}/settle/${data.id}`,
-    }),
-  });
-} catch (notifError) {
-  // Don't fail the request if notification fails
-  console.error("Failed to send notification:", notifError);
+    // 4. Look up owner from registry
+    address owner = registry.ownerOf(chip);
+    if (owner == address(0)) revert UnauthorizedSigner();
+
+    // 5. Burn credits from owner
+    if (balanceOf(owner) < spend.amount) revert InsufficientBalance();
+    _burn(owner, spend.amount);
+
+    emit CreditsSpent(owner, spend.amount, spend.activityId, chip);
+
 }
-```
+Update helper functions (remove nonce-related):
+// Remove getNonce() - no longer needed
 
-### 7. Environment Variables
+function getPurchaseDigest(CreditPurchase calldata purchase) external view returns (bytes32) {
+bytes32 structHash = keccak256(
+abi.encode(CREDIT_PURCHASE_TYPEHASH, purchase.usdcAmount, purchase.deadline)
+);
+return \_hashTypedDataV4(structHash);
+}
 
-Add to `.env.example`:
+function getSpendDigest(CreditSpend calldata spend) external view returns (bytes32) {
+bytes32 structHash = keccak256(
+abi.encode(CREDIT_SPEND_TYPEHASH, spend.amount, spend.activityId, spend.deadline)
+);
+return \_hashTypedDataV4(structHash);
+}
 
-```bash
-# OneSignal Push Notifications
-NEXT_PUBLIC_ONESIGNAL_APP_ID=your-app-id
-ONESIGNAL_REST_API_KEY=your-rest-api-key  # Server-side only
-NEXT_PUBLIC_APP_URL=https://splithub.space  # For deep links
-```
+// Helper to check if a signature has been used
+function isSignatureUsed(bytes calldata signature) external view returns (bool) {
+return usedSignatures[keccak256(signature)];
+} 2. API Routes
+packages/nextjs/app/api/relay/credit-purchase/route.ts
+Update request body: { purchase: { usdcAmount, deadline }, signature }
+Remove buyer field handling
+Contract call unchanged
+packages/nextjs/app/api/relay/credit-spend/route.ts
+Update request body: { spend: { amount, activityId, deadline }, signature }
+Remove spender field handling 3. Frontend Hooks
+packages/nextjs/hooks/credits/useCreditPurchase.ts
+Remove TAP 1 entirely (dummy signature for chip detection)
+Remove owner/nonce lookup between taps
+Single tap signs { usdcAmount, deadline }
+Flow: select amount → tap → submit → done
+packages/nextjs/hooks/credits/useCreditSpend.ts
+Same simplification
+Single tap signs { amount, activityId, deadline } 4. EIP-712 Types Update
+Update typed data definitions in hooks:
+// Before
+const types = {
+CreditPurchase: [
+{ name: 'buyer', type: 'address' },
+{ name: 'usdcAmount', type: 'uint256' },
+{ name: 'nonce', type: 'uint256' },
+{ name: 'deadline', type: 'uint256' },
+],
+};
 
----
-
-## File Changes Summary
-
-| File                                  | Action | Description                                |
-| ------------------------------------- | ------ | ------------------------------------------ |
-| `package.json`                        | Modify | Add `react-onesignal`                      |
-| `public/OneSignalSDKWorker.js`        | Create | OneSignal service worker                   |
-| `next.config.ts`                      | Modify | Add `publicExcludes` for OneSignal worker  |
-| `lib/onesignal.ts`                    | Create | OneSignal helpers with login/logout        |
-| `components/OneSignalProvider.tsx`    | Create | Initialize & manage identity               |
-| `components/NotificationToggle.tsx`   | Create | UI for enabling notifications              |
-| `components/TopNav.tsx`               | Modify | Replace debug link with NotificationToggle |
-| `app/api/notifications/send/route.ts` | Create | Backend notification sender                |
-| `app/api/payment-requests/route.ts`   | Modify | Trigger notification on create             |
-| `.env.example`                        | Modify | Add OneSignal env vars                     |
-
-**No database migration needed!**
-
----
-
-## User Flow
-
-### Enabling Notifications
-
-1. User logs in via Privy → `OneSignal.login(walletAddress)` called automatically
-2. User opens TopNav dropdown → sees notification toggle
-3. Clicks toggle → browser permission prompt appears
-4. On "Allow" → OneSignal links this device to wallet address
-
-### Multi-Device Support (Automatic)
-
-- User logs in on iPhone → OneSignal maps iPhone to `0x123...`
-- User logs in on Laptop → OneSignal maps Laptop to `0x123...`
-- Send notification to `0x123...` → **Both devices receive it**
-
-### Receiving Notifications
-
-1. Alice creates payment request for Bob (`0xBob...`)
-2. Server calls OneSignal API with `include_aliases: { external_id: ["0xbob..."] }`
-3. OneSignal delivers to all Bob's registered devices
-4. Bob taps notification → opens `/settle/{requestId}`
-
----
-
-## Service Worker Coexistence
-
-The `@ducanh2912/next-pwa` generates `sw.js` which could intercept OneSignal events.
-
-**Solution**: Add to `next.config.ts`:
-
-```typescript
-module.exports = withPWA({
-  dest: "public",
-  publicExcludes: ["!OneSignalSDKWorker.js"],
-})(nextConfig);
-```
-
-This tells Workbox to ignore the OneSignal worker file.
-
----
-
-## Localhost Testing
-
-### OneSignal Dashboard Setup
-
-1. Create a **separate app** for development (don't use production app)
-2. Set **Site URL** to: `http://localhost:3000`
-3. Check **"Treat HTTP localhost as HTTPS for testing"**
-
-### SDK Config (Already Included)
-
-```typescript
-OneSignal.init({
-  appId: process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID!,
-  allowLocalhostAsSecureOrigin: true, // Required for localhost
-});
-```
-
-### Browser Support on Localhost
-
-| Browser | Works on `http://localhost`?    |
-| ------- | ------------------------------- |
-| Chrome  | Yes (treats as secure origin)   |
-| Firefox | Yes                             |
-| Safari  | No (requires HTTPS - use ngrok) |
-
-### Test Notification via curl
-
-```bash
-curl -X POST http://localhost:3000/api/notifications/send \
-  -H "Content-Type: application/json" \
-  -d '{
-    "recipientWallet": "0xYourWallet",
-    "title": "Test",
-    "message": "Hello from localhost!"
-  }'
-```
-
----
-
-## Testing Checklist
-
-1. Create OneSignal dev app with `http://localhost:3000` as Site URL
-2. Enable "Treat HTTP localhost as HTTPS for testing"
-3. Add env vars to `.env.local`
-4. Test login flow → verify `external_id` shows in OneSignal dashboard → **Audience**
-5. Test permission prompt on desktop browser
-6. Test notification delivery between two accounts
-7. Test deep link opens correct settle page
-
----
-
-## Security Notes
-
-- `ONESIGNAL_REST_API_KEY` is server-side only (not exposed to client)
-- All wallet addresses normalized to lowercase for consistency
-- Notification failures don't block payment request creation
-- Rate limiting handled by OneSignal
+// After
+const types = {
+CreditPurchase: [
+{ name: 'usdcAmount', type: 'uint256' },
+{ name: 'deadline', type: 'uint256' },
+],
+};
+Gas Considerations
+Signature tracking vs nonces:
+Nonce: ~5,000 gas (SSTORE from non-zero to non-zero)
+Signature hash: ~20,000 gas first time (SSTORE from zero to non-zero)
+Trade-off accepted: Higher gas cost per transaction in exchange for single-tap UX.
+Implementation Steps
+Update CreditToken.sol - new structs, signature tracking, updated functions
+Update API routes - remove buyer/spender from request bodies
+Simplify frontend hooks - single tap flow, no nonce fetching

@@ -9,7 +9,7 @@ const features = [
     icon: Fuel,
     title: "Gasless",
     subtitle: "Zero Transaction Fees",
-    description: "Our relayer covers all gas costs. You pay nothing for transactions—just the value you're sending.",
+    description: "Our relayer covers all gas costs. You pay nothing for transactions, just the value you're sending.",
     color: "text-cyan-400",
     bgColor: "bg-cyan-500/10",
     borderColor: "border-cyan-500/20",
@@ -19,7 +19,8 @@ const features = [
     icon: Zap,
     title: "Instant",
     subtitle: "Sub-Second Settlement",
-    description: "Base network processes transactions in milliseconds. Tap and it's done—no confirmations to wait for.",
+    description:
+      "Base network processes transactions in milliseconds. Tap and it's done, no confirmations to wait for.",
     color: "text-primary",
     bgColor: "bg-primary/10",
     borderColor: "border-primary/20",
@@ -93,12 +94,16 @@ function FeatureRow({ feature, index }: FeatureRowProps) {
         {/* Content */}
         <div className="relative flex-1">
           <div className="flex items-baseline gap-3 mb-2">
-            <h3 className={`font-[family-name:var(--font-bricolage)] text-2xl sm:text-3xl font-bold ${feature.color}`}>
+            <h3 className={`font-[family-name:var(--font-archivo)] text-2xl sm:text-3xl font-bold ${feature.color}`}>
               {feature.title}
             </h3>
-            <span className="text-base-content/40 text-sm font-medium">{feature.subtitle}</span>
+            <span className="font-[family-name:var(--font-outfit)] text-base-content/40 text-sm font-medium">
+              {feature.subtitle}
+            </span>
           </div>
-          <p className="text-base-content/60 text-sm sm:text-base leading-relaxed max-w-lg">{feature.description}</p>
+          <p className="font-[family-name:var(--font-outfit)] text-base-content/60 text-sm sm:text-base leading-relaxed max-w-lg font-light">
+            {feature.description}
+          </p>
         </div>
 
         {/* Decorative element */}
@@ -126,16 +131,16 @@ export function HowItWorksEase() {
             initial={{ opacity: 0, scale: 0.9 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
-            className="inline-block text-xs font-semibold text-base-content/50 uppercase tracking-wider mb-3"
+            className="font-[family-name:var(--font-outfit)] inline-block text-xs font-semibold text-base-content/50 uppercase tracking-widest mb-3"
           >
             Why It Works
           </motion.span>
-          <h2 className="font-[family-name:var(--font-bricolage)] text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
-            SplitHub is the new
+          <h2 className="font-[family-name:var(--font-archivo)] text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
+            Crypto payments
             <br />
-            <span className="text-primary">utility layer</span> for crypto
+            <span className="text-primary">without the </span> complexity.
           </h2>
-          <p className="text-base-content/50 text-lg max-w-xl mx-auto">
+          <p className="font-[family-name:var(--font-outfit)] text-base-content/50 text-lg max-w-xl mx-auto font-light">
             We removed every friction point between your stablecoins and the real world.
           </p>
         </motion.div>

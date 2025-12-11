@@ -52,10 +52,10 @@ export function LandingFooter() {
             </motion.div>
           </motion.div>
 
-          <h2 className="font-[family-name:var(--font-bricolage)] text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
+          <h2 className="font-[family-name:var(--font-archivo)] text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
             Ready to tap?
           </h2>
-          <p className="text-base-content/50 text-base sm:text-lg mb-8 max-w-md mx-auto">
+          <p className="font-[family-name:var(--font-outfit)] text-base-content/50 text-base sm:text-lg mb-8 max-w-md mx-auto font-light">
             Get started in seconds with your existing social login.
             <br />
             No seed phrases. No wallet setup. Just tap and pay.
@@ -64,7 +64,7 @@ export function LandingFooter() {
           <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }} className="inline-block">
             <Link
               href="/register"
-              className="inline-flex items-center gap-3 h-14 px-10 text-lg font-bold bg-primary text-primary-content hover:bg-primary/90 rounded-full transition-colors duration-200"
+              className="font-[family-name:var(--font-archivo)] inline-flex items-center gap-3 h-14 px-10 text-lg font-bold bg-primary text-primary-content hover:bg-primary/90 rounded-full transition-colors duration-200"
               style={{
                 boxShadow: "0 6px 20px rgba(242, 169, 0, 0.4), inset 0 1px 1px rgba(255,255,255,0.2)",
               }}
@@ -75,7 +75,10 @@ export function LandingFooter() {
           </motion.div>
 
           {/* Trust indicator */}
-          <motion.p variants={fadeUp} className="mt-6 text-xs text-base-content/40">
+          <motion.p
+            variants={fadeUp}
+            className="font-[family-name:var(--font-outfit)] mt-6 text-xs text-base-content/40"
+          >
             Web2 login powered by Privy
           </motion.p>
         </motion.div>
@@ -93,16 +96,16 @@ export function LandingFooter() {
               boxShadow: "inset 0 1px 3px rgba(0,0,0,0.2), 0 1px 0 rgba(255,255,255,0.03)",
             }}
           >
-            <span className="bg-base-300 text-white h-full flex items-center font-bold text-xs tracking-tight px-2.5">
+            <span className="font-[family-name:var(--font-archivo)] bg-base-300 text-white h-full flex items-center font-bold text-xs tracking-tight px-2.5">
               Split
             </span>
-            <span className="bg-primary text-primary-content h-full flex items-center font-bold text-xs tracking-tight px-2.5">
+            <span className="font-[family-name:var(--font-archivo)] bg-primary text-primary-content h-full flex items-center font-bold text-xs tracking-tight px-2.5">
               hub
             </span>
           </motion.div>
 
           {/* Powered by */}
-          <div className="flex items-center gap-3 text-base-content/40 text-xs">
+          <div className="font-[family-name:var(--font-outfit)] flex items-center gap-3 text-base-content/40 text-xs">
             <span>Powered by</span>
             <div className="flex items-center gap-2">
               <span className="font-[family-name:var(--font-jetbrains)] font-medium text-base-content/60">Base</span>
@@ -114,7 +117,9 @@ export function LandingFooter() {
           </div>
 
           {/* Copyright */}
-          <p className="text-base-content/40 text-xs">© {new Date().getFullYear()} SplitHub</p>
+          <p className="font-[family-name:var(--font-outfit)] text-base-content/40 text-xs">
+            © {new Date().getFullYear()} SplitHub
+          </p>
         </motion.div>
       </motion.div>
     </footer>

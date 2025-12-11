@@ -50,15 +50,15 @@ export function SecuritySection() {
             initial={{ opacity: 0, scale: 0.9 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
-            className="inline-flex items-center gap-2 text-xs font-semibold text-success uppercase tracking-wider mb-3 px-3 py-1 bg-success/10 rounded-full"
+            className="font-[family-name:var(--font-outfit)] inline-flex items-center gap-2 text-xs font-semibold text-success uppercase tracking-widest mb-3 px-3 py-1 bg-success/10 rounded-full"
           >
             <Shield className="w-3 h-3" />
             <span>Security</span>
           </motion.div>
-          <h2 className="font-[family-name:var(--font-bricolage)] text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
+          <h2 className="font-[family-name:var(--font-archivo)] text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
             Safety Without Sacrifice
           </h2>
-          <p className="text-base-content/50 text-lg max-w-xl mx-auto">
+          <p className="font-[family-name:var(--font-outfit)] text-base-content/50 text-lg max-w-xl mx-auto font-light">
             Hardware-level security meets seamless UX. Your keys never leave the chip.
           </p>
         </motion.div>
@@ -89,8 +89,10 @@ export function SecuritySection() {
                   <Key className="w-6 h-6 text-success" />
                 </div>
                 <div>
-                  <h3 className="font-[family-name:var(--font-bricolage)] text-xl font-bold mb-1">Arx HaLo Chip</h3>
-                  <p className="text-base-content/50 text-sm">On-chip key generation & signing</p>
+                  <h3 className="font-[family-name:var(--font-archivo)] text-xl font-bold mb-1">Arx HaLo Chip</h3>
+                  <p className="font-[family-name:var(--font-outfit)] text-base-content/50 text-sm">
+                    On-chip key generation & signing
+                  </p>
                 </div>
               </div>
 
@@ -198,7 +200,7 @@ export function SecuritySection() {
                 </div>
               </div>
 
-              <p className="text-sm text-base-content/60 text-center">
+              <p className="font-[family-name:var(--font-outfit)] text-sm text-base-content/60 text-center font-light">
                 Private keys are generated and stored on the chip.
                 <br />
                 They never leave the secure enclave.
@@ -220,10 +222,10 @@ export function SecuritySection() {
                   <Wallet className="w-6 h-6 text-primary" />
                 </div>
                 <div>
-                  <h3 className="font-[family-name:var(--font-bricolage)] text-xl font-bold mb-1">
-                    Seamless Onboarding
-                  </h3>
-                  <p className="text-base-content/50 text-sm">Social login to crypto wallet in seconds</p>
+                  <h3 className="font-[family-name:var(--font-archivo)] text-xl font-bold mb-1">Seamless Onboarding</h3>
+                  <p className="font-[family-name:var(--font-outfit)] text-base-content/50 text-sm">
+                    Social login to crypto wallet in seconds
+                  </p>
                 </div>
               </div>
 
@@ -311,7 +313,7 @@ export function SecuritySection() {
                 </div>
               </div>
 
-              <p className="text-sm text-base-content/60 text-center">
+              <p className="font-[family-name:var(--font-outfit)] text-sm text-base-content/60 text-center font-light">
                 Log in with X, Google, or email.
                 <br />
                 Your wallet is created automatically via Privy.

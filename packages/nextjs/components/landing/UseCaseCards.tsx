@@ -31,14 +31,14 @@ export function UseCaseCards() {
             initial={{ opacity: 0, scale: 0.9 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
-            className="inline-block text-xs font-semibold text-primary uppercase tracking-wider mb-3 px-3 py-1 bg-primary/10 rounded-full"
+            className="font-[family-name:var(--font-outfit)] inline-block text-xs font-semibold text-primary uppercase tracking-widest mb-3 px-3 py-1 bg-primary/10 rounded-full"
           >
             Two Ways to Pay
           </motion.span>
-          <h2 className="font-[family-name:var(--font-bricolage)] text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
+          <h2 className="font-[family-name:var(--font-archivo)] text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
             The Tap is the New Transaction
           </h2>
-          <p className="text-base-content/50 text-lg max-w-xl mx-auto">
+          <p className="font-[family-name:var(--font-outfit)] text-base-content/50 text-lg max-w-xl mx-auto font-light">
             Whether you&apos;re splitting dinner or spending at events, one tap handles it all.
           </p>
         </motion.div>
@@ -80,16 +80,19 @@ export function UseCaseCards() {
 
               {/* Content */}
               <div className="relative">
-                <h3 className="font-[family-name:var(--font-bricolage)] text-2xl font-bold mb-3">Social Settlements</h3>
-                <p className="text-base-content/60 mb-6 leading-relaxed">
-                  Split bills with friends like a Web3 Splitwise. Track who owes what, then settle with a single tap—no
+                <h3 className="font-[family-name:var(--font-archivo)] text-2xl font-bold mb-3">Social Settlements</h3>
+                <p className="font-[family-name:var(--font-outfit)] text-base-content/60 mb-6 leading-relaxed font-light">
+                  Split bills with friends like a Web3 Splitwise. Track who owes what, then settle with a single tap, no
                   Venmo requests, no IOUs.
                 </p>
 
                 {/* Features list */}
                 <ul className="space-y-3 mb-8">
                   {["Track group expenses", "See balances at a glance", "Instant settlements"].map((feature, i) => (
-                    <li key={i} className="flex items-center gap-3 text-sm text-base-content/70">
+                    <li
+                      key={i}
+                      className="font-[family-name:var(--font-outfit)] flex items-center gap-3 text-sm text-base-content/70"
+                    >
                       <div className="w-1.5 h-1.5 rounded-full bg-primary" />
                       {feature}
                     </li>
@@ -136,7 +139,10 @@ export function UseCaseCards() {
                 </div>
 
                 {/* CTA */}
-                <Link href="/splits" className="inline-flex items-center gap-2 text-primary font-semibold group/link">
+                <Link
+                  href="/splits"
+                  className="font-[family-name:var(--font-archivo)] inline-flex items-center gap-2 text-primary font-semibold group/link"
+                >
                   <span>View Splits</span>
                   <ArrowRight className="w-4 h-4 group-hover/link:translate-x-1 transition-transform" />
                 </Link>
@@ -179,10 +185,10 @@ export function UseCaseCards() {
 
               {/* Content */}
               <div className="relative">
-                <h3 className="font-[family-name:var(--font-bricolage)] text-2xl font-bold mb-3">
+                <h3 className="font-[family-name:var(--font-archivo)] text-2xl font-bold mb-3">
                   Venues & Event Credits
                 </h3>
-                <p className="text-base-content/60 mb-6 leading-relaxed">
+                <p className="font-[family-name:var(--font-outfit)] text-base-content/60 mb-6 leading-relaxed font-light">
                   Load USDC onto your wristband and tap to pay at any activity. Perfect for concerts, arcades, and
                   cashless venues.
                 </p>
@@ -191,7 +197,10 @@ export function UseCaseCards() {
                 <ul className="space-y-3 mb-8">
                   {["Buy credits with USDC", "Tap wristband to spend", "Real-time balance updates"].map(
                     (feature, i) => (
-                      <li key={i} className="flex items-center gap-3 text-sm text-base-content/70">
+                      <li
+                        key={i}
+                        className="font-[family-name:var(--font-outfit)] flex items-center gap-3 text-sm text-base-content/70"
+                      >
                         <div className="w-1.5 h-1.5 rounded-full bg-success" />
                         {feature}
                       </li>
@@ -200,54 +209,61 @@ export function UseCaseCards() {
                 </ul>
 
                 {/* Hover Animation - Wristband tapping terminal */}
-                <div className="relative h-24 mb-6 overflow-hidden">
-                  {/* Terminal */}
-                  <div className="absolute right-12 top-1/2 -translate-y-1/2">
-                    <motion.div
-                      animate={
-                        hovered.venues ? { boxShadow: "0 0 20px rgba(34, 197, 94, 0.4)" } : { boxShadow: "none" }
-                      }
-                      className="w-14 h-20 bg-base-300 rounded-lg border border-base-content/10 flex flex-col items-center justify-center gap-1 p-2"
-                    >
-                      <div className="w-8 h-6 bg-base-100 rounded border border-base-content/10" />
-                      <Wallet className="w-4 h-4 text-base-content/30" />
-                    </motion.div>
-                  </div>
-
-                  {/* Wristband approaching */}
+                <div className="relative h-24 mb-6">
+                  {/* Wristband on left */}
                   <motion.div
-                    animate={hovered.venues ? { x: [0, 50], rotate: [0, -5, 0] } : { x: 0, rotate: 0 }}
-                    transition={{ duration: 0.5, ease: "easeOut" }}
+                    animate={hovered.venues ? { x: [0, 40], opacity: 1 } : { x: 0, opacity: 0.5 }}
+                    transition={{ duration: 0.4, ease: "easeOut" }}
                     className="absolute left-8 top-1/2 -translate-y-1/2"
                   >
-                    {/* Stylized wristband */}
-                    <div className="relative">
-                      <div className="w-16 h-10 rounded-full border-4 border-primary bg-primary/10 flex items-center justify-center">
-                        <span className="text-xs font-bold text-primary">75</span>
-                      </div>
-                      {/* NFC indicator */}
-                      <motion.div
-                        animate={hovered.venues ? { opacity: [0.5, 1, 0.5] } : { opacity: 0.3 }}
-                        transition={{ duration: 1, repeat: Infinity }}
-                        className="absolute -right-1 top-1/2 -translate-y-1/2"
-                      >
-                        <Nfc className="w-3 h-3 text-primary" />
-                      </motion.div>
+                    <div className="w-14 h-8 rounded-full border-3 border-success bg-success/10 flex items-center justify-center">
+                      <span className="text-xs font-bold text-success">75</span>
                     </div>
                   </motion.div>
 
-                  {/* Credit loading animation on hover */}
+                  {/* Terminal on right */}
+                  <motion.div
+                    animate={hovered.venues ? { x: [0, -40], opacity: 1 } : { x: 0, opacity: 0.5 }}
+                    transition={{ duration: 0.4, ease: "easeOut" }}
+                    className="absolute right-8 top-1/2 -translate-y-1/2"
+                  >
+                    <div className="w-10 h-16 bg-base-300 rounded-lg border border-base-content/10 flex flex-col items-center justify-center gap-1">
+                      <div className="w-6 h-4 bg-base-100 rounded border border-base-content/10" />
+                      <Wallet className="w-4 h-4 text-base-content/40" />
+                    </div>
+                  </motion.div>
+
+                  {/* NFC glow on hover */}
+                  <motion.div
+                    animate={hovered.venues ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.5 }}
+                    transition={{ duration: 0.3, delay: 0.2 }}
+                    className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+                  >
+                    <div className="w-12 h-12 rounded-full bg-success/30 blur-md" />
+                    <motion.div
+                      animate={hovered.venues ? { scale: [1, 1.2, 1] } : { scale: 1 }}
+                      transition={{ duration: 0.5, repeat: hovered.venues ? Infinity : 0, repeatDelay: 0.5 }}
+                      className="absolute inset-0 flex items-center justify-center"
+                    >
+                      <Nfc className="w-6 h-6 text-success" />
+                    </motion.div>
+                  </motion.div>
+
+                  {/* Credit deduction animation */}
                   <motion.div
                     animate={hovered.venues ? { opacity: [0, 1, 0], y: [0, -20] } : { opacity: 0 }}
-                    transition={{ duration: 0.8, delay: 0.3, repeat: hovered.venues ? Infinity : 0, repeatDelay: 0.3 }}
-                    className="absolute right-20 top-1/4 text-success font-bold text-sm"
+                    transition={{ duration: 0.8, delay: 0.4, repeat: hovered.venues ? Infinity : 0, repeatDelay: 0.4 }}
+                    className="absolute left-1/2 -translate-x-1/2 top-0 text-success font-bold text-sm"
                   >
                     -10
                   </motion.div>
                 </div>
 
                 {/* CTA */}
-                <Link href="/credits" className="inline-flex items-center gap-2 text-success font-semibold group/link">
+                <Link
+                  href="/credits"
+                  className="font-[family-name:var(--font-archivo)] inline-flex items-center gap-2 text-success font-semibold group/link"
+                >
                   <span>Buy Credits</span>
                   <ArrowRight className="w-4 h-4 group-hover/link:translate-x-1 transition-transform" />
                 </Link>
