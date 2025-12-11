@@ -9,6 +9,7 @@ import { StallSuccessCard } from "./cards/StallSuccessCard";
 import { StallTapCard } from "./cards/StallTapCard";
 import { AnimatePresence, motion, useAnimationControls } from "framer-motion";
 import { CalendarDays, Store, User } from "lucide-react";
+import { usePaymentNotification } from "~~/hooks/usePaymentNotification";
 import { type StallPaymentFlowState, useStallPayment } from "~~/hooks/useStallPayment";
 import type { Event, Stall } from "~~/lib/events.types";
 
@@ -118,12 +119,15 @@ function mapFlowToPhase(flowState: StallPaymentFlowState): CardPhase {
 export function StallTerminal({ stall, event }: StallTerminalProps) {
   const [amount, setAmount] = useState(5);
   const controls = useAnimationControls();
+  const { playNotification, prime } = usePaymentNotification();
 
   const { flowState, error, txHash, initiatePayment, reset } = useStallPayment({
     stall,
     eventOwnerWallet: event.owner_wallet,
     onSuccess: hash => {
       console.log("Payment successful:", hash);
+      // Play PhonePe-style notification: chime + voice announcement
+      playNotification(amount);
     },
     onError: err => {
       console.error("Payment failed:", err);
@@ -139,6 +143,8 @@ export function StallTerminal({ stall, event }: StallTerminalProps) {
   const screenGlow = getScreenGlow(phase);
 
   const handleTap = () => {
+    // Prime audio/speech on user gesture (unlocks on mobile)
+    prime(amount);
     initiatePayment(amount);
   };
 

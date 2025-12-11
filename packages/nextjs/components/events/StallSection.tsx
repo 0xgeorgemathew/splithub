@@ -156,6 +156,13 @@ const StallCard = ({
                     <Copy className="w-3 h-3 text-base-content/50" />
                   )}
                 </motion.button>
+                <a
+                  href={publicUrl}
+                  onClick={e => e.stopPropagation()}
+                  className="p-1.5 rounded-md bg-primary/20 hover:bg-primary/30 transition-colors"
+                >
+                  <ExternalLink className="w-3 h-3 text-primary" />
+                </a>
               </div>
 
               {/* Revenue Stats */}

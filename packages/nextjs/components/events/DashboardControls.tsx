@@ -88,8 +88,6 @@ const OperatorStallCardCompact = ({ stall }: { stall: Stall }) => {
           </motion.button>
           <a
             href={publicUrl}
-            target="_blank"
-            rel="noopener noreferrer"
             onClick={e => e.stopPropagation()}
             className="p-2 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 transition-colors"
           >
