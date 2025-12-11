@@ -65,14 +65,9 @@ export default async function StallPage({ params }: StallPageProps) {
       {/* DESIGN FIX: Added p-6 (24px padding) on all sides for mobile.
           This creates the necessary breathing room so the terminal doesn't touch the screen edges.
       */}
-      <div className="relative z-10 flex flex-col items-center justify-center w-full h-full p-6 md:py-4">
-        {/* Terminal Wrapper
-            - max-w-[400px]: Maximum width for larger screens
-            - max-h-[80dvh]: Prevents terminal from being too tall
-            - aspect-[9/19.5]: Maintains the phone shape - this drives the sizing
-            - The aspect ratio ensures consistent proportions regardless of content
-        */}
-        <div className="relative w-full max-w-[400px] max-h-[80dvh] aspect-[9/19.5] mx-auto">
+      <div className="stall-page-content relative z-10 flex flex-col items-center justify-center w-full h-full p-6 md:py-4">
+        {/* Terminal Wrapper - CSS handles iPhone 12 mini override */}
+        <div className="stall-terminal-wrapper">
           <StallTerminal stall={stall} event={event} />
         </div>
 
