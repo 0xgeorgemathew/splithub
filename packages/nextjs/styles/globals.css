@@ -1054,18 +1054,47 @@ Trigger Build Compatibility Styles
   position: relative;
   width: clamp(320px, 88vw, 380px);
   height: clamp(520px, 75vh, 640px);
-  background: linear-gradient(180deg, #1f1f1f 0%, #0a0a0a 100%);
+  /* Textured matte surface - radial gradient for depth */
+  background:
+    radial-gradient(ellipse 120% 80% at 50% 20%, #252525 0%, #1a1a1a 40%, #0f0f0f 100%),
+    linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 100%);
   border-radius: 32px;
-  border: 3px solid #2a2a2a;
+  /* Rim light border simulation */
+  border: 1px solid transparent;
+  background-clip: padding-box;
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.05),
-    0 25px 80px rgba(0, 0, 0, 0.8),
-    0 10px 30px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    /* Outer rim light - simulates edge catching light */
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 -1px 0 0 rgba(255, 255, 255, 0.12),
+    /* Ambient shadows - lifts device from void */ 0 40px 100px -20px rgba(0, 0, 0, 0.9),
+    0 20px 60px -10px rgba(0, 0, 0, 0.8),
+    0 8px 24px rgba(0, 0, 0, 0.6),
+    /* Inner highlights for 3D depth */ inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.3),
+    inset 1px 0 0 rgba(255, 255, 255, 0.03),
+    inset -1px 0 0 rgba(255, 255, 255, 0.03);
   display: flex;
   flex-direction: column;
   padding: 16px;
   overflow: hidden;
+}
+
+/* Pseudo-element for additional rim lighting effect */
+.pos-hardware-frame::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 33px;
+  background: linear-gradient(
+    165deg,
+    rgba(255, 255, 255, 0.15) 0%,
+    rgba(255, 255, 255, 0.05) 20%,
+    transparent 40%,
+    transparent 80%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  pointer-events: none;
+  z-index: 0;
 }
 
 /* Speaker grille at top */
@@ -1089,25 +1118,67 @@ Trigger Build Compatibility Styles
   position: absolute;
   top: 20px;
   right: 24px;
+  z-index: 10;
 }
 
+/* Hyper-realistic LED indicator - 3 layer effect */
 .pos-led {
-  width: 8px;
-  height: 8px;
+  position: relative;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  /* Animations handled by Framer Motion in POSLed.tsx */
+  /* Base housing shadow - recessed look */
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(0, 0, 0, 0.3);
 }
 
-/* Screen area */
+/* Layer 1: Core LED light (applied via inline styles from component) */
+
+/* Layer 2: Glass dome reflection - simulates studio light */
+.pos-led::after {
+  content: "";
+  position: absolute;
+  top: 1px;
+  left: 2px;
+  width: 4px;
+  height: 3px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* Layer 3: Secondary subtle reflection for glass depth */
+.pos-led::before {
+  content: "";
+  position: absolute;
+  bottom: 1px;
+  right: 1px;
+  width: 2px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* Screen area - glassmorphic display */
 .pos-screen {
   flex: 1;
   position: relative;
-  background: linear-gradient(180deg, #0d0d0d 0%, #151515 100%);
+  /* Glassmorphic dark glass effect */
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(40, 40, 45, 0.4) 0%, transparent 60%),
+    linear-gradient(180deg, rgba(20, 20, 22, 0.95) 0%, rgba(12, 12, 14, 0.98) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border-radius: 20px;
-  border: 2px solid #252525;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow:
+    /* Inner depth */
     inset 0 2px 8px rgba(0, 0, 0, 0.5),
-    0 1px 0 rgba(255, 255, 255, 0.03);
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    /* Outer glow */ 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 4px 16px rgba(0, 0, 0, 0.2);
   overflow: hidden;
 }
 
@@ -1115,7 +1186,9 @@ Trigger Build Compatibility Styles
   position: absolute;
   inset: 0;
   border-radius: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.03);
+  /* Subtle inner bezel highlight */
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, transparent 20%, transparent 100%);
   pointer-events: none;
 }
 
@@ -1176,6 +1249,577 @@ Trigger Build Compatibility Styles
   height: 2px;
   background: #2a2a2a;
   border-radius: 1px;
+}
+
+/* Hardware Control Bar (Chin) - embedded buttons at bottom */
+.pos-hardware-chin {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center; /* Center the slider/spacer */
+  /* FIXED HEIGHT - prevents layout shift during slider animation */
+  height: 82px;
+  min-height: 82px;
+  max-height: 82px;
+  padding: 0 24px;
+  margin: 8px -16px -16px -16px;
+  /* Layout isolation - prevents influence on upper DOM */
+  flex-shrink: 0;
+  overflow: visible; /* Allow glows to extend */
+  /* Textured matte surface matching device frame upper portion */
+  background:
+    radial-gradient(ellipse 120% 100% at 50% 100%, rgba(50, 50, 50, 0.4) 0%, transparent 60%),
+    linear-gradient(180deg, #1e1e1e 0%, #161616 50%, #111111 100%);
+  border-radius: 0 0 28px 28px;
+  /* Multi-layer depth effect matching upper frame */
+  box-shadow:
+    /* Outer rim light - bottom and sides catching light */
+    0 1px 0 0 rgba(255, 255, 255, 0.08),
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    /* Left/right inner edge highlights */ inset 1px 0 0 rgba(255, 255, 255, 0.06),
+    inset -1px 0 0 rgba(255, 255, 255, 0.06),
+    /* Bottom inner rim light */ inset 0 -1px 0 rgba(255, 255, 255, 0.1),
+    /* Top edge groove for separation */ inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 3px 8px rgba(0, 0, 0, 0.5),
+    /* Ambient shadow to lift from void */ 0 12px 32px rgba(0, 0, 0, 0.6),
+    0 24px 64px rgba(0, 0, 0, 0.4);
+}
+
+/* Chin rim light gradient overlay - matches device frame lighting */
+.pos-hardware-chin::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 0 0 28px 28px;
+  background: linear-gradient(
+    195deg,
+    transparent 0%,
+    transparent 50%,
+    rgba(255, 255, 255, 0.03) 70%,
+    rgba(255, 255, 255, 0.07) 90%,
+    rgba(255, 255, 255, 0.1) 100%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Chin top separator line with gradient fade */
+.pos-hardware-chin::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 16px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.15) 15%,
+    rgba(255, 255, 255, 0.2) 50%,
+    rgba(255, 255, 255, 0.15) 85%,
+    transparent 100%
+  );
+  z-index: 1;
+}
+
+/* ========================================
+   UNIFIED CAPSULE - Game button + slider as one element
+   ======================================== */
+
+/* The unified capsule container - expands from circle to pill */
+.pos-chin-capsule {
+  position: absolute;
+  left: 24px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  height: 52px;
+  /* 3D effect matching power button - green accent */
+  background:
+    radial-gradient(circle at 30% 30%, #1f5432 0%, #0d2818 70%), linear-gradient(180deg, #1a472a 0%, #0a1f12 100%);
+  border: none;
+  /* NO GLOW in default state - just 3D depth */
+  box-shadow:
+    0 0 0 3px rgba(0, 0, 0, 0.4),
+    0 0 0 4px rgba(34, 197, 94, 0.05),
+    inset 0 2px 4px rgba(0, 0, 0, 0.5),
+    inset 0 -1px 2px rgba(34, 197, 94, 0.05),
+    0 4px 12px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  transition:
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+/* Expanded state - add EVEN green glow (centered, not offset) */
+.pos-chin-capsule.pos-chin-capsule-expanded {
+  background: linear-gradient(180deg, #134524 0%, #0a1e12 100%);
+  box-shadow:
+    0 0 0 3px rgba(0, 0, 0, 0.3),
+    0 0 0 5px rgba(34, 197, 94, 0.12),
+    inset 0 1px 2px rgba(0, 0, 0, 0.3),
+    inset 0 -1px 2px rgba(34, 197, 94, 0.1),
+    0 4px 16px rgba(0, 0, 0, 0.4),
+    0 0 20px rgba(34, 197, 94, 0.25),
+    0 0 40px rgba(34, 197, 94, 0.15);
+}
+
+/* Hover state when NOT expanded */
+.pos-chin-capsule:not(.pos-chin-capsule-expanded):hover {
+  background: radial-gradient(circle at 30% 30%, #22c55e 0%, #166534 50%, #0d2818 100%);
+  box-shadow:
+    0 0 0 3px rgba(0, 0, 0, 0.3),
+    0 0 0 5px rgba(34, 197, 94, 0.15),
+    inset 0 2px 4px rgba(0, 0, 0, 0.4),
+    inset 0 -1px 2px rgba(34, 197, 94, 0.15),
+    0 4px 16px rgba(0, 0, 0, 0.5),
+    0 0 25px rgba(34, 197, 94, 0.2);
+}
+
+/* Glass dome reflection on capsule */
+.pos-chin-capsule::after {
+  content: "";
+  position: absolute;
+  top: 5px;
+  left: 9px;
+  width: 16px;
+  height: 9px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.05) 50%, transparent 100%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* The toggle button (game icon) - matches power button styling */
+.pos-capsule-toggle {
+  position: relative;
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  color: #4ade80;
+  transition:
+    background 0.2s ease,
+    box-shadow 0.2s ease,
+    color 0.2s ease;
+  /* Match power button filled style with green accent */
+  background:
+    radial-gradient(circle at 30% 30%, #1a3d26 0%, #0a1f10 70%), linear-gradient(180deg, #153d22 0%, #051a0a 100%);
+  /* Match power button box-shadow structure */
+  box-shadow:
+    0 0 0 3px rgba(0, 0, 0, 0.4),
+    0 0 0 4px rgba(34, 197, 94, 0.1),
+    inset 0 2px 4px rgba(0, 0, 0, 0.5),
+    inset 0 -1px 2px rgba(34, 197, 94, 0.1),
+    0 4px 12px rgba(0, 0, 0, 0.4),
+    0 0 20px rgba(34, 197, 94, 0.08);
+}
+
+/* Glass dome reflection on toggle - match power button */
+.pos-capsule-toggle::after {
+  content: "";
+  position: absolute;
+  top: 5px;
+  left: 9px;
+  width: 16px;
+  height: 9px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.05) 50%, transparent 100%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.pos-chin-capsule-expanded .pos-capsule-toggle,
+.pos-capsule-toggle:hover {
+  color: #86efac;
+  background: radial-gradient(circle at 30% 30%, #22c55e 0%, #166534 50%, #0a1f10 100%);
+  box-shadow:
+    0 0 0 3px rgba(0, 0, 0, 0.3),
+    0 0 0 5px rgba(34, 197, 94, 0.2),
+    inset 0 2px 4px rgba(0, 0, 0, 0.4),
+    inset 0 -1px 2px rgba(34, 197, 94, 0.2),
+    0 4px 16px rgba(0, 0, 0, 0.5),
+    0 0 30px rgba(34, 197, 94, 0.25),
+    0 0 60px rgba(34, 197, 94, 0.1);
+}
+
+/* Pressed/active state */
+.pos-capsule-toggle:active {
+  transform: scale(0.95);
+  box-shadow:
+    0 0 0 3px rgba(0, 0, 0, 0.5),
+    inset 0 3px 6px rgba(0, 0, 0, 0.6),
+    0 0 25px rgba(34, 197, 94, 0.3);
+}
+
+/* Icon styling - subtle glow like power button */
+.pos-capsule-toggle svg {
+  width: 20px;
+  height: 20px;
+  filter: drop-shadow(0 0 6px rgba(34, 197, 94, 0.6));
+  transition: filter 0.2s ease;
+}
+
+/* Enhanced glow when expanded or hovered */
+.pos-chin-capsule-expanded .pos-capsule-toggle svg,
+.pos-capsule-toggle:hover svg {
+  filter: drop-shadow(0 0 10px rgba(34, 197, 94, 0.9));
+}
+
+/* Container for activity buttons inside capsule */
+.pos-capsule-activities {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 12px; /* Space between game icon and activity icons */
+  padding-right: 12px;
+  /* Prevent interaction when capsule is closed */
+  pointer-events: none;
+}
+
+/* Enable interaction only when expanded */
+.pos-chin-capsule-expanded .pos-capsule-activities {
+  pointer-events: auto;
+}
+
+/* ========================================
+   POWER BUTTON - Separate, fixed position
+   ======================================== */
+
+/* Base button styles for power button */
+.pos-chin-btn {
+  position: absolute;
+  z-index: 2;
+  width: 52px;
+  height: 52px;
+  min-width: 52px;
+  min-height: 52px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    box-shadow 0.2s ease,
+    color 0.2s ease;
+  /* Recessed socket effect */
+  box-shadow:
+    0 0 0 3px rgba(0, 0, 0, 0.4),
+    inset 0 2px 4px rgba(0, 0, 0, 0.5),
+    inset 0 -1px 2px rgba(255, 255, 255, 0.05),
+    0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* Button glass dome reflection */
+.pos-chin-btn::after {
+  content: "";
+  position: absolute;
+  top: 5px;
+  left: 9px;
+  width: 16px;
+  height: 9px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.05) 50%, transparent 100%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* Power button - red accent with LED-like glow */
+.pos-chin-btn-power {
+  right: 24px; /* Fixed position on right */
+  background:
+    radial-gradient(circle at 30% 30%, #4a1a1a 0%, #1a0808 70%), linear-gradient(180deg, #3d1515 0%, #0f0505 100%);
+  color: #f87171;
+  /* Subtle red ambient glow */
+  box-shadow:
+    0 0 0 3px rgba(0, 0, 0, 0.4),
+    0 0 0 4px rgba(239, 68, 68, 0.1),
+    inset 0 2px 4px rgba(0, 0, 0, 0.5),
+    inset 0 -1px 2px rgba(239, 68, 68, 0.1),
+    0 4px 12px rgba(0, 0, 0, 0.4),
+    0 0 20px rgba(239, 68, 68, 0.08);
+}
+
+.pos-chin-btn-power:hover {
+  background: radial-gradient(circle at 30% 30%, #ef4444 0%, #991b1b 50%, #1a0808 100%);
+  color: #fca5a5;
+  box-shadow:
+    0 0 0 3px rgba(0, 0, 0, 0.3),
+    0 0 0 5px rgba(239, 68, 68, 0.2),
+    inset 0 2px 4px rgba(0, 0, 0, 0.4),
+    inset 0 -1px 2px rgba(239, 68, 68, 0.2),
+    0 4px 16px rgba(0, 0, 0, 0.5),
+    0 0 30px rgba(239, 68, 68, 0.25),
+    0 0 60px rgba(239, 68, 68, 0.1);
+}
+
+.pos-chin-btn-power:active {
+  transform: scale(0.95);
+  box-shadow:
+    0 0 0 3px rgba(0, 0, 0, 0.5),
+    inset 0 3px 6px rgba(0, 0, 0, 0.6),
+    0 0 25px rgba(239, 68, 68, 0.3);
+}
+
+.pos-chin-btn-power svg {
+  filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.6));
+  transition: filter 0.2s ease;
+}
+
+.pos-chin-btn-power:hover svg {
+  filter: drop-shadow(0 0 10px rgba(239, 68, 68, 0.9));
+}
+
+/* Activity button in capsule - circular hardware buttons (smaller than main buttons) */
+.pos-chin-activity-btn {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  min-height: 42px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  /* Base dark background */
+  background:
+    radial-gradient(circle at 30% 30%, #2a2a2a 0%, #1a1a1a 70%), linear-gradient(180deg, #222222 0%, #111111 100%);
+  color: rgba(255, 255, 255, 0.7);
+  /* Recessed socket effect - matching main buttons */
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.4),
+    inset 0 2px 4px rgba(0, 0, 0, 0.5),
+    inset 0 -1px 2px rgba(255, 255, 255, 0.05),
+    0 3px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* Glass dome reflection on activity buttons */
+.pos-chin-activity-btn::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 6px;
+  width: 12px;
+  height: 6px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.03) 50%, transparent 100%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.pos-chin-activity-btn svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+/* Activity button color variants - Laser Tag (Red) */
+.pos-chin-activity-red {
+  background:
+    radial-gradient(circle at 30% 30%, #4a1a1a 0%, #1a0808 70%), linear-gradient(180deg, #3d1515 0%, #0f0505 100%);
+  color: #f87171;
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.4),
+    0 0 0 3px rgba(239, 68, 68, 0.1),
+    inset 0 2px 4px rgba(0, 0, 0, 0.5),
+    inset 0 -1px 2px rgba(239, 68, 68, 0.1),
+    0 3px 8px rgba(0, 0, 0, 0.4),
+    0 0 15px rgba(239, 68, 68, 0.08);
+}
+
+.pos-chin-activity-red:hover {
+  background: radial-gradient(circle at 30% 30%, #ef4444 0%, #991b1b 50%, #1a0808 100%);
+  color: #fca5a5;
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.3),
+    0 0 0 4px rgba(239, 68, 68, 0.2),
+    inset 0 2px 4px rgba(0, 0, 0, 0.4),
+    inset 0 -1px 2px rgba(239, 68, 68, 0.2),
+    0 4px 12px rgba(0, 0, 0, 0.5),
+    0 0 25px rgba(239, 68, 68, 0.3),
+    0 0 50px rgba(239, 68, 68, 0.15);
+}
+
+.pos-chin-activity-red svg {
+  color: #f87171;
+  filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.6));
+}
+
+.pos-chin-activity-red:hover svg {
+  filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.9));
+}
+
+/* Activity button color variants - Bowling (Blue) */
+.pos-chin-activity-blue {
+  background:
+    radial-gradient(circle at 30% 30%, #1e3a5f 0%, #0a1628 70%), linear-gradient(180deg, #1e3a8a 0%, #0c1929 100%);
+  color: #60a5fa;
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.4),
+    0 0 0 3px rgba(59, 130, 246, 0.1),
+    inset 0 2px 4px rgba(0, 0, 0, 0.5),
+    inset 0 -1px 2px rgba(59, 130, 246, 0.1),
+    0 3px 8px rgba(0, 0, 0, 0.4),
+    0 0 15px rgba(59, 130, 246, 0.08);
+}
+
+.pos-chin-activity-blue:hover {
+  background: radial-gradient(circle at 30% 30%, #3b82f6 0%, #1d4ed8 50%, #0a1628 100%);
+  color: #93c5fd;
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.3),
+    0 0 0 4px rgba(59, 130, 246, 0.2),
+    inset 0 2px 4px rgba(0, 0, 0, 0.4),
+    inset 0 -1px 2px rgba(59, 130, 246, 0.2),
+    0 4px 12px rgba(0, 0, 0, 0.5),
+    0 0 25px rgba(59, 130, 246, 0.3),
+    0 0 50px rgba(59, 130, 246, 0.15);
+}
+
+.pos-chin-activity-blue svg {
+  color: #60a5fa;
+  filter: drop-shadow(0 0 4px rgba(59, 130, 246, 0.6));
+}
+
+.pos-chin-activity-blue:hover svg {
+  filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.9));
+}
+
+/* Activity button color variants - Air Hockey (Cyan) */
+.pos-chin-activity-cyan {
+  background:
+    radial-gradient(circle at 30% 30%, #164e63 0%, #082f39 70%), linear-gradient(180deg, #155e75 0%, #051c24 100%);
+  color: #22d3ee;
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.4),
+    0 0 0 3px rgba(6, 182, 212, 0.1),
+    inset 0 2px 4px rgba(0, 0, 0, 0.5),
+    inset 0 -1px 2px rgba(6, 182, 212, 0.1),
+    0 3px 8px rgba(0, 0, 0, 0.4),
+    0 0 15px rgba(6, 182, 212, 0.08);
+}
+
+.pos-chin-activity-cyan:hover {
+  background: radial-gradient(circle at 30% 30%, #06b6d4 0%, #0891b2 50%, #082f39 100%);
+  color: #67e8f9;
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.3),
+    0 0 0 4px rgba(6, 182, 212, 0.2),
+    inset 0 2px 4px rgba(0, 0, 0, 0.4),
+    inset 0 -1px 2px rgba(6, 182, 212, 0.2),
+    0 4px 12px rgba(0, 0, 0, 0.5),
+    0 0 25px rgba(6, 182, 212, 0.3),
+    0 0 50px rgba(6, 182, 212, 0.15);
+}
+
+.pos-chin-activity-cyan svg {
+  color: #22d3ee;
+  filter: drop-shadow(0 0 4px rgba(6, 182, 212, 0.6));
+}
+
+.pos-chin-activity-cyan:hover svg {
+  filter: drop-shadow(0 0 8px rgba(6, 182, 212, 0.9));
+}
+
+/* Pressed/Active state for activity buttons - depress effect */
+.pos-chin-activity-btn:active {
+  transform: scale(0.95);
+}
+
+.pos-chin-activity-red:active {
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.5),
+    inset 0 3px 6px rgba(0, 0, 0, 0.6),
+    0 0 20px rgba(239, 68, 68, 0.4);
+}
+
+.pos-chin-activity-blue:active {
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.5),
+    inset 0 3px 6px rgba(0, 0, 0, 0.6),
+    0 0 20px rgba(59, 130, 246, 0.4);
+}
+
+.pos-chin-activity-cyan:active {
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.5),
+    inset 0 3px 6px rgba(0, 0, 0, 0.6),
+    0 0 20px rgba(6, 182, 212, 0.4);
+}
+
+/* Selected activity button state - SAME AS HOVER STATE */
+.pos-chin-activity-selected {
+  /* No transform */
+}
+
+.pos-chin-activity-red.pos-chin-activity-selected,
+.pos-chin-activity-red.pos-chin-activity-selected:hover {
+  background: radial-gradient(circle at 30% 30%, #ef4444 0%, #991b1b 50%, #1a0808 100%);
+  color: #fca5a5;
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.3),
+    0 0 0 4px rgba(239, 68, 68, 0.2),
+    inset 0 2px 4px rgba(0, 0, 0, 0.4),
+    inset 0 -1px 2px rgba(239, 68, 68, 0.2),
+    0 4px 12px rgba(0, 0, 0, 0.5),
+    0 0 25px rgba(239, 68, 68, 0.3),
+    0 0 50px rgba(239, 68, 68, 0.15);
+}
+
+.pos-chin-activity-blue.pos-chin-activity-selected,
+.pos-chin-activity-blue.pos-chin-activity-selected:hover {
+  background: radial-gradient(circle at 30% 30%, #3b82f6 0%, #1d4ed8 50%, #0a1628 100%);
+  color: #93c5fd;
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.3),
+    0 0 0 4px rgba(59, 130, 246, 0.2),
+    inset 0 2px 4px rgba(0, 0, 0, 0.4),
+    inset 0 -1px 2px rgba(59, 130, 246, 0.2),
+    0 4px 12px rgba(0, 0, 0, 0.5),
+    0 0 25px rgba(59, 130, 246, 0.3),
+    0 0 50px rgba(59, 130, 246, 0.15);
+}
+
+.pos-chin-activity-cyan.pos-chin-activity-selected,
+.pos-chin-activity-cyan.pos-chin-activity-selected:hover {
+  background: radial-gradient(circle at 30% 30%, #06b6d4 0%, #0891b2 50%, #082f39 100%);
+  color: #67e8f9;
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.3),
+    0 0 0 4px rgba(6, 182, 212, 0.2),
+    inset 0 2px 4px rgba(0, 0, 0, 0.4),
+    inset 0 -1px 2px rgba(6, 182, 212, 0.2),
+    0 4px 12px rgba(0, 0, 0, 0.5),
+    0 0 25px rgba(6, 182, 212, 0.3),
+    0 0 50px rgba(6, 182, 212, 0.15);
+}
+
+/* Selected state SVG icons - same as hover */
+.pos-chin-activity-red.pos-chin-activity-selected svg {
+  filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.9));
+}
+
+.pos-chin-activity-blue.pos-chin-activity-selected svg {
+  filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.9));
+}
+
+.pos-chin-activity-cyan.pos-chin-activity-selected svg {
+  filter: drop-shadow(0 0 8px rgba(6, 182, 212, 0.9));
+}
+
+/* Disabled state for activity buttons during transactions */
+.pos-chin-activity-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
 }
 
 /* ========================================
@@ -1658,20 +2302,31 @@ Trigger Build Compatibility Styles
   color: rgba(255, 255, 255, 0.4);
 }
 
-/* Amount display */
+/* Amount display - glassmorphic container */
 .pos-amount-display {
   display: flex;
   flex-direction: column;
   align-items: center;
   margin: 12px 0;
+  padding: 16px 24px;
+  /* Glassmorphic panel */
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .pos-amount-label {
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 2px;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.5);
   margin-bottom: 8px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .pos-amount-value {
@@ -1682,8 +2337,9 @@ Trigger Build Compatibility Styles
 .pos-currency {
   font-size: 28px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.7);
   margin-right: 2px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .pos-amount-number {
@@ -1692,20 +2348,23 @@ Trigger Build Compatibility Styles
   color: #fff;
   line-height: 1;
   font-family: "SF Mono", Monaco, "Courier New", monospace;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 .pos-amount-decimal {
   font-size: 28px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.35);
+  color: rgba(255, 255, 255, 0.45);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .pos-amount-token {
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 1px;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.55);
   margin-top: 4px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 /* Keypad grid */
@@ -1718,62 +2377,93 @@ Trigger Build Compatibility Styles
   margin: 8px 0;
 }
 
+/* Glassmorphic preset buttons */
 .pos-keypad-btn {
   position: relative;
   padding: 14px 8px;
-  background: rgba(50, 50, 50, 0.6);
+  /* Glassmorphism effect */
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 14px;
   font-size: 16px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.7);
   cursor: pointer;
   transition: all 0.2s ease;
+  /* Subtle glass edge highlight */
   box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    0 2px 8px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.02);
 }
 
 .pos-keypad-btn:hover:not(:disabled) {
-  background: rgba(60, 60, 60, 0.8);
-  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
   transform: translateY(-2px);
   box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    0 6px 16px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .pos-keypad-btn:active:not(:disabled) {
-  transform: translateY(0);
+  transform: translateY(0) scale(0.97);
+  background: rgba(255, 255, 255, 0.04);
   box-shadow:
     0 1px 4px rgba(0, 0, 0, 0.2),
-    inset 0 2px 4px rgba(0, 0, 0, 0.1);
+    inset 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
+/* Active/selected state - glass with inner amber glow */
 .pos-keypad-btn-active {
-  background: linear-gradient(145deg, rgba(242, 169, 0, 0.25), rgba(242, 169, 0, 0.1));
-  border-color: rgba(242, 169, 0, 0.5);
+  background: rgba(242, 169, 0, 0.12);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-color: rgba(242, 169, 0, 0.4);
   color: #f2a900;
   box-shadow:
-    0 0 20px rgba(242, 169, 0, 0.2),
-    0 4px 12px rgba(0, 0, 0, 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    /* Inner glow effect */
+    inset 0 0 20px rgba(242, 169, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    /* Outer subtle glow */ 0 0 24px rgba(242, 169, 0, 0.12),
+    0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.pos-keypad-btn-active:hover:not(:disabled) {
+  background: rgba(242, 169, 0, 0.18);
+  border-color: rgba(242, 169, 0, 0.5);
+  box-shadow:
+    inset 0 0 24px rgba(242, 169, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 0 30px rgba(242, 169, 0, 0.18),
+    0 6px 16px rgba(0, 0, 0, 0.25);
 }
 
 .pos-keypad-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+  backdrop-filter: blur(8px);
 }
 
-/* Credits preview */
+/* Credits preview - glassmorphic panel */
 .pos-credits-preview {
   width: 100%;
   max-width: 280px;
-  padding: 12px 16px;
-  background: rgba(35, 35, 35, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 14px 18px;
+  /* Glassmorphic effect */
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 14px;
   margin: 4px 0;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1),
+    0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .pos-preview-row {
@@ -1783,18 +2473,25 @@ Trigger Build Compatibility Styles
   padding: 6px 0;
 }
 
+.pos-preview-row-centered {
+  justify-content: center;
+  gap: 12px;
+}
+
 .pos-preview-label {
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.5px;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.6);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .pos-preview-value {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
-  color: #f2a900;
+  color: #fbbf24;
   font-family: "SF Mono", Monaco, "Courier New", monospace;
+  text-shadow: 0 0 12px rgba(251, 191, 36, 0.4);
 }
 
 .pos-preview-free {
@@ -1812,41 +2509,48 @@ Trigger Build Compatibility Styles
   margin-top: 8px;
 }
 
+/* Tactile metallic button */
 .pos-tap-pay-btn {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 28px;
-  background: linear-gradient(145deg, #ffd54f 0%, #f2a900 40%, #d99400 70%, #c08000 100%);
+  padding: 16px 32px;
+  /* Rich metallic gradient */
+  background: linear-gradient(165deg, #ffe082 0%, #ffd54f 15%, #f2a900 40%, #d99400 70%, #bf8000 90%, #a66e00 100%);
   border: none;
   border-radius: 50px;
   cursor: pointer;
+  /* 3D button depth */
   box-shadow:
-    0 0 0 3px rgba(180, 140, 60, 0.4),
-    0 0 30px rgba(242, 169, 0, 0.3),
-    0 8px 24px rgba(0, 0, 0, 0.4),
-    inset 0 2px 4px rgba(255, 255, 255, 0.3),
-    inset 0 -2px 6px rgba(0, 0, 0, 0.2);
-  transition: all 0.2s ease;
+    /* Outer rim */
+    0 0 0 2px rgba(160, 120, 40, 0.5),
+    /* Ambient glow */ 0 0 30px rgba(242, 169, 0, 0.25),
+    /* Drop shadow */ 0 6px 20px rgba(0, 0, 0, 0.4),
+    0 2px 8px rgba(0, 0, 0, 0.3),
+    /* Inner top highlight */ inset 0 2px 4px rgba(255, 255, 255, 0.4),
+    /* Inner bottom shadow */ inset 0 -2px 4px rgba(0, 0, 0, 0.15);
+  transition: box-shadow 0.15s ease;
 }
 
 .pos-tap-pay-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
   box-shadow:
-    0 0 0 3px rgba(200, 160, 80, 0.5),
-    0 0 45px rgba(242, 169, 0, 0.45),
-    0 12px 32px rgba(0, 0, 0, 0.45),
-    inset 0 2px 4px rgba(255, 255, 255, 0.35),
-    inset 0 -2px 6px rgba(0, 0, 0, 0.2);
+    0 0 0 2px rgba(180, 140, 60, 0.6),
+    0 0 40px rgba(242, 169, 0, 0.35),
+    0 10px 28px rgba(0, 0, 0, 0.45),
+    0 4px 12px rgba(0, 0, 0, 0.35),
+    inset 0 2px 4px rgba(255, 255, 255, 0.45),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.15);
 }
 
+/* Tactile pressed state - deeper inset */
 .pos-tap-pay-btn:active:not(:disabled) {
-  transform: translateY(1px);
+  background: linear-gradient(165deg, #e6c872 0%, #e6bf3d 15%, #d99400 40%, #c08000 70%, #a66e00 90%, #8c5e00 100%);
   box-shadow:
-    0 0 0 2px rgba(160, 120, 50, 0.3),
-    0 0 20px rgba(242, 169, 0, 0.2),
-    0 4px 12px rgba(0, 0, 0, 0.35),
-    inset 0 3px 6px rgba(0, 0, 0, 0.15);
+    0 0 0 2px rgba(140, 100, 30, 0.4),
+    0 0 15px rgba(242, 169, 0, 0.15),
+    0 2px 6px rgba(0, 0, 0, 0.3),
+    /* Deep inset for pressed feel */ inset 0 3px 8px rgba(0, 0, 0, 0.25),
+    inset 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .pos-tap-pay-btn:disabled {

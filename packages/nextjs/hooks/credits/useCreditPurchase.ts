@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { createPublicClient, http, parseUnits } from "viem";
 import deployedContracts from "~~/contracts/deployedContracts";
 import { useHaloChip } from "~~/hooks/halochip-arx/useHaloChip";
@@ -26,8 +26,17 @@ const CREDIT_TOKEN_ABI = [
   },
 ] as const;
 
-// Flow states
-export type CreditFlowState = "idle" | "tapping" | "signing" | "submitting" | "confirming" | "success" | "error";
+// Flow states - granular for better UI feedback
+export type CreditFlowState =
+  | "idle"
+  | "tapping" // Waiting for first chip tap
+  | "signing" // First signature in progress
+  | "preparing" // Fetching owner/nonce from contracts
+  | "confirming_signature" // Waiting for second chip tap
+  | "submitting" // Sending to relay API
+  | "confirming" // Waiting for tx confirmation
+  | "success"
+  | "error";
 
 interface UseCreditPurchaseOptions {
   onSuccess?: (txHash: string, creditsMinted: string, ownerAddress: string) => void;
@@ -39,12 +48,14 @@ export function useCreditPurchase({ onSuccess, onError }: UseCreditPurchaseOptio
   const { signTypedData } = useHaloChip();
 
   const [flowState, setFlowState] = useState<CreditFlowState>("idle");
-  const [statusMessage, setStatusMessage] = useState("");
   const [error, setError] = useState("");
   const [txHash, setTxHash] = useState<string | null>(null);
   const [creditsMinted, setCreditsMinted] = useState<string | null>(null);
   const [ownerAddress, setOwnerAddress] = useState<string | null>(null);
   const [newBalance, setNewBalance] = useState<string | null>(null);
+
+  // Prevent reset during transaction
+  const isInProgress = useRef(false);
 
   // Create public client for contract reads
   const publicClient = useMemo(
@@ -77,8 +88,10 @@ export function useCreditPurchase({ onSuccess, onError }: UseCreditPurchaseOptio
       }
 
       try {
+        isInProgress.current = true;
+
+        // Step 1: Waiting for first chip tap
         setFlowState("tapping");
-        setStatusMessage("Tap your chip");
 
         // USDC has 6 decimals
         const amountInWei = parseUnits(usdcAmount, 6);
@@ -101,9 +114,8 @@ export function useCreditPurchase({ onSuccess, onError }: UseCreditPurchaseOptio
           ],
         };
 
-        // Signing state - first tap to get chip address
+        // Step 2: First signature in progress
         setFlowState("signing");
-        setStatusMessage("Signing...");
 
         // We need to do a preliminary sign to get the chip address first
         // Then lookup owner and nonce, then sign the actual message
@@ -121,6 +133,9 @@ export function useCreditPurchase({ onSuccess, onError }: UseCreditPurchaseOptio
         });
 
         const chipAddress = chipResult.address as `0x${string}`;
+
+        // Step 3: Fetching owner/nonce from contracts
+        setFlowState("preparing");
 
         // Lookup owner from registry
         const owner = (await publicClient.readContract({
@@ -152,6 +167,9 @@ export function useCreditPurchase({ onSuccess, onError }: UseCreditPurchaseOptio
           deadline: deadline,
         };
 
+        // Step 4: Waiting for second chip tap (final signature)
+        setFlowState("confirming_signature");
+
         // Sign the real message with correct values
         const finalChipResult = await signTypedData({
           domain,
@@ -162,7 +180,6 @@ export function useCreditPurchase({ onSuccess, onError }: UseCreditPurchaseOptio
 
         // Submitting state
         setFlowState("submitting");
-        setStatusMessage("Sending...");
 
         // Submit to relay API
         const response = await fetch("/api/relay/credit-purchase", {
@@ -194,50 +211,66 @@ export function useCreditPurchase({ onSuccess, onError }: UseCreditPurchaseOptio
 
         // Wait for transaction confirmation
         setFlowState("confirming");
-        setStatusMessage("Confirming...");
-        const receipt = await publicClient.waitForTransactionReceipt({ hash: result.txHash as `0x${string}` });
 
-        // Create a fresh client with cache disabled to get accurate post-tx balance
-        const freshClient = createPublicClient({
-          chain: targetNetwork,
-          transport: http(undefined, {
-            fetchOptions: { cache: "no-store" },
-          }),
-        });
+        let receiptBlockNumber: bigint | undefined;
+        try {
+          const receipt = await publicClient.waitForTransactionReceipt({ hash: result.txHash as `0x${string}` });
+          receiptBlockNumber = receipt.blockNumber;
+        } catch {
+          // Receipt fetch failed, continue anyway
+        }
 
-        // Fetch new balance AFTER confirmation at the confirmed block
-        const balance = (await freshClient.readContract({
-          address: creditTokenAddress,
-          abi: [
-            {
-              name: "balanceOf",
-              type: "function",
-              inputs: [{ name: "account", type: "address" }],
-              outputs: [{ type: "uint256" }],
-              stateMutability: "view",
-            },
-          ] as const,
-          functionName: "balanceOf",
-          args: [owner],
-          blockNumber: receipt.blockNumber,
-        })) as bigint;
+        // Fetch chip owner's credit token balance
+        // Note: CreditToken uses 18 decimals, balance is raw bigint string
+        try {
+          // Create a fresh client with cache disabled to get accurate post-tx balance
+          const freshClient = createPublicClient({
+            chain: targetNetwork,
+            transport: http(undefined, {
+              fetchOptions: { cache: "no-store" },
+            }),
+          });
 
-        setNewBalance(balance.toString());
+          // Fetch chip owner's balance AFTER confirmation
+          // The `owner` is the chip owner from registry (whoever tapped the chip)
+          const balance = (await freshClient.readContract({
+            address: creditTokenAddress,
+            abi: [
+              {
+                name: "balanceOf",
+                type: "function",
+                inputs: [{ name: "account", type: "address" }],
+                outputs: [{ type: "uint256" }],
+                stateMutability: "view",
+              },
+            ] as const,
+            functionName: "balanceOf",
+            args: [owner],
+            ...(receiptBlockNumber ? { blockNumber: receiptBlockNumber } : {}),
+          })) as bigint;
+
+          // Store raw bigint as string (18 decimals) - UI will parse
+          setNewBalance(balance.toString());
+        } catch (balanceError) {
+          console.error("Failed to fetch balance:", balanceError);
+          // Use creditsMinted as fallback - this is the minimum they should have
+          // creditsMinted is already in 18 decimals from the API
+          setNewBalance(result.creditsMinted || "0");
+        }
 
         // Now transition to success
         setFlowState("success");
-        setStatusMessage("Complete!");
+        isInProgress.current = false;
 
         // Call success callback
         if (onSuccess) {
           onSuccess(result.txHash, result.creditsMinted, owner);
         }
       } catch (err: unknown) {
-        console.error("Credit purchase error:", err);
         setFlowState("error");
         const errorMessage = err instanceof Error ? err.message : "Purchase failed. Please try again.";
         setError(errorMessage);
-        setStatusMessage("");
+        isInProgress.current = false;
 
         // Call error callback
         if (onError && err instanceof Error) {
@@ -249,9 +282,11 @@ export function useCreditPurchase({ onSuccess, onError }: UseCreditPurchaseOptio
   );
 
   const reset = useCallback(() => {
+    // Don't reset if transaction is in progress
+    if (isInProgress.current) return;
+
     setFlowState("idle");
     setError("");
-    setStatusMessage("");
     setTxHash(null);
     setCreditsMinted(null);
     setOwnerAddress(null);
@@ -260,7 +295,6 @@ export function useCreditPurchase({ onSuccess, onError }: UseCreditPurchaseOptio
 
   return {
     flowState,
-    statusMessage,
     error,
     txHash,
     creditsMinted,
