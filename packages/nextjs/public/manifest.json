@@ -3,6 +3,7 @@
   "short_name": "SplitHub",
   "description": "Tap-to-pay bill splitting app. Pay friends instantly with NFC—no wallet popups, no transaction confirmations, no gas fees.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#2563eb",
@@ -20,5 +21,9 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ]
+  ],
+  "handle_links": "preferred",
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  }
 }

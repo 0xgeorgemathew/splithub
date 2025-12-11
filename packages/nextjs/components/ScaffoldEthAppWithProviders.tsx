@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { OneSignalProvider } from "./OneSignalProvider";
 import { UserSyncWrapper } from "./UserSyncWrapper";
 import { PrivyProvider } from "@privy-io/react-auth";
@@ -17,11 +18,15 @@ import { TopNav } from "~~/components/TopNav";
 import { privyConfig } from "~~/lib/privy";
 
 const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {
+  const pathname = usePathname();
+  // Hide nav on stall terminal pages: /events/{eventSlug}/{stallSlug}
+  const isStallPage = /^\/events\/[^/]+\/[^/]+$/.test(pathname);
+
   return (
     <MotionConfig reducedMotion="never">
-      <TopNav />
-      <main className="pt-20 pb-24 min-h-screen">{children}</main>
-      <BottomNav />
+      {!isStallPage && <TopNav />}
+      <main className={`min-h-screen ${isStallPage ? "" : "pt-20 pb-24"}`}>{children}</main>
+      {!isStallPage && <BottomNav />}
       <Toaster />
     </MotionConfig>
   );
