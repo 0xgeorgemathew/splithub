@@ -80,10 +80,10 @@ export const colors = {
 export const typography = {
   // Font families
   fontFamily: {
-    // UI text - clean, modern sans-serif
-    sans: "'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-    // Monospace - ONLY for TX hashes
-    mono: "'SF Mono', 'Fira Code', 'Consolas', monospace",
+    // UI text - uses the loaded Google Fonts via CSS variables with cross-platform fallbacks
+    sans: "var(--font-outfit), var(--font-archivo), system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    // Monospace - uses loaded JetBrains Mono with cross-platform fallbacks
+    mono: "var(--font-jetbrains), ui-monospace, 'Fira Code', 'Cascadia Code', 'Consolas', monospace",
   },
 
   // Font sizes (following mobile-first scale)
