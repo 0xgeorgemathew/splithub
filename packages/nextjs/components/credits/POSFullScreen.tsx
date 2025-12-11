@@ -5,48 +5,55 @@ import { ActivityPanel } from "./ActivityPanel";
 import { POSAmountEntry } from "./POSAmountEntry";
 import { POSCardStack } from "./POSCardStack";
 import { POSHardwareFrame } from "./POSHardwareFrame";
-import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
+import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from "framer-motion";
 import { Activity } from "~~/config/activities";
 import { CreditFlowState } from "~~/hooks/credits/useCreditPurchase";
 
 type ViewMode = "purchase" | "purchasing" | "activity";
 
-// Smooth easing curve optimized for 120fps displays
-// Using tween with custom bezier for buttery smooth motion
-const smoothEase = [0.32, 0.72, 0, 1] as const; // Custom ease-out curve
-
-// Transition for view changes - tween for consistent smoothness
-const viewTransition = {
-  type: "tween" as const,
-  duration: 0.35,
-  ease: smoothEase,
+// Buttery smooth spring config for 120fps displays
+// Lower stiffness = slower, more fluid motion
+// Higher damping = less oscillation at end
+const terminalSpring = {
+  type: "spring" as const,
+  stiffness: 260,
+  damping: 32,
+  mass: 1,
 };
 
-// Smooth spring for main terminal entry/exit
-const terminalTransition = {
+// Faster spring for view transitions inside the terminal
+const viewSpring = {
+  type: "spring" as const,
+  stiffness: 400,
+  damping: 35,
+  mass: 0.8,
+};
+
+// Backdrop fade - pure opacity for maximum smoothness
+const backdropTransition = {
   type: "tween" as const,
-  duration: 0.5,
-  ease: smoothEase,
+  duration: 0.3,
+  ease: [0.4, 0, 0.2, 1],
 };
 
 // Scale variants for purchase <-> purchasing transitions
 const scaleVariants = {
-  enter: { opacity: 0, scale: 1.05 },
+  enter: { opacity: 0, scale: 1.02 },
   center: { opacity: 1, scale: 1 },
-  exit: { opacity: 0, scale: 0.95 },
+  exit: { opacity: 0, scale: 0.98 },
 };
 
 // Slide variants for activity transitions (directional)
 const slideLeftVariants = {
-  enter: { opacity: 0, scale: 0.95, x: 30 },
-  center: { opacity: 1, scale: 1, x: 0 },
-  exit: { opacity: 0, scale: 0.95, x: -30 },
+  enter: { opacity: 0, x: 20 },
+  center: { opacity: 1, x: 0 },
+  exit: { opacity: 0, x: -20 },
 };
 
 const slideRightVariants = {
-  enter: { opacity: 0, scale: 0.95, x: -30 },
-  center: { opacity: 1, scale: 1, x: 0 },
-  exit: { opacity: 0, scale: 0.95, x: 30 },
+  enter: { opacity: 0, x: -20 },
+  center: { opacity: 1, x: 0 },
+  exit: { opacity: 0, x: 20 },
 };
 
 interface POSFullScreenProps {
@@ -148,6 +155,9 @@ export function POSFullScreen({
     onClose();
   }, [onReset, onClose]);
 
+  // Check for reduced motion preference
+  const prefersReducedMotion = useReducedMotion();
+
   return (
     <motion.div
       className="pos-fullscreen"
@@ -157,18 +167,39 @@ export function POSFullScreen({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.4, ease: smoothEase }}
+      transition={backdropTransition}
     >
       {/* Backdrop - always clickable to dismiss */}
-      <button className="absolute inset-0 z-0" onClick={handleDismiss} aria-label="Close terminal" />
+      <motion.button
+        className="absolute inset-0 z-0"
+        onClick={handleDismiss}
+        aria-label="Close terminal"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={backdropTransition}
+      />
 
-      {/* Main POS Container */}
+      {/* Main POS Container - GPU accelerated spring animation */}
       <motion.div
         className="pos-terminal-wrapper"
-        initial={{ y: "100%", opacity: 0, scale: 0.95 }}
-        animate={{ y: 0, opacity: 1, scale: 1 }}
-        exit={{ y: "100%", opacity: 0, scale: 0.95 }}
-        transition={terminalTransition}
+        style={{
+          // Force GPU layer for buttery smooth animation
+          transform: "translateZ(0)",
+        }}
+        initial={{
+          y: prefersReducedMotion ? 0 : "100vh",
+          opacity: prefersReducedMotion ? 0 : 1,
+        }}
+        animate={{
+          y: 0,
+          opacity: 1,
+        }}
+        exit={{
+          y: prefersReducedMotion ? 0 : "100vh",
+          opacity: prefersReducedMotion ? 0 : 1,
+        }}
+        transition={terminalSpring}
       >
         <POSHardwareFrame
           flowState={flowState}
@@ -189,7 +220,7 @@ export function POSFullScreen({
                   initial="enter"
                   animate="center"
                   exit="exit"
-                  transition={viewTransition}
+                  transition={viewSpring}
                 >
                   <POSAmountEntry
                     amount={amount}
@@ -207,7 +238,7 @@ export function POSFullScreen({
                   initial="enter"
                   animate="center"
                   exit="exit"
-                  transition={viewTransition}
+                  transition={viewSpring}
                 >
                   <POSCardStack
                     flowState={flowState}
@@ -230,7 +261,7 @@ export function POSFullScreen({
                   initial="enter"
                   animate="center"
                   exit="exit"
-                  transition={viewTransition}
+                  transition={viewSpring}
                 >
                   <ActivityPanel
                     activity={selectedActivity}
