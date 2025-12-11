@@ -108,6 +108,7 @@ Trigger Build Compatibility Styles
 
   body {
     min-height: 100vh;
+    font-family: var(--font-outfit), var(--font-archivo), system-ui, -apple-system, sans-serif;
   }
 
   h1,
@@ -2316,7 +2317,7 @@ Trigger Build Compatibility Styles
   font-size: 14px;
   font-weight: 700;
   color: #f2a900;
-  font-family: "SF Mono", Monaco, "Courier New", monospace;
+  font-family: var(--font-jetbrains), ui-monospace, "Cascadia Code", "Consolas", monospace;
 }
 
 .pos-balance-unit {
@@ -2370,7 +2371,7 @@ Trigger Build Compatibility Styles
   font-weight: 700;
   color: #fff;
   line-height: 1;
-  font-family: "SF Mono", Monaco, "Courier New", monospace;
+  font-family: var(--font-jetbrains), ui-monospace, "Cascadia Code", "Consolas", monospace;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
@@ -2513,7 +2514,7 @@ Trigger Build Compatibility Styles
   font-size: 15px;
   font-weight: 700;
   color: #fbbf24;
-  font-family: "SF Mono", Monaco, "Courier New", monospace;
+  font-family: var(--font-jetbrains), ui-monospace, "Cascadia Code", "Consolas", monospace;
   text-shadow: 0 0 12px rgba(251, 191, 36, 0.4);
 }
 
@@ -2605,7 +2606,7 @@ Trigger Build Compatibility Styles
   width: 100%;
   height: 100%;
   padding: 20px;
-  font-family: "SF Mono", Monaco, "Courier New", monospace;
+  font-family: var(--font-jetbrains), ui-monospace, "Cascadia Code", "Consolas", monospace;
 }
 
 /* Status header */
@@ -2952,7 +2953,7 @@ Trigger Build Compatibility Styles
   align-items: center;
   gap: 8px;
   padding: 4px 0;
-  font-family: "SF Mono", Monaco, "Courier New", monospace;
+  font-family: var(--font-jetbrains), ui-monospace, "Cascadia Code", "Consolas", monospace;
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.5px;
