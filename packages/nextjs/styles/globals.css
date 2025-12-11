@@ -9,6 +9,23 @@
   --animate-pulse-fast: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
+/* GPU-accelerated animations for 120fps on ProMotion displays */
+/* Targets Framer Motion elements which have data-framer-* attributes */
+[data-framer-component-type],
+[data-projection-id] {
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* Utility class for manual GPU acceleration */
+.gpu-accelerated {
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform: translate3d(0, 0, 0);
+}
+
 @plugin "daisyui" {
   themes:
     light,
@@ -1016,6 +1033,12 @@ Trigger Build Compatibility Styles
   align-items: center;
   gap: 20px;
   z-index: 1;
+  /* GPU acceleration for buttery smooth 120fps animations */
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
 }
 
 /* Activities button positioned below terminal */

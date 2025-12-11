@@ -5,6 +5,7 @@ import { UserSyncWrapper } from "./UserSyncWrapper";
 import { PrivyProvider } from "@privy-io/react-auth";
 import { WagmiProvider } from "@privy-io/wagmi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MotionConfig } from "framer-motion";
 import { AppProgressBar as ProgressBar } from "next-nprogress-bar";
 import { useTheme } from "next-themes";
 import { Toaster } from "react-hot-toast";
@@ -17,12 +18,12 @@ import { privyConfig } from "~~/lib/privy";
 
 const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {
   return (
-    <>
+    <MotionConfig reducedMotion="never">
       <TopNav />
       <main className="pt-20 pb-24 min-h-screen">{children}</main>
       <BottomNav />
       <Toaster />
-    </>
+    </MotionConfig>
   );
 };
 

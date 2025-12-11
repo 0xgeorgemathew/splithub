@@ -11,11 +11,22 @@ import { CreditFlowState } from "~~/hooks/credits/useCreditPurchase";
 
 type ViewMode = "purchase" | "purchasing" | "activity";
 
-// Spring transition for all view changes
+// Smooth easing curve optimized for 120fps displays
+// Using tween with custom bezier for buttery smooth motion
+const smoothEase = [0.32, 0.72, 0, 1] as const; // Custom ease-out curve
+
+// Transition for view changes - tween for consistent smoothness
 const viewTransition = {
-  type: "spring" as const,
-  stiffness: 300,
-  damping: 30,
+  type: "tween" as const,
+  duration: 0.35,
+  ease: smoothEase,
+};
+
+// Smooth spring for main terminal entry/exit
+const terminalTransition = {
+  type: "tween" as const,
+  duration: 0.5,
+  ease: smoothEase,
 };
 
 // Scale variants for purchase <-> purchasing transitions
@@ -146,7 +157,7 @@ export function POSFullScreen({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.3 }}
+      transition={{ duration: 0.4, ease: smoothEase }}
     >
       {/* Backdrop - always clickable to dismiss */}
       <button className="absolute inset-0 z-0" onClick={handleDismiss} aria-label="Close terminal" />
@@ -154,10 +165,10 @@ export function POSFullScreen({
       {/* Main POS Container */}
       <motion.div
         className="pos-terminal-wrapper"
-        initial={{ y: "100%", opacity: 0, scale: 0.9 }}
+        initial={{ y: "100%", opacity: 0, scale: 0.95 }}
         animate={{ y: 0, opacity: 1, scale: 1 }}
-        exit={{ y: "100%", opacity: 0, scale: 0.9 }}
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        exit={{ y: "100%", opacity: 0, scale: 0.95 }}
+        transition={terminalTransition}
       >
         <POSHardwareFrame
           flowState={flowState}
