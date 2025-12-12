@@ -347,6 +347,9 @@ export default function SplitsPage() {
         onAddExpense={() => setIsExpenseModalOpen(true)}
       />
 
+      {/* Circles Section */}
+      <CircleSection />
+
       {/* Balances Live Feed */}
       {balances.length > 0 && (
         <BalancesLiveFeed
@@ -354,11 +357,9 @@ export default function SplitsPage() {
           loading={false}
           onFriendClick={handleFriendClick}
           onNotifyFriend={handleNotifyFriend}
+          onAddExpense={() => setIsExpenseModalOpen(true)}
         />
       )}
-
-      {/* Circles Section */}
-      <CircleSection />
 
       {/* Expense Modal */}
       <ExpenseModal

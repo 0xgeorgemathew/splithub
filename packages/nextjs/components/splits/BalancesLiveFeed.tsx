@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowDownRight, ArrowUpRight, Bell, ChevronDown, Wallet } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Bell, ChevronDown, Plus, Wallet } from "lucide-react";
 import { type FriendBalance } from "~~/lib/supabase";
 
 interface BalancesLiveFeedProps {
@@ -11,6 +11,7 @@ interface BalancesLiveFeedProps {
   loading: boolean;
   onFriendClick: (friend: FriendBalance) => void;
   onNotifyFriend: (friend: FriendBalance, e: React.MouseEvent) => void;
+  onAddExpense: () => void;
 }
 
 const formatAmount = (amount: number): string => {
@@ -116,7 +117,13 @@ const BalanceItem = ({
   );
 };
 
-export const BalancesLiveFeed = ({ balances, loading, onFriendClick, onNotifyFriend }: BalancesLiveFeedProps) => {
+export const BalancesLiveFeed = ({
+  balances,
+  loading,
+  onFriendClick,
+  onNotifyFriend,
+  onAddExpense,
+}: BalancesLiveFeedProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Don't show if loading
@@ -139,7 +146,7 @@ export const BalancesLiveFeed = ({ balances, loading, onFriendClick, onNotifyFri
       <div className="flex items-center justify-between mb-3 px-1">
         <div className="flex items-center gap-2">
           <Wallet className="w-4 h-4 text-warning" />
-          <span className="text-sm font-semibold text-base-content/70 uppercase tracking-wider">Balances</span>
+          <span className="text-sm font-semibold text-base-content/70 uppercase tracking-wider">Ledger</span>
           {/* Status badges */}
           <div className="flex items-center gap-1.5">
             {owedToYou > 0 && (
@@ -156,19 +163,30 @@ export const BalancesLiveFeed = ({ balances, loading, onFriendClick, onNotifyFri
             )}
           </div>
         </div>
-        {balances.length > 2 && (
+        <div className="flex items-center gap-2">
           <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-base-300/30 hover:bg-base-300/50 rounded-full text-xs font-medium text-base-content/60 transition-colors"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={onAddExpense}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-warning/10 hover:bg-warning/20 text-warning rounded-full text-xs font-semibold transition-colors"
           >
-            {isExpanded ? "Hide" : "Show all"}
-            <motion.div animate={{ rotate: isExpanded ? 180 : 0 }} transition={{ duration: 0.2 }}>
-              <ChevronDown className="w-3.5 h-3.5" />
-            </motion.div>
+            <Plus className="w-3.5 h-3.5" />
+            Add Expense
           </motion.button>
-        )}
+          {balances.length > 2 && (
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-base-300/30 hover:bg-base-300/50 rounded-full text-xs font-medium text-base-content/60 transition-colors"
+            >
+              {isExpanded ? "Hide" : "Show all"}
+              <motion.div animate={{ rotate: isExpanded ? 180 : 0 }} transition={{ duration: 0.2 }}>
+                <ChevronDown className="w-3.5 h-3.5" />
+              </motion.div>
+            </motion.button>
+          )}
+        </div>
       </div>
 
       {/* Preview (always visible when not expanded) */}

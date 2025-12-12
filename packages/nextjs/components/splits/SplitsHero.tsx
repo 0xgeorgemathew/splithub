@@ -35,24 +35,27 @@ const COLORS = {
 };
 
 // Hero Card with balance data
-const HeroCard = ({ walletBalance, overallBalance, isWalletLoading, friendCount, onAddExpense }: SplitsHeroProps) => {
+const HeroCard = ({
+  walletBalance,
+  overallBalance,
+  isWalletLoading,
+  friendCount,
+}: Omit<SplitsHeroProps, "onAddExpense">) => {
   const isPositive = overallBalance > 0;
   const isNeutral = overallBalance === 0;
 
-  // Build gradient based on balance status
+  // Build gradient based on balance status - single color per state, no mixing
   const getGradientOverlay = () => {
     if (isNeutral) {
       return `radial-gradient(at 20% 30%, rgba(${COLORS.neutral.rgb}, 0.12) 0%, transparent 50%),
               radial-gradient(at 80% 70%, rgba(${COLORS.neutral.rgb}, 0.08) 0%, transparent 50%)`;
     }
     if (isPositive) {
-      return `radial-gradient(at 10% 20%, rgba(${COLORS.positive.rgb}, 0.15) 0%, transparent 50%),
-              radial-gradient(at 90% 80%, rgba(${COLORS.neutral.rgb}, 0.1) 0%, transparent 50%),
-              radial-gradient(at 50% 50%, rgba(${COLORS.positive.rgb}, 0.05) 0%, transparent 70%)`;
+      return `radial-gradient(at 20% 30%, rgba(${COLORS.positive.rgb}, 0.12) 0%, transparent 50%),
+              radial-gradient(at 80% 70%, rgba(${COLORS.positive.rgb}, 0.08) 0%, transparent 50%)`;
     }
-    return `radial-gradient(at 10% 20%, rgba(${COLORS.negative.rgb}, 0.12) 0%, transparent 50%),
-            radial-gradient(at 90% 80%, rgba(${COLORS.neutral.rgb}, 0.1) 0%, transparent 50%),
-            radial-gradient(at 50% 50%, rgba(${COLORS.negative.rgb}, 0.05) 0%, transparent 70%)`;
+    return `radial-gradient(at 20% 30%, rgba(${COLORS.negative.rgb}, 0.12) 0%, transparent 50%),
+            radial-gradient(at 80% 70%, rgba(${COLORS.negative.rgb}, 0.08) 0%, transparent 50%)`;
   };
 
   return (
@@ -73,18 +76,6 @@ const HeroCard = ({ walletBalance, overallBalance, isWalletLoading, friendCount,
           backgroundImage: getGradientOverlay(),
         }}
       />
-
-      {/* Top accent line showing balance status */}
-      {!isNeutral && (
-        <div
-          className="absolute top-0 left-0 right-0 h-1"
-          style={{
-            background: isPositive
-              ? `linear-gradient(90deg, ${COLORS.positive.primary} 0%, ${COLORS.neutral.primary} 100%)`
-              : `linear-gradient(90deg, ${COLORS.negative.primary} 0%, ${COLORS.neutral.primary} 100%)`,
-          }}
-        />
-      )}
 
       <div className="relative">
         {/* Label */}
@@ -148,24 +139,6 @@ const HeroCard = ({ walletBalance, overallBalance, isWalletLoading, friendCount,
               </span>
             </div>
           )}
-        </motion.div>
-
-        {/* Quick Action - Add Expense */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-          className="mt-5 pt-4 border-t border-white/5"
-        >
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={onAddExpense}
-            className="w-full py-3.5 bg-warning/10 hover:bg-warning/20 text-warning font-semibold rounded-xl transition-all flex items-center justify-center gap-2"
-          >
-            <Plus className="w-5 h-5" />
-            Add Expense
-          </motion.button>
         </motion.div>
       </div>
     </motion.div>

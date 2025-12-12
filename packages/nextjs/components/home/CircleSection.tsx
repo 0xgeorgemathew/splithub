@@ -257,7 +257,7 @@ const CircleItem = ({
           }`}
         >
           <div className="rounded-full bg-base-100 p-0.5">
-            <CircleCollage members={circle.members} size={72} />
+            <CircleCollage members={circle.members} size={56} />
           </div>
         </div>
 
@@ -288,7 +288,7 @@ const AddCircleButton = ({ onClick }: { onClick: () => void }) => (
   >
     <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={onClick} className="relative">
       <div className="p-1 rounded-full bg-base-300/30">
-        <div className="w-[76px] h-[76px] rounded-full border-2 border-dashed border-base-content/20 flex items-center justify-center hover:border-primary/50 hover:bg-primary/5 transition-colors">
+        <div className="w-[60px] h-[60px] rounded-full border-2 border-dashed border-base-content/20 flex items-center justify-center hover:border-primary/50 hover:bg-primary/5 transition-colors">
           <Plus className="w-6 h-6 text-base-content/40" />
         </div>
       </div>
@@ -393,12 +393,12 @@ export const CircleSection = () => {
   if (loading) {
     return (
       <div className="mb-6">
-        <h3 className="text-lg font-semibold text-base-content/80 mb-4 px-1">Circles</h3>
-        <div className="flex gap-5 overflow-x-auto pb-2 px-1">
+        <h3 className="text-sm font-semibold text-base-content/70 uppercase tracking-wider mb-3 px-1">Circles</h3>
+        <div className="flex gap-4 overflow-x-auto pb-2 px-1">
           {[1, 2, 3].map(i => (
             <div key={i} className="flex flex-col items-center gap-2">
-              <div className="w-20 h-20 rounded-full bg-base-300/50 animate-pulse" />
-              <div className="w-14 h-3 rounded bg-base-300/50 animate-pulse" />
+              <div className="w-16 h-16 rounded-full bg-base-300/50 animate-pulse" />
+              <div className="w-12 h-3 rounded bg-base-300/50 animate-pulse" />
             </div>
           ))}
         </div>
@@ -409,12 +409,12 @@ export const CircleSection = () => {
   return (
     <div className="mb-6">
       {/* Header */}
-      <h3 className="text-lg font-semibold text-base-content/80 mb-4 px-1">Circles</h3>
+      <h3 className="text-sm font-semibold text-base-content/70 uppercase tracking-wider mb-3 px-1">Circles</h3>
 
       {/* Wrapper for overflow handling */}
       <div className="relative">
         {/* Horizontal scroll container with top padding for dropdown */}
-        <div className="flex gap-5 pt-32 -mt-32 pb-2 px-1 overflow-x-auto scrollbar-hide">
+        <div className="flex gap-4 pt-32 -mt-32 pb-2 px-1 overflow-x-auto scrollbar-hide">
           {circles.map(circle => (
             <CircleItem
               key={circle.id}
