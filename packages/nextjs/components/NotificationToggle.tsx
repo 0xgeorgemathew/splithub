@@ -89,15 +89,15 @@ export const NotificationToggle = ({ onAction }: NotificationToggleProps) => {
 
   const getIcon = () => {
     if (isRequesting) {
-      return <Loader2 className="w-5 h-5 text-info animate-spin" />;
+      return <Loader2 className="w-3.5 h-3.5 text-info animate-spin" />;
     }
     switch (state) {
       case "granted":
-        return <BellRing className="w-5 h-5 text-success" />;
+        return <BellRing className="w-3.5 h-3.5 text-success" />;
       case "denied":
-        return <BellOff className="w-5 h-5 text-error/70" />;
+        return <BellOff className="w-3.5 h-3.5 text-error/70" />;
       default:
-        return <Bell className="w-5 h-5 text-info" />;
+        return <Bell className="w-3.5 h-3.5 text-info" />;
     }
   };
 
@@ -143,19 +143,20 @@ export const NotificationToggle = ({ onAction }: NotificationToggleProps) => {
       disabled={state === "loading" || isRequesting}
       whileHover={state !== "denied" ? { scale: 1.01 } : undefined}
       whileTap={state !== "denied" ? { scale: 0.99 } : undefined}
-      className={`w-full flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/5 transition-colors text-left ${
-        state === "denied" ? "opacity-60 cursor-not-allowed" : "hover:bg-white/[0.06] cursor-pointer"
+      className={`w-full flex items-center gap-2.5 px-2 py-2 rounded-lg transition-colors text-left ${
+        state === "denied" ? "opacity-50 cursor-not-allowed" : "hover:bg-white/[0.04] cursor-pointer"
       }`}
     >
-      <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${getGradient()} flex items-center justify-center`}>
+      <div
+        className={`w-7 h-7 rounded-lg bg-gradient-to-br ${getGradient()} flex items-center justify-center shrink-0`}
+      >
         {getIcon()}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[11px] font-semibold text-base-content/40 uppercase tracking-wider">Push Notifications</p>
-        <p className="text-sm text-base-content">{getStatusText()}</p>
-        <p className="text-[10px] text-base-content/40 mt-0.5">{getSubtext()}</p>
+        <p className="text-xs text-base-content/80">{getStatusText()}</p>
+        <p className="text-[10px] text-base-content/40 leading-tight">{getSubtext()}</p>
       </div>
-      {state === "granted" && <div className="w-2 h-2 rounded-full bg-success animate-pulse" />}
+      {state === "granted" && <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse shrink-0" />}
     </motion.button>
   );
 };

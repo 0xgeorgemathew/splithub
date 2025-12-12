@@ -1,13 +1,305 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { CircleModal } from "./CircleModal";
 import { usePrivy } from "@privy-io/react-auth";
-import { motion } from "framer-motion";
-import { ChevronRight, Plus, Power, Trash2, Users } from "lucide-react";
-import { type CircleWithMembers } from "~~/lib/supabase";
+import { AnimatePresence, motion } from "framer-motion";
+import { Check, Edit3, MoreHorizontal, Plus, Power, Trash2, Users } from "lucide-react";
+import { type CircleWithMembers, type User } from "~~/lib/supabase";
 import { deleteCircle, getCircleWithMembers, getCirclesByCreator, setCircleActive } from "~~/services/circleService";
+
+// Avatar component for consistent rendering
+const MemberAvatar = ({ member, size, className = "" }: { member: User; size: number; className?: string }) => (
+  <div
+    className={`rounded-full overflow-hidden ring-2 ring-base-100 ${className}`}
+    style={{ width: size, height: size }}
+  >
+    {member.twitter_profile_url ? (
+      <Image
+        src={member.twitter_profile_url}
+        alt={member.name}
+        width={size}
+        height={size}
+        className="w-full h-full object-cover"
+      />
+    ) : (
+      <div className="w-full h-full bg-gradient-to-br from-primary/40 to-primary/20 flex items-center justify-center">
+        <span className="font-bold text-primary" style={{ fontSize: size * 0.4 }}>
+          {member.name.charAt(0).toUpperCase()}
+        </span>
+      </div>
+    )}
+  </div>
+);
+
+// Circle visualization with overlapping avatars
+const CircleCollage = ({ members, size = 80 }: { members: User[]; size?: number }) => {
+  const memberCount = members.length;
+
+  // Empty state
+  if (memberCount === 0) {
+    return (
+      <div
+        className="rounded-full bg-gradient-to-br from-base-300/60 to-base-300/30 flex items-center justify-center"
+        style={{ width: size, height: size }}
+      >
+        <Users className="w-1/3 h-1/3 text-base-content/40" />
+      </div>
+    );
+  }
+
+  // Single member - full circle
+  if (memberCount === 1) {
+    return (
+      <div className="rounded-full overflow-hidden" style={{ width: size, height: size }}>
+        {members[0].twitter_profile_url ? (
+          <Image
+            src={members[0].twitter_profile_url}
+            alt={members[0].name}
+            width={size}
+            height={size}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-primary/40 to-primary/20 flex items-center justify-center">
+            <span className="text-2xl font-bold text-primary">{members[0].name.charAt(0).toUpperCase()}</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // 2 members - horizontal centered overlap
+  if (memberCount === 2) {
+    const avatarSize = size * 0.55;
+    return (
+      <div
+        className="rounded-full bg-gradient-to-br from-base-300/40 to-base-300/20 relative flex items-center justify-center"
+        style={{ width: size, height: size }}
+      >
+        <div className="flex items-center">
+          <MemberAvatar member={members[0]} size={avatarSize} />
+          <div style={{ marginLeft: -avatarSize * 0.25 }}>
+            <MemberAvatar member={members[1]} size={avatarSize} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 3 members - triangle arrangement
+  if (memberCount === 3) {
+    const avatarSize = size * 0.48;
+    return (
+      <div
+        className="rounded-full bg-gradient-to-br from-base-300/40 to-base-300/20 relative"
+        style={{ width: size, height: size }}
+      >
+        {/* Top center */}
+        <div className="absolute" style={{ top: size * 0.08, left: "50%", transform: "translateX(-50%)" }}>
+          <MemberAvatar member={members[0]} size={avatarSize} />
+        </div>
+        {/* Bottom left */}
+        <div className="absolute" style={{ bottom: size * 0.08, left: size * 0.08 }}>
+          <MemberAvatar member={members[1]} size={avatarSize} />
+        </div>
+        {/* Bottom right */}
+        <div className="absolute" style={{ bottom: size * 0.08, right: size * 0.08 }}>
+          <MemberAvatar member={members[2]} size={avatarSize} />
+        </div>
+      </div>
+    );
+  }
+
+  // 4+ members - stacked fan arrangement
+  const avatarSize = size * 0.45;
+  const displayMembers = members.slice(0, 4);
+  const remaining = memberCount - 4;
+
+  return (
+    <div
+      className="rounded-full bg-gradient-to-br from-base-300/40 to-base-300/20 relative flex items-center justify-center"
+      style={{ width: size, height: size }}
+    >
+      {/* Stacked avatars in a slight arc */}
+      <div className="relative" style={{ width: avatarSize * 2, height: avatarSize }}>
+        {displayMembers.slice(0, 3).map((member, i) => (
+          <div
+            key={member.wallet_address}
+            className="absolute"
+            style={{
+              left: i * (avatarSize * 0.5),
+              zIndex: 3 - i,
+              transform: `rotate(${(i - 1) * 5}deg)`,
+            }}
+          >
+            <MemberAvatar member={member} size={avatarSize} />
+          </div>
+        ))}
+      </div>
+
+      {/* Remaining count badge */}
+      {remaining > 0 && (
+        <div
+          className="absolute bottom-1 right-1 bg-base-300 rounded-full flex items-center justify-center ring-2 ring-base-100"
+          style={{ width: size * 0.32, height: size * 0.32 }}
+        >
+          <span className="text-[10px] font-bold text-base-content/70">+{remaining}</span>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Individual circle item for the horizontal scroll
+const CircleItem = ({
+  circle,
+  onSelect,
+  onToggleActive,
+  onEdit,
+  onDelete,
+}: {
+  circle: CircleWithMembers;
+  onSelect: () => void;
+  onToggleActive: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) => {
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+    if (showMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showMenu]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="flex flex-col items-center gap-2 relative"
+    >
+      {/* Menu button */}
+      <div className="absolute -top-1 -right-1 z-10" ref={menuRef}>
+        <motion.button
+          whileTap={{ scale: 0.9 }}
+          onClick={(e: React.MouseEvent) => {
+            e.stopPropagation();
+            setShowMenu(!showMenu);
+          }}
+          className="w-6 h-6 rounded-full bg-base-300/80 backdrop-blur-sm flex items-center justify-center hover:bg-base-300 transition-colors"
+        >
+          <MoreHorizontal className="w-3.5 h-3.5 text-base-content/60" />
+        </motion.button>
+
+        {/* Dropdown menu */}
+        <AnimatePresence>
+          {showMenu && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 5 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 5 }}
+              className="absolute right-0 bottom-8 bg-base-200 rounded-xl shadow-xl border border-base-300 overflow-hidden min-w-[140px] z-50"
+            >
+              <button
+                onClick={e => {
+                  e.stopPropagation();
+                  onToggleActive();
+                  setShowMenu(false);
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-base-content hover:bg-base-300 transition-colors"
+              >
+                <Power className="w-4 h-4" />
+                {circle.is_active ? "Deactivate" : "Activate"}
+              </button>
+              <button
+                onClick={e => {
+                  e.stopPropagation();
+                  onEdit();
+                  setShowMenu(false);
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-base-content hover:bg-base-300 transition-colors"
+              >
+                <Edit3 className="w-4 h-4" />
+                Edit
+              </button>
+              <button
+                onClick={e => {
+                  e.stopPropagation();
+                  onDelete();
+                  setShowMenu(false);
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-error hover:bg-error/10 transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Circle with ring */}
+      <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={onSelect} className="relative">
+        {/* Ring */}
+        <div
+          className={`p-1 rounded-full ${
+            circle.is_active ? "bg-gradient-to-br from-emerald-400 to-teal-500" : "bg-base-300/50"
+          }`}
+        >
+          <div className="rounded-full bg-base-100 p-0.5">
+            <CircleCollage members={circle.members} size={72} />
+          </div>
+        </div>
+
+        {/* Active checkmark */}
+        {circle.is_active && (
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            className="absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center ring-2 ring-base-100"
+          >
+            <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />
+          </motion.div>
+        )}
+      </motion.button>
+
+      {/* Circle name */}
+      <span className="text-xs font-medium text-base-content/70 text-center max-w-[80px] truncate">{circle.name}</span>
+    </motion.div>
+  );
+};
+
+// Add new circle button
+const AddCircleButton = ({ onClick }: { onClick: () => void }) => (
+  <motion.div
+    initial={{ opacity: 0, scale: 0.9 }}
+    animate={{ opacity: 1, scale: 1 }}
+    className="flex flex-col items-center gap-2"
+  >
+    <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={onClick} className="relative">
+      <div className="p-1 rounded-full bg-base-300/30">
+        <div className="w-[76px] h-[76px] rounded-full border-2 border-dashed border-base-content/20 flex items-center justify-center hover:border-primary/50 hover:bg-primary/5 transition-colors">
+          <Plus className="w-6 h-6 text-base-content/40" />
+        </div>
+      </div>
+    </motion.button>
+    <span className="text-xs font-medium text-base-content/50 text-center">
+      Add New
+      <br />
+      Circle
+    </span>
+  </motion.div>
+);
 
 export const CircleSection = () => {
   const { user } = usePrivy();
@@ -15,7 +307,6 @@ export const CircleSection = () => {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCircle, setEditingCircle] = useState<CircleWithMembers | null>(null);
-  const [expandedCircleId, setExpandedCircleId] = useState<string | null>(null);
 
   const walletAddress = user?.wallet?.address;
 
@@ -26,7 +317,6 @@ export const CircleSection = () => {
     try {
       const userCircles = await getCirclesByCreator(walletAddress);
 
-      // Fetch members for each circle
       const circlesWithMembers: CircleWithMembers[] = [];
       for (const circle of userCircles) {
         const withMembers = await getCircleWithMembers(circle.id);
@@ -58,24 +348,30 @@ export const CircleSection = () => {
   };
 
   const handleDeleteCircle = async (circleId: string) => {
-    if (!confirm("Are you sure you want to delete this circle?")) return;
+    // Optimistically remove from UI
+    setCircles(prev => prev.filter(c => c.id !== circleId));
 
     try {
       await deleteCircle(circleId);
-      await fetchCircles();
     } catch (err) {
       console.error("Error deleting circle:", err);
+      // Refetch on error to restore
+      fetchCircles();
     }
   };
 
   const handleToggleActive = async (circle: CircleWithMembers) => {
     if (!walletAddress) return;
 
+    // Optimistically update local state
+    setCircles(prev => prev.map(c => (c.id === circle.id ? { ...c, is_active: !c.is_active } : c)));
+
     try {
       await setCircleActive(circle.id, walletAddress, !circle.is_active);
-      await fetchCircles();
     } catch (err) {
       console.error("Error toggling circle:", err);
+      // Revert on error
+      setCircles(prev => prev.map(c => (c.id === circle.id ? { ...c, is_active: circle.is_active } : c)));
     }
   };
 
@@ -89,20 +385,23 @@ export const CircleSection = () => {
     fetchCircles();
   };
 
-  const toggleExpand = (circleId: string) => {
-    setExpandedCircleId(prev => (prev === circleId ? null : circleId));
+  const handleSelectCircle = (circle: CircleWithMembers) => {
+    // Toggle active state when clicking on circle
+    handleToggleActive(circle);
   };
 
   if (loading) {
     return (
       <div className="mb-6">
-        <div className="flex items-center justify-between mb-3 px-1">
-          <div className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-primary" />
-            <span className="text-sm font-semibold text-base-content/70 uppercase tracking-wider">Circles</span>
-          </div>
+        <h3 className="text-lg font-semibold text-base-content/80 mb-4 px-1">Circles</h3>
+        <div className="flex gap-5 overflow-x-auto pb-2 px-1">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="flex flex-col items-center gap-2">
+              <div className="w-20 h-20 rounded-full bg-base-300/50 animate-pulse" />
+              <div className="w-14 h-3 rounded bg-base-300/50 animate-pulse" />
+            </div>
+          ))}
         </div>
-        <div className="h-16 bg-base-200/50 rounded-2xl animate-pulse" />
       </div>
     );
   }
@@ -110,195 +409,27 @@ export const CircleSection = () => {
   return (
     <div className="mb-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-3 px-1">
-        <div className="flex items-center gap-2">
-          <Users className="w-4 h-4 text-primary" />
-          <span className="text-sm font-semibold text-base-content/70 uppercase tracking-wider">Circles</span>
+      <h3 className="text-lg font-semibold text-base-content/80 mb-4 px-1">Circles</h3>
+
+      {/* Wrapper for overflow handling */}
+      <div className="relative">
+        {/* Horizontal scroll container with top padding for dropdown */}
+        <div className="flex gap-5 pt-32 -mt-32 pb-2 px-1 overflow-x-auto scrollbar-hide">
+          {circles.map(circle => (
+            <CircleItem
+              key={circle.id}
+              circle={circle}
+              onSelect={() => handleSelectCircle(circle)}
+              onToggleActive={() => handleToggleActive(circle)}
+              onEdit={() => handleEditCircle(circle)}
+              onDelete={() => handleDeleteCircle(circle.id)}
+            />
+          ))}
+
+          {/* Add new circle button */}
+          <AddCircleButton onClick={handleCreateCircle} />
         </div>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={handleCreateCircle}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-full text-xs font-semibold transition-colors"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          Add Circle
-        </motion.button>
       </div>
-
-      {/* Circles List */}
-      {circles.length === 0 ? (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="rounded-2xl border border-dashed border-base-300 p-6 text-center"
-        >
-          <div className="w-12 h-12 rounded-full bg-base-200 flex items-center justify-center mx-auto mb-3">
-            <Users className="w-6 h-6 text-base-content/30" />
-          </div>
-          <p className="text-sm text-base-content/50 mb-3">No circles yet</p>
-          <button onClick={handleCreateCircle} className="text-sm text-primary font-medium hover:underline">
-            Create your first circle
-          </button>
-        </motion.div>
-      ) : (
-        <div className="space-y-2">
-          {circles.map(circle => {
-            const isExpanded = expandedCircleId === circle.id;
-
-            return (
-              <motion.div
-                key={circle.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`rounded-2xl overflow-hidden transition-all ${
-                  circle.is_active
-                    ? "bg-primary/10 border border-primary/30"
-                    : "bg-base-200/50 border border-transparent"
-                }`}
-              >
-                {/* Circle Header */}
-                <div
-                  className="flex items-center justify-between p-4 cursor-pointer"
-                  onClick={() => toggleExpand(circle.id)}
-                >
-                  <div className="flex items-center gap-3">
-                    {/* Status indicator */}
-                    <div
-                      className={`w-2 h-2 rounded-full ${
-                        circle.is_active ? "bg-primary animate-pulse" : "bg-base-content/20"
-                      }`}
-                    />
-
-                    {/* Circle info */}
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-base-content">{circle.name}</span>
-                        {circle.is_active && (
-                          <span className="text-[10px] font-bold text-primary uppercase tracking-wider">Active</span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1 mt-0.5">
-                        {/* Member avatars */}
-                        <div className="flex -space-x-2">
-                          {circle.members.slice(0, 3).map((member, i) =>
-                            member.twitter_profile_url ? (
-                              <Image
-                                key={member.wallet_address}
-                                src={member.twitter_profile_url}
-                                alt={member.name}
-                                width={20}
-                                height={20}
-                                className="w-5 h-5 rounded-full border-2 border-base-100"
-                                style={{ zIndex: 3 - i }}
-                              />
-                            ) : (
-                              <div
-                                key={member.wallet_address}
-                                className="w-5 h-5 rounded-full bg-base-300 border-2 border-base-100 flex items-center justify-center"
-                                style={{ zIndex: 3 - i }}
-                              >
-                                <span className="text-[8px] font-bold text-base-content/60">
-                                  {member.name.charAt(0).toUpperCase()}
-                                </span>
-                              </div>
-                            ),
-                          )}
-                        </div>
-                        <span className="text-xs text-base-content/50 ml-1">
-                          {circle.members.length} {circle.members.length === 1 ? "member" : "members"}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <ChevronRight
-                    className={`w-5 h-5 text-base-content/40 transition-transform ${isExpanded ? "rotate-90" : ""}`}
-                  />
-                </div>
-
-                {/* Expanded Content */}
-                {isExpanded && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="border-t border-base-300/50"
-                  >
-                    {/* Members list */}
-                    <div className="p-4 pt-3">
-                      <p className="text-xs text-base-content/50 uppercase tracking-wider mb-2">Members</p>
-                      <div className="space-y-2">
-                        {circle.members.map(member => (
-                          <div key={member.wallet_address} className="flex items-center gap-2">
-                            {member.twitter_profile_url ? (
-                              <Image
-                                src={member.twitter_profile_url}
-                                alt={member.name}
-                                width={28}
-                                height={28}
-                                className="w-7 h-7 rounded-full"
-                              />
-                            ) : (
-                              <div className="w-7 h-7 rounded-full bg-base-300 flex items-center justify-center">
-                                <span className="text-xs font-bold text-base-content/60">
-                                  {member.name.charAt(0).toUpperCase()}
-                                </span>
-                              </div>
-                            )}
-                            <div>
-                              <span className="text-sm font-medium text-base-content">{member.name}</span>
-                              {member.twitter_handle && (
-                                <span className="text-xs text-base-content/50 ml-1">@{member.twitter_handle}</span>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center gap-2 p-4 pt-0">
-                      <button
-                        onClick={e => {
-                          e.stopPropagation();
-                          handleToggleActive(circle);
-                        }}
-                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                          circle.is_active
-                            ? "bg-base-300/50 text-base-content/70 hover:bg-base-300"
-                            : "bg-primary text-primary-content hover:bg-primary/90"
-                        }`}
-                      >
-                        <Power className="w-4 h-4" />
-                        {circle.is_active ? "Deactivate" : "Activate"}
-                      </button>
-                      <button
-                        onClick={e => {
-                          e.stopPropagation();
-                          handleEditCircle(circle);
-                        }}
-                        className="px-4 py-2.5 rounded-xl bg-base-300/50 text-base-content/70 hover:bg-base-300 text-sm font-medium transition-colors"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={e => {
-                          e.stopPropagation();
-                          handleDeleteCircle(circle.id);
-                        }}
-                        className="p-2.5 rounded-xl bg-error/10 text-error hover:bg-error/20 transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </motion.div>
-            );
-          })}
-        </div>
-      )}
 
       {/* Modal */}
       <CircleModal

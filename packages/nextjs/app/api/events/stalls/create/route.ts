@@ -14,18 +14,19 @@ export async function POST(request: NextRequest) {
       !body.stall_name ||
       !body.stall_slug ||
       !body.operator_twitter_handle ||
-      body.split_percentage === undefined ||
       !body.token_address
     ) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    if (body.split_percentage < 0 || body.split_percentage > 100) {
-      return NextResponse.json({ error: "Split percentage must be between 0 and 100" }, { status: 400 });
-    }
+    // Default split_percentage to 100 (operator gets all)
+    const stallData: CreateStallData = {
+      ...body,
+      split_percentage: 100,
+    };
 
     // Create stall
-    const stall = await createStall(body);
+    const stall = await createStall(stallData);
 
     return NextResponse.json({ stall }, { status: 201 });
   } catch (error: unknown) {

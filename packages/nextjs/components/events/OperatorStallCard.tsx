@@ -3,18 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  Activity,
-  CalendarDays,
-  ChevronRight,
-  DollarSign,
-  ExternalLink,
-  Percent,
-  Store,
-  TrendingUp,
-  User,
-  Zap,
-} from "lucide-react";
+import { Activity, CalendarDays, ChevronRight, DollarSign, ExternalLink, Store, User, Zap } from "lucide-react";
 import { type OperatorStallWithStats, useStallPaymentsRealtime } from "~~/hooks/useEventsRealtime";
 
 interface OperatorStallCardProps {
@@ -81,26 +70,20 @@ export const OperatorStallCard = ({ stall }: OperatorStallCardProps) => {
 
           {/* Stall Status */}
           <div
-            className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-bold uppercase tracking-wider ${getStatusColor(stall.status)}`}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-bold uppercase tracking-wider ${getStatusColor(stall.status)}`}
           >
-            {stall.status === "active" && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />}
+            {stall.status === "active" && <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />}
             {stall.status}
           </div>
         </div>
 
-        {/* Stall Name + Split */}
+        {/* Stall Name */}
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center">
             <Store className="w-5 h-5 text-emerald-500" />
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-base-content text-lg truncate">{stall.stall_name}</h3>
-            <div className="flex items-center gap-2 text-xs text-base-content/50">
-              <span className="flex items-center gap-1">
-                <Percent className="w-3 h-3 text-emerald-500" />
-                <span className="text-emerald-400 font-medium">{stall.split_percentage}%</span> split
-              </span>
-            </div>
           </div>
           <ChevronRight
             className={`w-5 h-5 text-base-content/30 transition-transform ${isExpanded ? "rotate-90" : ""}`}
@@ -108,38 +91,29 @@ export const OperatorStallCard = ({ stall }: OperatorStallCardProps) => {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-3">
           {/* Total Revenue */}
-          <div className="p-3 bg-base-100/50 rounded-xl">
-            <div className="flex items-center gap-1 text-[10px] text-base-content/40 uppercase tracking-wider mb-1">
-              <TrendingUp className="w-3 h-3" />
+          <div className="p-3 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
+            <div className="flex items-center gap-1.5 text-xs text-emerald-400/70 uppercase tracking-wider mb-1">
+              <DollarSign className="w-3.5 h-3.5" />
               Revenue
             </div>
-            <div className="text-lg font-bold text-base-content font-mono">${formatAmount(stall.totalRevenue)}</div>
-          </div>
-
-          {/* My Earnings */}
-          <div className="p-3 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
-            <div className="flex items-center gap-1 text-[10px] text-emerald-400/70 uppercase tracking-wider mb-1">
-              <DollarSign className="w-3 h-3" />
-              My Earnings
-            </div>
-            <div className="text-lg font-bold text-emerald-400 font-mono">${formatAmount(stall.operatorEarnings)}</div>
+            <div className="text-xl font-bold text-emerald-400 font-mono">${formatAmount(stall.totalRevenue)}</div>
           </div>
 
           {/* Transactions */}
           <div className="p-3 bg-base-100/50 rounded-xl">
-            <div className="flex items-center gap-1 text-[10px] text-base-content/40 uppercase tracking-wider mb-1">
-              <Zap className="w-3 h-3" />
-              Txns
+            <div className="flex items-center gap-1.5 text-xs text-base-content/50 uppercase tracking-wider mb-1">
+              <Zap className="w-3.5 h-3.5" />
+              Transactions
             </div>
-            <div className="text-lg font-bold text-base-content font-mono">{stall.transactionCount}</div>
+            <div className="text-xl font-bold text-base-content font-mono">{stall.transactionCount}</div>
           </div>
         </div>
       </div>
 
       {/* Expanded Content */}
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         {isExpanded && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}

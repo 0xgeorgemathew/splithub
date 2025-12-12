@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, Link as LinkIcon, Percent, Search, Sparkles, Store, User, X } from "lucide-react";
+import { Check, Link as LinkIcon, Search, Sparkles, Store, User, X } from "lucide-react";
 import { TOKENS } from "~~/config/tokens";
 import type { CreateStallData, Stall } from "~~/lib/events.types";
 import { type User as UserType, supabase } from "~~/lib/supabase";
@@ -52,7 +52,6 @@ export const StallModal = ({ isOpen, onClose, onSuccess, eventId, eventSlug, edi
   const [stallName, setStallName] = useState("");
   const [stallSlug, setStallSlug] = useState("");
   const [description, setDescription] = useState("");
-  const [splitPercentage, setSplitPercentage] = useState(70);
   const [searchQuery, setSearchQuery] = useState("");
   const [users, setUsers] = useState<UserType[]>([]);
   const [selectedOperator, setSelectedOperator] = useState<UserType | null>(null);
@@ -75,7 +74,6 @@ export const StallModal = ({ isOpen, onClose, onSuccess, eventId, eventSlug, edi
       setStallName(editingStall.stall_name);
       setStallSlug(editingStall.stall_slug);
       setDescription(editingStall.stall_description || "");
-      setSplitPercentage(editingStall.split_percentage);
       setSlugManuallyEdited(true);
       // Find operator user if they exist
       if (editingStall.operator_user) {
@@ -90,7 +88,6 @@ export const StallModal = ({ isOpen, onClose, onSuccess, eventId, eventSlug, edi
       setStallName("");
       setStallSlug("");
       setDescription("");
-      setSplitPercentage(70);
       setSelectedOperator(null);
       setSlugManuallyEdited(false);
     }
@@ -182,7 +179,7 @@ export const StallModal = ({ isOpen, onClose, onSuccess, eventId, eventSlug, edi
         stall_slug: stallSlug.trim(),
         stall_description: description.trim() || undefined,
         operator_twitter_handle: selectedOperator.twitter_handle || selectedOperator.name,
-        split_percentage: splitPercentage,
+        split_percentage: 100, // Default to 100% for operator
         token_address: TOKENS.USDC,
       };
 
@@ -217,7 +214,6 @@ export const StallModal = ({ isOpen, onClose, onSuccess, eventId, eventSlug, edi
   };
 
   const isValid = stallName.trim().length > 0 && stallSlug.trim().length > 0 && selectedOperator !== null;
-  const ownerPercentage = 100 - splitPercentage;
 
   return (
     <AnimatePresence>
@@ -506,65 +502,6 @@ export const StallModal = ({ isOpen, onClose, onSuccess, eventId, eventSlug, edi
                         </div>
                       </>
                     )}
-                  </motion.div>
-
-                  {/* Split Percentage */}
-                  <motion.div variants={staggerItem} className="px-4 py-3 border-b border-base-300/50">
-                    <label className="text-xs text-base-content/50 uppercase tracking-wider mb-2 block flex items-center gap-1.5">
-                      <Percent className="w-3 h-3" />
-                      Revenue Split
-                    </label>
-
-                    {/* Visual Split Bar */}
-                    <div className="mb-3">
-                      <div className="flex rounded-xl overflow-hidden h-8">
-                        <motion.div
-                          className="bg-emerald-500/80 flex items-center justify-center"
-                          style={{ width: `${splitPercentage}%` }}
-                          layout
-                        >
-                          <span className="text-[10px] font-bold text-white">Operator {splitPercentage}%</span>
-                        </motion.div>
-                        <motion.div
-                          className="bg-primary/80 flex items-center justify-center"
-                          style={{ width: `${ownerPercentage}%` }}
-                          layout
-                        >
-                          <span className="text-[10px] font-bold text-primary-content">You {ownerPercentage}%</span>
-                        </motion.div>
-                      </div>
-                    </div>
-
-                    {/* Slider */}
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs text-base-content/50">0%</span>
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        value={splitPercentage}
-                        onChange={e => setSplitPercentage(parseInt(e.target.value))}
-                        className="flex-1 range range-primary range-xs"
-                      />
-                      <span className="text-xs text-base-content/50">100%</span>
-                    </div>
-
-                    {/* Quick presets */}
-                    <div className="flex gap-2 mt-2">
-                      {[50, 70, 80, 100].map(preset => (
-                        <button
-                          key={preset}
-                          onClick={() => setSplitPercentage(preset)}
-                          className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                            splitPercentage === preset
-                              ? "bg-primary text-primary-content"
-                              : "bg-base-300/50 text-base-content/70 hover:bg-base-300"
-                          }`}
-                        >
-                          {preset}%
-                        </button>
-                      ))}
-                    </div>
                   </motion.div>
 
                   {/* Error */}

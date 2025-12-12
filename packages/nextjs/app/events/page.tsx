@@ -1,25 +1,34 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { usePrivy } from "@privy-io/react-auth";
 import { motion } from "framer-motion";
-import { CalendarDays, Sparkles, User } from "lucide-react";
+import { CalendarDays, Sparkles } from "lucide-react";
 import { DashboardControls } from "~~/components/events/DashboardControls";
 import { DashboardHero } from "~~/components/events/DashboardHero";
 import { EventModal } from "~~/components/events/EventModal";
 import { LiveFeed } from "~~/components/events/LiveFeed";
+import { StallModal } from "~~/components/events/StallModal";
 import { useDashboardRealtime } from "~~/hooks/useDashboardRealtime";
 
 export default function EventsPage() {
-  const { ready, authenticated, user, login } = usePrivy();
-  const { mode, metrics, feed, events, operatorStalls, loading, error, refresh } = useDashboardRealtime();
+  const { ready, authenticated, user: privyUser, login } = usePrivy();
+  const {
+    mode,
+    metrics,
+    feed,
+    events,
+    eventsWithRevenue,
+    operatorStalls,
+    loading,
+    error,
+    refresh,
+    activeContext,
+    hasDualRole,
+  } = useDashboardRealtime();
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
-
-  // Get user avatar/profile from Privy
-  const twitterAccount = user?.linkedAccounts?.find(a => a.type === "twitter_oauth");
-  const userAvatar = twitterAccount?.profilePictureUrl;
-  const userName = twitterAccount?.username;
+  const [isStallModalOpen, setIsStallModalOpen] = useState(false);
+  const [quickAddStallEventId, setQuickAddStallEventId] = useState<number | null>(null);
 
   // Loading state - Privy not ready
   if (!ready) {
@@ -28,7 +37,7 @@ export default function EventsPage() {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative">
           <motion.div
             animate={{ rotate: 360 }}
-            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+            transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
             className="w-12 h-12 rounded-full border-2 border-primary/20 border-t-primary"
           />
           <div className="absolute inset-0 flex items-center justify-center">
@@ -40,7 +49,7 @@ export default function EventsPage() {
   }
 
   // Not authenticated - show login prompt
-  if (!authenticated || !user?.wallet?.address) {
+  if (!authenticated || !privyUser?.wallet?.address) {
     return (
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -93,7 +102,7 @@ export default function EventsPage() {
           <div className="relative">
             <motion.div
               animate={{ rotate: 360 }}
-              transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+              transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
               className="w-12 h-12 rounded-full border-2 border-primary/20 border-t-primary"
             />
             <div className="absolute inset-0 flex items-center justify-center">
@@ -103,10 +112,10 @@ export default function EventsPage() {
           <motion.p
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
+            transition={{ delay: 0.15 }}
             className="text-base-content/50 text-sm mt-4 font-medium"
           >
-            Loading your dashboard...
+            Loading dashboard...
           </motion.p>
         </motion.div>
       </div>
@@ -160,81 +169,65 @@ export default function EventsPage() {
     refresh();
   };
 
+  const handleStallModalSuccess = () => {
+    setIsStallModalOpen(false);
+    setQuickAddStallEventId(null);
+    refresh();
+  };
+
+  // Find event for quick stall add
+  const quickAddEvent = quickAddStallEventId ? events.find(e => e.id === quickAddStallEventId) : null;
+
   return (
-    <div className="pb-24 pt-4 px-4 max-w-md mx-auto">
-      {/* ════════════════════════════════════════════════════════════════════════
-          PHASE 4: CONTEXT STACK ORCHESTRATION
-          ════════════════════════════════════════════════════════════════════════
-          1. HEADER      - Dashboard title + user avatar (when not empty)
-          2. HERO        - Conditional: Empty CTA | Operator (green) | Owner (gold)
-          3. LIVE FEED   - Twitter-style payment ticker (only when active)
-          4. CONTROLS    - Management lists based on role
-      ════════════════════════════════════════════════════════════════════════ */}
+    <div className="px-4 py-4 pb-24">
+      {/* Hero Revenue Card (or Empty CTA) */}
+      <DashboardHero
+        mode={mode}
+        metrics={metrics}
+        onCreateEvent={handleCreateEvent}
+        activeContext={activeContext}
+        hasDualRole={hasDualRole}
+      />
 
-      {/* 1. HEADER AREA - DYNAMIC */}
+      {/* Live Activity Feed */}
       {mode !== "empty" && (
-        <motion.header
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          className="mb-6 flex justify-between items-center"
-        >
-          <h1 className="text-xl font-bold text-base-content">Dashboard</h1>
-          {/* User Avatar */}
-          <div className="avatar">
-            <div className="w-9 h-9 rounded-full ring-2 ring-primary/20">
-              {userAvatar ? (
-                <Image src={userAvatar} alt={userName || "User"} width={36} height={36} className="rounded-full" />
-              ) : (
-                <div className="w-full h-full bg-neutral flex items-center justify-center">
-                  <User className="w-4 h-4 text-neutral-content" />
-                </div>
-              )}
-            </div>
-          </div>
-        </motion.header>
+        <LiveFeed payments={feed} loading={false} operatorStallIds={operatorStalls.map(s => s.id)} />
       )}
 
-      {/* 2. REVENUE HERO (CONDITIONAL) */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className={mode !== "empty" ? "mb-6" : ""}
-      >
-        <DashboardHero mode={mode} metrics={metrics} onCreateEvent={handleCreateEvent} />
-      </motion.div>
-
-      {/* 3. LIVE FEED (Only if active - not empty mode) */}
+      {/* Events & Stalls Lists */}
       {mode !== "empty" && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
-        >
-          <LiveFeed payments={feed} loading={false} />
-        </motion.div>
+        <DashboardControls
+          mode={mode}
+          events={events}
+          eventsWithRevenue={eventsWithRevenue}
+          operatorStalls={operatorStalls}
+          onRefresh={refresh}
+          activeContext={activeContext}
+        />
       )}
 
-      {/* 4. MANAGEMENT LISTS (Role-based) */}
-      {mode !== "empty" && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.2 }}
-          className="mt-6"
-        >
-          <DashboardControls mode={mode} events={events} operatorStalls={operatorStalls} onRefresh={refresh} />
-        </motion.div>
-      )}
-
-      {/* Event Modal for empty state CTA */}
+      {/* Event Modal */}
       <EventModal
         isOpen={isEventModalOpen}
         onClose={() => setIsEventModalOpen(false)}
         onSuccess={handleModalSuccess}
         editingEvent={null}
       />
+
+      {/* Stall Modal for Quick Add */}
+      {quickAddEvent && (
+        <StallModal
+          isOpen={isStallModalOpen}
+          onClose={() => {
+            setIsStallModalOpen(false);
+            setQuickAddStallEventId(null);
+          }}
+          onSuccess={handleStallModalSuccess}
+          eventId={quickAddEvent.id}
+          eventSlug={quickAddEvent.event_slug}
+          editingStall={null}
+        />
+      )}
     </div>
   );
 }

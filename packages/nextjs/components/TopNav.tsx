@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { NotificationToggle } from "./NotificationToggle";
 import { usePrivy } from "@privy-io/react-auth";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, ChevronDown, Copy, CreditCard, LogIn, LogOut, Sparkles, Wallet } from "lucide-react";
+import { Check, ChevronDown, Copy, LogIn, LogOut, Nfc, Wallet } from "lucide-react";
 import { useCurrentUser } from "~~/hooks/useCurrentUser";
 
 const dropdownItemVariants = {
@@ -26,6 +26,24 @@ export const TopNav = () => {
   const { walletAddress, chipAddress, twitterHandle, profilePic } = useCurrentUser();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    if (isDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isDropdownOpen]);
 
   const handleRefresh = () => {
     // Hard refresh the page for PWA
@@ -145,204 +163,109 @@ export const TopNav = () => {
                 {/* Dropdown Menu */}
                 <AnimatePresence>
                   {isDropdownOpen && (
-                    <>
-                      {/* Backdrop */}
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-40"
-                        onClick={() => setIsDropdownOpen(false)}
-                      />
-
-                      {/* Dropdown */}
-                      <motion.div
-                        initial={{ opacity: 0, y: 8, scale: 0.96 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 8, scale: 0.96 }}
-                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                        className="absolute right-0 top-full mt-3 w-80 z-50"
+                    <motion.div
+                      ref={dropdownRef}
+                      initial={{ opacity: 0, y: 4, scale: 0.98 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 4, scale: 0.98 }}
+                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                      className="absolute right-0 top-full mt-2 w-52 z-[101]"
+                    >
+                      <div
+                        className="rounded-xl overflow-hidden border border-white/[0.08]"
+                        style={{
+                          background: "linear-gradient(160deg, #1c1c1c 0%, #111 100%)",
+                          boxShadow: "0 8px 24px -4px rgba(0,0,0,0.6)",
+                        }}
                       >
-                        {/* Dropdown container with dark gradient */}
-                        <div className="relative rounded-2xl border border-white/[0.05] overflow-hidden">
-                          <div
-                            className="relative rounded-2xl overflow-hidden"
-                            style={{
-                              background: "linear-gradient(145deg, #1a1a1a 0%, #0d0d0d 100%)",
-                              boxShadow: "0 4px 20px -5px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.03)",
-                            }}
-                          >
-                            {/* Mesh gradient overlay */}
-                            <div
-                              className="absolute inset-0 opacity-40 pointer-events-none"
-                              style={{
-                                backgroundImage:
-                                  "radial-gradient(at 20% 30%, rgba(242, 169, 0, 0.12) 0%, transparent 50%), radial-gradient(at 80% 70%, rgba(242, 169, 0, 0.08) 0%, transparent 50%)",
-                              }}
-                            />
-                            {/* User Info Header */}
-                            <motion.div
-                              custom={0}
-                              variants={dropdownItemVariants}
-                              initial="hidden"
-                              animate="visible"
-                              className="relative p-5 overflow-hidden z-10"
-                            >
-                              <div className="flex items-center gap-4">
-                                <div className="relative">
-                                  {profilePic ? (
-                                    <Image
-                                      src={profilePic}
-                                      alt={twitterHandle || "User"}
-                                      width={52}
-                                      height={52}
-                                      className="w-13 h-13 rounded-xl ring-2 ring-primary/20 shadow-lg"
-                                    />
-                                  ) : (
-                                    <div className="w-13 h-13 rounded-xl bg-gradient-to-br from-primary/40 to-primary/20 flex items-center justify-center shadow-lg">
-                                      <span className="text-lg font-bold text-primary">
-                                        {twitterHandle?.charAt(0).toUpperCase() || "?"}
-                                      </span>
-                                    </div>
-                                  )}
-                                  {/* Verified badge */}
-                                  <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-primary rounded-full flex items-center justify-center shadow-md">
-                                    <Sparkles className="w-3 h-3 text-primary-content" />
-                                  </div>
-                                </div>
-                                <div className="flex-1">
-                                  <p className="font-bold text-base-content text-lg">@{twitterHandle}</p>
-                                  <div className="flex items-center gap-1.5 mt-0.5">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
-                                    <p className="text-xs text-base-content/50">Connected via Twitter</p>
-                                  </div>
-                                </div>
-                              </div>
-                            </motion.div>
-
-                            {/* Divider */}
-                            <div className="h-px bg-white/5 relative z-10" />
-
-                            {/* Address Cards */}
-                            <div className="p-3 space-y-2 relative z-10">
-                              {/* Wallet Address */}
-                              <motion.div
-                                custom={1}
-                                variants={dropdownItemVariants}
-                                initial="hidden"
-                                animate="visible"
-                                className="group p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/5 transition-colors cursor-pointer"
-                                onClick={() => walletAddress && copyToClipboard(walletAddress, "wallet")}
-                              >
-                                <div className="flex items-center gap-3">
-                                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-warning/20 to-warning/10 flex items-center justify-center">
-                                    <Wallet className="w-5 h-5 text-warning" />
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-[11px] font-semibold text-base-content/40 uppercase tracking-wider">
-                                      Wallet Address
-                                    </p>
-                                    <p className="text-sm font-mono text-base-content truncate">
-                                      {walletAddress ? truncateAddress(walletAddress) : "Not connected"}
-                                    </p>
-                                  </div>
-                                  {walletAddress && (
-                                    <motion.div
-                                      initial={false}
-                                      animate={{
-                                        scale: copiedField === "wallet" ? [1, 1.2, 1] : 1,
-                                      }}
-                                      className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/5 group-hover:bg-white/10 transition-colors"
-                                    >
-                                      {copiedField === "wallet" ? (
-                                        <Check className="w-4 h-4 text-[#00E0B8]" />
-                                      ) : (
-                                        <Copy className="w-4 h-4 text-white/40 group-hover:text-white/70" />
-                                      )}
-                                    </motion.div>
-                                  )}
-                                </div>
-                              </motion.div>
-
-                              {/* Chip Address */}
-                              <motion.div
-                                custom={2}
-                                variants={dropdownItemVariants}
-                                initial="hidden"
-                                animate="visible"
-                                className="group p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/5 transition-colors cursor-pointer"
-                                onClick={() => chipAddress && copyToClipboard(chipAddress, "chip")}
-                              >
-                                <div className="flex items-center gap-3">
-                                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
-                                    <CreditCard className="w-5 h-5 text-primary" />
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-[11px] font-semibold text-base-content/40 uppercase tracking-wider">
-                                      NFC Chip
-                                    </p>
-                                    <p className="text-sm font-mono text-base-content truncate">
-                                      {chipAddress ? truncateAddress(chipAddress) : "Not registered"}
-                                    </p>
-                                  </div>
-                                  {chipAddress && (
-                                    <motion.div
-                                      initial={false}
-                                      animate={{
-                                        scale: copiedField === "chip" ? [1, 1.2, 1] : 1,
-                                      }}
-                                      className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/5 group-hover:bg-white/10 transition-colors"
-                                    >
-                                      {copiedField === "chip" ? (
-                                        <Check className="w-4 h-4 text-[#00E0B8]" />
-                                      ) : (
-                                        <Copy className="w-4 h-4 text-white/40 group-hover:text-white/70" />
-                                      )}
-                                    </motion.div>
-                                  )}
-                                </div>
-                              </motion.div>
-                            </div>
-
-                            {/* Divider */}
-                            <div className="h-px bg-white/5 relative z-10" />
-
-                            {/* Notification Toggle */}
-                            <motion.div
-                              custom={3}
-                              variants={dropdownItemVariants}
-                              initial="hidden"
-                              animate="visible"
-                              className="px-3 pt-3 relative z-10"
-                            >
-                              <NotificationToggle onAction={() => setIsDropdownOpen(false)} />
-                            </motion.div>
-
-                            {/* Logout Button */}
-                            <motion.div
-                              custom={4}
-                              variants={dropdownItemVariants}
-                              initial="hidden"
-                              animate="visible"
-                              className="p-3 relative z-10"
-                            >
-                              <motion.button
-                                whileHover={{ scale: 1.01 }}
-                                whileTap={{ scale: 0.99 }}
-                                onClick={() => {
-                                  setIsDropdownOpen(false);
-                                  logout();
-                                }}
-                                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 font-semibold transition-colors border border-rose-500/10"
-                              >
-                                <LogOut className="w-4 h-4" />
-                                <span>Log out</span>
-                              </motion.button>
-                            </motion.div>
-                          </div>
+                        {/* Username header */}
+                        <div className="px-3 pt-2.5 pb-1">
+                          <span className="text-[11px] font-medium text-base-content/50">@{twitterHandle}</span>
                         </div>
-                      </motion.div>
-                    </>
+
+                        {/* Address Actions */}
+                        <div className="py-1">
+                          {/* Wallet Address */}
+                          <motion.button
+                            custom={0}
+                            variants={dropdownItemVariants}
+                            initial="hidden"
+                            animate="visible"
+                            onClick={() => walletAddress && copyToClipboard(walletAddress, "wallet")}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-white/[0.04] transition-colors group"
+                          >
+                            <Wallet className="w-4 h-4 text-warning/80" />
+                            <span className="flex-1 text-xs text-base-content/70 font-mono text-left">
+                              {walletAddress ? truncateAddress(walletAddress) : "No wallet"}
+                            </span>
+                            {walletAddress &&
+                              (copiedField === "wallet" ? (
+                                <Check className="w-3.5 h-3.5 text-success" />
+                              ) : (
+                                <Copy className="w-3.5 h-3.5 text-base-content/30 group-hover:text-base-content/60" />
+                              ))}
+                          </motion.button>
+
+                          {/* Chip Address */}
+                          <motion.button
+                            custom={1}
+                            variants={dropdownItemVariants}
+                            initial="hidden"
+                            animate="visible"
+                            onClick={() => chipAddress && copyToClipboard(chipAddress, "chip")}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-white/[0.04] transition-colors group"
+                          >
+                            <Nfc className="w-4 h-4 text-primary/80" />
+                            <span className="flex-1 text-xs text-base-content/70 font-mono text-left">
+                              {chipAddress ? truncateAddress(chipAddress) : "No chip"}
+                            </span>
+                            {chipAddress &&
+                              (copiedField === "chip" ? (
+                                <Check className="w-3.5 h-3.5 text-success" />
+                              ) : (
+                                <Copy className="w-3.5 h-3.5 text-base-content/30 group-hover:text-base-content/60" />
+                              ))}
+                          </motion.button>
+                        </div>
+
+                        {/* Divider */}
+                        <div className="h-px bg-white/[0.06]" />
+
+                        {/* Notification Toggle - Compact */}
+                        <motion.div
+                          custom={2}
+                          variants={dropdownItemVariants}
+                          initial="hidden"
+                          animate="visible"
+                          className="p-2"
+                        >
+                          <NotificationToggle onAction={() => setIsDropdownOpen(false)} />
+                        </motion.div>
+
+                        {/* Divider */}
+                        <div className="h-px bg-white/[0.06]" />
+
+                        {/* Logout */}
+                        <motion.div
+                          custom={3}
+                          variants={dropdownItemVariants}
+                          initial="hidden"
+                          animate="visible"
+                          className="p-2"
+                        >
+                          <button
+                            onClick={() => {
+                              setIsDropdownOpen(false);
+                              logout();
+                            }}
+                            className="w-full flex items-center gap-2 px-2 py-2 rounded-lg text-rose-400/90 hover:bg-rose-500/10 transition-colors text-xs font-medium"
+                          >
+                            <LogOut className="w-3.5 h-3.5" />
+                            <span>Log out</span>
+                          </button>
+                        </motion.div>
+                      </div>
+                    </motion.div>
                   )}
                 </AnimatePresence>
               </motion.div>

@@ -1,21 +1,219 @@
 "use client";
 
+import { useState } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { motion } from "framer-motion";
 import { Sparkles, Wallet } from "lucide-react";
+import { ExpenseModal } from "~~/components/expense/ExpenseModal";
 import { CircleSection } from "~~/components/home/CircleSection";
-import { FriendBalancesList } from "~~/components/home/FriendBalancesList";
+import { SettleModal } from "~~/components/settle/SettleModal";
+import { type PaymentParams } from "~~/components/settle/types";
+import { BalancesLiveFeed } from "~~/components/splits/BalancesLiveFeed";
+import { SplitsHero } from "~~/components/splits/SplitsHero";
+import { useFriendBalancesRealtime } from "~~/hooks/useFriendBalancesRealtime";
+import { useUSDCBalance } from "~~/hooks/useUSDCBalance";
+import { type FriendBalance } from "~~/lib/supabase";
 
 export default function SplitsPage() {
   const { ready, authenticated, user, login } = usePrivy();
+  const { balances, overallBalance, loading, error, refresh: refreshBalances } = useFriendBalancesRealtime();
+  const { formattedBalance: walletBalance, isLoading: isWalletBalanceLoading } = useUSDCBalance();
 
+  // Modal states
+  const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
+  const [isSettleModalOpen, setIsSettleModalOpen] = useState(false);
+  const [selectedFriend, setSelectedFriend] = useState<FriendBalance | null>(null);
+  const [settlementParams, setSettlementParams] = useState<PaymentParams | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isCreatingRequest, setIsCreatingRequest] = useState(false);
+  const [requestSuccess, setRequestSuccess] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  const walletAddress = user?.wallet?.address;
+
+  const formatAmount = (amount: number): string => {
+    return Math.abs(amount).toFixed(2);
+  };
+
+  const canSettle = (balance: number): boolean => {
+    return balance < 0;
+  };
+
+  const canRequestPayment = (balance: number): boolean => {
+    return balance > 0;
+  };
+
+  const handleFriendClick = async (friend: FriendBalance) => {
+    if (!walletAddress) return;
+
+    // Case 1: They owe you - create a payment request
+    if (canRequestPayment(friend.net_balance)) {
+      await handleCreateRequest(friend);
+      return;
+    }
+
+    // Case 2: You owe them - open settlement modal
+    if (canSettle(friend.net_balance)) {
+      await handleSettlement(friend);
+      return;
+    }
+  };
+
+  const handleCreateRequest = async (friend: FriendBalance) => {
+    if (!walletAddress || isCreatingRequest) return;
+
+    setSelectedFriend(friend);
+    setIsCreatingRequest(true);
+    setActionError(null);
+
+    try {
+      // Fetch token address from their expenses
+      const tokenResponse = await fetch(
+        `/api/balances/token?userWallet=${walletAddress}&friendWallet=${friend.friend_wallet}`,
+      );
+      const tokenData = await tokenResponse.json();
+
+      if (!tokenResponse.ok) {
+        throw new Error(tokenData.error || "Failed to fetch token address");
+      }
+
+      // Create payment request
+      const requestResponse = await fetch("/api/payment-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          payer: friend.friend_wallet,
+          recipient: walletAddress,
+          token: tokenData.tokenAddress,
+          amount: formatAmount(friend.net_balance),
+          memo: `Settlement request from ${user?.twitter?.username || "you"}`,
+          payerTwitter: friend.friend_twitter_handle,
+          requesterTwitter: user?.twitter?.username,
+        }),
+      });
+
+      const requestData = await requestResponse.json();
+
+      if (!requestResponse.ok) {
+        throw new Error(requestData.error || "Failed to create request");
+      }
+
+      // Show success state in modal
+      setRequestSuccess(true);
+
+      // Show success message for existing requests
+      if (requestData.isExisting) {
+        setSuccessMessage(`A payment request for ${friend.friend_name} already exists and is still pending.`);
+        setTimeout(() => setSuccessMessage(null), 5000);
+      }
+
+      // Auto-close after showing success
+      setTimeout(() => {
+        setIsCreatingRequest(false);
+        setRequestSuccess(false);
+        setSelectedFriend(null);
+      }, 2000);
+    } catch (err) {
+      console.error("Error creating request:", err);
+      setActionError(err instanceof Error ? err.message : "Failed to create payment request");
+      setIsCreatingRequest(false);
+      setRequestSuccess(false);
+    }
+  };
+
+  const handleSettlement = async (friend: FriendBalance) => {
+    if (!walletAddress) return;
+
+    setSelectedFriend(friend);
+
+    try {
+      // Fetch token address from their expenses
+      const response = await fetch(
+        `/api/balances/token?userWallet=${walletAddress}&friendWallet=${friend.friend_wallet}`,
+      );
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to fetch token address");
+      }
+
+      const params: PaymentParams = {
+        recipient: friend.friend_wallet as `0x${string}`,
+        token: data.tokenAddress as `0x${string}`,
+        amount: formatAmount(Math.abs(friend.net_balance)),
+        memo: `Settlement with ${friend.friend_name}`,
+        recipientInfo: {
+          name: friend.friend_name,
+          twitterHandle: friend.friend_twitter_handle ?? undefined,
+          profileUrl: friend.friend_twitter_profile_url ?? undefined,
+        },
+      };
+
+      setSettlementParams(params);
+      setIsSettleModalOpen(true);
+    } catch (err) {
+      console.error("Error preparing settlement:", err);
+      setActionError(err instanceof Error ? err.message : "Failed to prepare settlement");
+    }
+  };
+
+  const handleSettlementSuccess = async (txHash: string) => {
+    if (!walletAddress || !selectedFriend || !settlementParams) return;
+
+    try {
+      // Record settlement in database
+      const response = await fetch("/api/settlements", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          payerWallet: walletAddress,
+          payeeWallet: selectedFriend.friend_wallet,
+          amount: settlementParams.amount,
+          tokenAddress: settlementParams.token,
+          txHash,
+        }),
+      });
+
+      if (!response.ok) {
+        console.error("Failed to record settlement");
+        throw new Error("Failed to record settlement");
+      }
+
+      console.log("Settlement recorded successfully");
+
+      // Realtime will auto-update, but trigger manual refresh for immediate feedback
+      await new Promise(resolve => setTimeout(resolve, 500));
+      refreshBalances();
+    } catch (err) {
+      console.error("Error handling settlement success:", err);
+      // Still try to refresh balances
+      refreshBalances();
+    }
+  };
+
+  const handleCloseModal = () => {
+    setIsSettleModalOpen(false);
+    setSelectedFriend(null);
+    setSettlementParams(null);
+  };
+
+  // Handler for bell icon - shows message that notifications are not available
+  const handleNotifyFriend = (friend: FriendBalance, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSuccessMessage(`Notifications not available. Tap ${friend.friend_name} to send a payment request.`);
+    setTimeout(() => setSuccessMessage(null), 3000);
+  };
+
+  // Loading state - Privy not ready
   if (!ready) {
     return (
       <div className="min-h-[calc(100vh-160px)] flex items-center justify-center p-4">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative">
           <motion.div
             animate={{ rotate: 360 }}
-            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+            transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
             className="w-12 h-12 rounded-full border-2 border-primary/20 border-t-primary"
           />
           <div className="absolute inset-0 flex items-center justify-center">
@@ -26,6 +224,7 @@ export default function SplitsPage() {
     );
   }
 
+  // Not authenticated - show login prompt
   if (!authenticated || !user?.wallet?.address) {
     return (
       <motion.div
@@ -67,10 +266,177 @@ export default function SplitsPage() {
     );
   }
 
+  // Loading state - fetching data
+  if (loading) {
+    return (
+      <div className="pb-24 pt-4 px-4 max-w-md mx-auto">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="flex flex-col items-center justify-center py-20"
+        >
+          <div className="relative">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
+              className="w-12 h-12 rounded-full border-2 border-primary/20 border-t-primary"
+            />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Sparkles className="w-5 h-5 text-primary/50" />
+            </div>
+          </div>
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="text-base-content/50 text-sm mt-4 font-medium"
+          >
+            Loading your splits...
+          </motion.p>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="pb-24 pt-4 px-4 max-w-md mx-auto">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="flex flex-col items-center justify-center py-20 px-4"
+        >
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: "spring", stiffness: 400, damping: 20 }}
+            className="w-14 h-14 rounded-2xl bg-error/10 flex items-center justify-center mb-4"
+          >
+            <svg className="w-7 h-7 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+          </motion.div>
+          <p className="text-error text-sm font-medium mb-4">{error}</p>
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => refreshBalances()}
+            className="px-5 py-2.5 bg-primary text-primary-content rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
+          >
+            Try Again
+          </motion.button>
+        </motion.div>
+      </div>
+    );
+  }
+
   return (
-    <div className="px-4 py-4 pb-8">
+    <div className="px-4 py-4 pb-24">
+      {/* Hero Card */}
+      <SplitsHero
+        walletBalance={walletBalance}
+        overallBalance={overallBalance}
+        isWalletLoading={isWalletBalanceLoading}
+        friendCount={balances.length}
+        onAddExpense={() => setIsExpenseModalOpen(true)}
+      />
+
+      {/* Balances Live Feed */}
+      {balances.length > 0 && (
+        <BalancesLiveFeed
+          balances={balances}
+          loading={false}
+          onFriendClick={handleFriendClick}
+          onNotifyFriend={handleNotifyFriend}
+        />
+      )}
+
+      {/* Circles Section */}
       <CircleSection />
-      <FriendBalancesList />
+
+      {/* Expense Modal */}
+      <ExpenseModal
+        isOpen={isExpenseModalOpen}
+        onClose={() => setIsExpenseModalOpen(false)}
+        onSuccess={() => {
+          refreshBalances();
+        }}
+      />
+
+      {/* Settlement Modal */}
+      {settlementParams && (
+        <SettleModal
+          isOpen={isSettleModalOpen}
+          onClose={handleCloseModal}
+          params={settlementParams}
+          onSuccess={handleSettlementSuccess}
+        />
+      )}
+
+      {/* Loading/Success Overlay */}
+      {isCreatingRequest && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-base-100 rounded-2xl p-8 shadow-2xl flex flex-col items-center gap-4 max-w-sm mx-4">
+            {requestSuccess ? (
+              <>
+                {/* Success State */}
+                <div className="w-16 h-16 rounded-full bg-success/20 flex items-center justify-center">
+                  <svg className="w-8 h-8 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <p className="text-lg font-semibold text-success">Payment request sent!</p>
+              </>
+            ) : (
+              <>
+                {/* Loading State */}
+                <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+                <div className="text-center">
+                  <p className="text-lg font-semibold text-base-content mb-1">Sending Request</p>
+                  <p className="text-sm text-base-content/60">
+                    {selectedFriend ? `To ${selectedFriend.friend_name}...` : "Please wait..."}
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Error Toast */}
+      {actionError && (
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="bg-error text-error-content px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 max-w-md">
+            <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <span className="font-medium text-sm">{actionError}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Success Toast */}
+      {successMessage && (
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="bg-success text-success-content px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 max-w-md">
+            <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <span className="font-medium text-sm">{successMessage}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -4,19 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { StallModal } from "./StallModal";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  ChevronRight,
-  Copy,
-  DollarSign,
-  Edit2,
-  ExternalLink,
-  Pause,
-  Percent,
-  Play,
-  Plus,
-  Store,
-  User,
-} from "lucide-react";
+import { ChevronRight, Copy, DollarSign, Edit2, ExternalLink, Pause, Play, Plus, Store, User } from "lucide-react";
 import { useStallPaymentsRealtime } from "~~/hooks/useEventsRealtime";
 import type { Event, Stall } from "~~/lib/events.types";
 import { updateStall } from "~~/services/eventsService";
@@ -68,8 +56,6 @@ const StallCard = ({
     .filter(p => p.status === "completed")
     .reduce((sum, p) => sum + parseFloat(p.amount.toString()), 0);
 
-  const operatorShare = stallRevenue * (stall.split_percentage / 100);
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 5 }}
@@ -88,8 +74,8 @@ const StallCard = ({
         <div className="flex items-center gap-2.5 flex-1 min-w-0">
           {/* Status dot */}
           <div
-            className={`w-2 h-2 rounded-full flex-shrink-0 ${
-              stall.status === "active" ? "bg-emerald-500" : "bg-warning"
+            className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+              stall.status === "active" ? "bg-emerald-500 animate-pulse" : "bg-warning"
             }`}
           />
 
@@ -115,11 +101,6 @@ const StallCard = ({
                 </div>
               )}
               <span className="text-[11px] text-base-content/50">@{stall.operator_twitter_handle}</span>
-              <span className="text-[11px] text-base-content/30">•</span>
-              <span className="text-[11px] text-emerald-400 flex items-center gap-0.5">
-                <Percent className="w-2.5 h-2.5" />
-                {stall.split_percentage}%
-              </span>
             </div>
           </div>
         </div>
@@ -130,13 +111,13 @@ const StallCard = ({
       </div>
 
       {/* Expanded Content */}
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         {isExpanded && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.15 }}
+            transition={{ duration: 0.2 }}
             className="border-t border-base-300/30 overflow-hidden"
           >
             <div className="p-3 space-y-3">
@@ -166,20 +147,11 @@ const StallCard = ({
               </div>
 
               {/* Revenue Stats */}
-              <div className="grid grid-cols-2 gap-2">
-                <div className="p-2.5 bg-base-200/30 rounded-lg">
-                  <div className="text-[10px] text-base-content/40 uppercase tracking-wider mb-1">Total</div>
-                  <div className="text-sm font-bold text-base-content font-mono flex items-center gap-1">
-                    <DollarSign className="w-3.5 h-3.5 text-base-content/50" />
-                    {stallRevenue.toFixed(2)}
-                  </div>
-                </div>
-                <div className="p-2.5 bg-emerald-500/10 rounded-lg">
-                  <div className="text-[10px] text-emerald-400/70 uppercase tracking-wider mb-1">Operator</div>
-                  <div className="text-sm font-bold text-emerald-400 font-mono flex items-center gap-1">
-                    <DollarSign className="w-3.5 h-3.5" />
-                    {operatorShare.toFixed(2)}
-                  </div>
+              <div className="p-2.5 bg-emerald-500/10 rounded-lg">
+                <div className="text-[10px] text-emerald-400/70 uppercase tracking-wider mb-1">Total Revenue</div>
+                <div className="text-sm font-bold text-emerald-400 font-mono flex items-center gap-1">
+                  <DollarSign className="w-3.5 h-3.5" />
+                  {stallRevenue.toFixed(2)}
                 </div>
               </div>
 
