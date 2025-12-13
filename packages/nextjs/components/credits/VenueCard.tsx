@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { AnimatePresence, motion, useMotionTemplate, useMotionValue, useSpring } from "framer-motion";
-import { ChevronRight, Circle, Crosshair, Gamepad2, Wind } from "lucide-react";
+import { ChevronRight, Circle, Crosshair, Gamepad2, LucideIcon, Wind } from "lucide-react";
 
 interface VenueCardProps {
   name: string;
@@ -10,111 +10,28 @@ interface VenueCardProps {
   onClick: () => void;
 }
 
-// Arena icons representing different game activities
-const ARENA_ICONS = [Gamepad2, Crosshair, Circle, Wind] as const;
+// =============================================================================
+// ARENA ICON SYSTEM
+// =============================================================================
 
-// Timing configuration for the ambient loop
-const ICON_CYCLE = {
-  restDuration: 2400, // Time icon stays fully visible
-  transitionDuration: 600, // Fade/scale transition time
+// Semantic icon roles:
+// Gamepad2: Arena Core - neutral anchor
+// Crosshair: Laser Tag - precision, targeting
+// Circle: Bowling/Air Hockey - surface, arena floor
+// Wind: Motion/Energy - speed, action
+const ARENA_ICONS: readonly LucideIcon[] = [Gamepad2, Crosshair, Circle, Wind];
+type IconRole = "gamepad" | "crosshair" | "circle" | "wind";
+const ICON_ROLES: readonly IconRole[] = ["gamepad", "crosshair", "circle", "wind"];
+
+// Timing
+const TIMING = {
+  cycleDuration: 2800, // Total time per icon
+  transitionDuration: 0.5, // Crossfade duration
 };
 
-// Animation variants for the cross-morph illusion
-const iconVariants = {
-  enter: {
-    opacity: 0,
-    scale: 0.85,
-    rotate: -6,
-    y: 3,
-  },
-  center: {
-    opacity: 1,
-    scale: 1,
-    rotate: 0,
-    y: 0,
-    transition: {
-      duration: ICON_CYCLE.transitionDuration / 1000,
-      ease: [0.4, 0, 0.2, 1],
-    },
-  },
-  exit: {
-    opacity: 0,
-    scale: 0.9,
-    rotate: 6,
-    y: -2,
-    transition: {
-      duration: ICON_CYCLE.transitionDuration / 1000,
-      ease: [0.4, 0, 0.6, 1],
-    },
-  },
-};
-
-// Hover state - subtle accentuation
-const hoverVariants = {
-  center: {
-    opacity: 1,
-    scale: 1.05,
-    rotate: 0,
-    y: 0,
-    transition: {
-      duration: 0.3,
-      ease: [0.4, 0, 0.2, 1],
-    },
-  },
-};
-
-// Reduced motion variants - no transform animations
-const reducedMotionVariants = {
-  enter: { opacity: 0 },
-  center: {
-    opacity: 1,
-    transition: { duration: 0.3 },
-  },
-  exit: {
-    opacity: 0,
-    transition: { duration: 0.3 },
-  },
-};
-
-// Ambient glow pulse - synced to icon cycle
-const glowPulseVariants = {
-  idle: {
-    opacity: [0.15, 0.3, 0.15],
-    scale: [1, 1.1, 1],
-    transition: {
-      duration: (ICON_CYCLE.restDuration + ICON_CYCLE.transitionDuration) / 1000,
-      repeat: Infinity,
-      ease: "easeInOut",
-    },
-  },
-  hovered: {
-    opacity: 0.45,
-    scale: 1.15,
-    transition: {
-      duration: 0.3,
-      ease: "easeOut",
-    },
-  },
-};
-
-// Subtle light sweep effect
-const sweepVariants = {
-  idle: {
-    x: ["-100%", "100%"],
-    transition: {
-      duration: ((ICON_CYCLE.restDuration + ICON_CYCLE.transitionDuration) * 2) / 1000,
-      repeat: Infinity,
-      ease: "linear",
-    },
-  },
-  hovered: {
-    x: "100%",
-    transition: {
-      duration: 0.8,
-      ease: "easeOut",
-    },
-  },
-};
+// =============================================================================
+// ARENA ICON COMPONENT
+// =============================================================================
 
 interface ArenaIconProps {
   isHovered: boolean;
@@ -124,81 +41,164 @@ function ArenaIcon({ isHovered }: ArenaIconProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
 
-  // Check for reduced motion preference
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
     setPrefersReducedMotion(mediaQuery.matches);
-
     const handler = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches);
     mediaQuery.addEventListener("change", handler);
     return () => mediaQuery.removeEventListener("change", handler);
   }, []);
 
   useEffect(() => {
-    if (isHovered) return; // Pause cycling on hover
-
-    const totalCycleTime = ICON_CYCLE.restDuration + ICON_CYCLE.transitionDuration;
-    // Slow down cycle for reduced motion
-    const adjustedTime = prefersReducedMotion ? totalCycleTime * 1.5 : totalCycleTime;
-
+    if (isHovered) return;
     const interval = setInterval(() => {
       setActiveIndex(prev => (prev + 1) % ARENA_ICONS.length);
-    }, adjustedTime);
-
+    }, TIMING.cycleDuration);
     return () => clearInterval(interval);
-  }, [isHovered, prefersReducedMotion]);
+  }, [isHovered]);
 
   const CurrentIcon = ARENA_ICONS[activeIndex];
-
-  // Select appropriate variants based on motion preference
-  const getIconVariants = () => {
-    if (prefersReducedMotion) return reducedMotionVariants;
-    if (isHovered) return hoverVariants;
-    return iconVariants;
-  };
+  const currentRole = ICON_ROLES[activeIndex];
 
   return (
     <div className="relative h-10 w-10">
-      {/* Ambient radial glow - arena atmosphere */}
+      {/* Ambient glow - pulses gently, intensifies on transition */}
       {!prefersReducedMotion && (
         <motion.div
-          className="pointer-events-none absolute inset-[-8px] rounded-full"
+          className="pointer-events-none absolute inset-[-6px] rounded-full"
           style={{
             background: "radial-gradient(circle, var(--venue-accent-glow) 0%, transparent 70%)",
           }}
-          variants={glowPulseVariants}
-          animate={isHovered ? "hovered" : "idle"}
+          animate={{
+            opacity: isHovered ? 0.5 : [0.15, 0.25, 0.15],
+            scale: isHovered ? 1.1 : [1, 1.05, 1],
+          }}
+          transition={{
+            duration: isHovered ? 0.3 : 2.5,
+            ease: "easeInOut",
+            repeat: isHovered ? 0 : Infinity,
+          }}
         />
       )}
 
-      {/* Subtle light sweep - secondary atmosphere */}
-      {!prefersReducedMotion && (
-        <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-lg">
-          <motion.div
-            className="absolute inset-y-0 w-1/3 opacity-[0.07]"
-            style={{
-              background: "linear-gradient(90deg, transparent, var(--venue-accent), transparent)",
-            }}
-            variants={sweepVariants}
-            animate={isHovered ? "hovered" : "idle"}
-          />
-        </div>
+      {/* Per-icon personality effects */}
+      {!prefersReducedMotion && !isHovered && (
+        <>
+          {/* Crosshair: Targeting reticle pulse */}
+          {currentRole === "crosshair" && (
+            <>
+              <motion.div
+                className="pointer-events-none absolute inset-[-2px] rounded-full border-2 border-[var(--venue-accent)]"
+                initial={{ opacity: 0, scale: 0.5 }}
+                animate={{ opacity: [0, 0.3, 0], scale: [0.5, 1.2, 1.4] }}
+                transition={{ duration: 1.8, ease: "easeOut", repeat: Infinity, repeatDelay: 0.4 }}
+              />
+              <motion.div
+                className="pointer-events-none absolute inset-[6px] rounded-full border border-[var(--venue-accent)]"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: [0.4, 0.15, 0.4] }}
+                transition={{ duration: 1.2, ease: "easeInOut", repeat: Infinity }}
+              />
+            </>
+          )}
+
+          {/* Circle: Floor/surface glow */}
+          {currentRole === "circle" && (
+            <motion.div
+              className="pointer-events-none absolute inset-[-4px] rounded-full"
+              style={{
+                background: "radial-gradient(ellipse 100% 60% at center 60%, var(--venue-accent) 0%, transparent 70%)",
+              }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: [0.1, 0.2, 0.1] }}
+              transition={{ duration: 2, ease: "easeInOut", repeat: Infinity }}
+            />
+          )}
+
+          {/* Wind: Motion streaks */}
+          {currentRole === "wind" && (
+            <div className="pointer-events-none absolute inset-[-4px] overflow-hidden rounded-full">
+              {[0, 1, 2].map(i => (
+                <motion.div
+                  key={i}
+                  className="absolute h-[2px] w-3 rounded-full bg-[var(--venue-accent)]"
+                  style={{ top: `${30 + i * 20}%`, left: 0 }}
+                  initial={{ x: -12, opacity: 0 }}
+                  animate={{ x: [-12, 48], opacity: [0, 0.4, 0] }}
+                  transition={{
+                    duration: 0.8,
+                    ease: "easeOut",
+                    repeat: Infinity,
+                    repeatDelay: 0.6,
+                    delay: i * 0.15,
+                  }}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Gamepad: Subtle button pulse */}
+          {currentRole === "gamepad" && (
+            <motion.div
+              className="pointer-events-none absolute inset-0 flex items-center justify-center"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: [0, 0.15, 0] }}
+              transition={{ duration: 2.5, ease: "easeInOut", repeat: Infinity }}
+            >
+              <div
+                className="h-2 w-2 rounded-full"
+                style={{ background: "var(--venue-accent)", filter: "blur(2px)" }}
+              />
+            </motion.div>
+          )}
+        </>
       )}
 
-      {/* Icon stage */}
+      {/* Icon stage - smooth crossfade with vertical motion */}
       <AnimatePresence mode="wait">
         <motion.div
           key={activeIndex}
-          variants={getIconVariants()}
-          initial="enter"
-          animate="center"
-          exit="exit"
+          initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 6, scale: 0.92 }}
+          animate={
+            prefersReducedMotion
+              ? { opacity: 1 }
+              : {
+                  opacity: 1,
+                  y: 0,
+                  scale: isHovered ? 1.08 : 1,
+                  transition: {
+                    duration: TIMING.transitionDuration,
+                    ease: [0.23, 1, 0.32, 1], // easeOutQuint
+                  },
+                }
+          }
+          exit={
+            prefersReducedMotion
+              ? { opacity: 0, transition: { duration: 0.2 } }
+              : {
+                  opacity: 0,
+                  y: -4,
+                  scale: 0.95,
+                  transition: {
+                    duration: TIMING.transitionDuration * 0.7,
+                    ease: [0.4, 0, 1, 1],
+                  },
+                }
+          }
           className="absolute inset-0 flex items-center justify-center"
         >
-          <CurrentIcon
-            className="h-10 w-10 text-[var(--venue-text-muted)] transition-colors duration-300 group-hover:text-[var(--venue-accent)] group-hover:[filter:drop-shadow(0_0_8px_var(--venue-accent-glow))]"
-            strokeWidth={1.5}
-          />
+          {/* Breathing wrapper - visible idle motion */}
+          <motion.div
+            animate={prefersReducedMotion || isHovered ? { scale: 1 } : { scale: [1, 1.04, 1] }}
+            transition={
+              prefersReducedMotion || isHovered ? undefined : { duration: 2.2, ease: "easeInOut", repeat: Infinity }
+            }
+          >
+            <CurrentIcon
+              className="h-10 w-10 text-[var(--venue-text-muted)] transition-colors duration-300 group-hover:text-[var(--venue-accent)] group-hover:[filter:drop-shadow(0_0_8px_var(--venue-accent-glow))]"
+              strokeWidth={1.5}
+            />
+          </motion.div>
         </motion.div>
       </AnimatePresence>
     </div>
