@@ -153,7 +153,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Failed to create payment request" }, { status: 500 });
     }
 
-    // Send push notification to payer (fire and forget)
+    // Send push notification to payer
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://splithub.app";
     const notificationPayload = {
       recipientWallet: payerLower,
@@ -163,22 +163,21 @@ export async function POST(request: NextRequest) {
     };
     console.log("[PaymentRequest] Sending notification:", notificationPayload);
 
-    fetch(`${baseUrl}/api/notifications/send`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(notificationPayload),
-    })
-      .then(async res => {
-        const responseData = await res.json();
-        if (res.ok) {
-          console.log("[PaymentRequest] Notification sent:", responseData);
-        } else {
-          console.error("[PaymentRequest] Notification failed:", responseData);
-        }
-      })
-      .catch(err => {
-        console.error("[PaymentRequest] Notification error:", err);
+    try {
+      const notifRes = await fetch(`${baseUrl}/api/notifications/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(notificationPayload),
       });
+      const notifData = await notifRes.json();
+      if (notifRes.ok) {
+        console.log("[PaymentRequest] Notification sent:", notifData);
+      } else {
+        console.error("[PaymentRequest] Notification failed:", notifData);
+      }
+    } catch (err) {
+      console.error("[PaymentRequest] Notification error:", err);
+    }
 
     return NextResponse.json({
       requestId: data.id,

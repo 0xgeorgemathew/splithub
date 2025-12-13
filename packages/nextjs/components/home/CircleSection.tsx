@@ -1,16 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import { CircleModal } from "./CircleModal";
+import { RadialActionMenu } from "./RadialActionMenu";
 import { usePrivy } from "@privy-io/react-auth";
-import { AnimatePresence, motion } from "framer-motion";
-import { Check, Edit3, MoreHorizontal, Plus, Power, Trash2, Users } from "lucide-react";
-import { type CircleWithMembers, type User } from "~~/lib/supabase";
-import { deleteCircle, getCircleWithMembers, getCirclesByCreator, setCircleActive } from "~~/services/circleService";
+import { motion } from "framer-motion";
+import { Check, Eye, Plus, Settings2, Users } from "lucide-react";
+import { useCirclesRealtime } from "~~/hooks/useCirclesRealtime";
+import { type CircleWithMembersAndOwnership, type User as UserType } from "~~/lib/supabase";
+import { deleteCircle, setCircleActive } from "~~/services/circleService";
 
 // Avatar component for consistent rendering
-const MemberAvatar = ({ member, size, className = "" }: { member: User; size: number; className?: string }) => (
+const MemberAvatar = ({ member, size, className = "" }: { member: UserType; size: number; className?: string }) => (
   <div
     className={`rounded-full overflow-hidden ring-2 ring-base-100 ${className}`}
     style={{ width: size, height: size }}
@@ -34,7 +36,7 @@ const MemberAvatar = ({ member, size, className = "" }: { member: User; size: nu
 );
 
 // Circle visualization with overlapping avatars
-const CircleCollage = ({ members, size = 80 }: { members: User[]; size?: number }) => {
+const CircleCollage = ({ members, size = 80 }: { members: UserType[]; size?: number }) => {
   const memberCount = members.length;
 
   // Empty state
@@ -160,27 +162,14 @@ const CircleItem = ({
   onEdit,
   onDelete,
 }: {
-  circle: CircleWithMembers;
+  circle: CircleWithMembersAndOwnership;
   onSelect: () => void;
   onToggleActive: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }) => {
-  const [showMenu, setShowMenu] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  // Close menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setShowMenu(false);
-      }
-    };
-    if (showMenu) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [showMenu]);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const isOwner = circle.isOwner;
 
   return (
     <motion.div
@@ -188,68 +177,43 @@ const CircleItem = ({
       animate={{ opacity: 1, scale: 1 }}
       className="flex flex-col items-center gap-2 relative"
     >
-      {/* Menu button */}
-      <div className="absolute -top-1 -right-1 z-10" ref={menuRef}>
-        <motion.button
-          whileTap={{ scale: 0.9 }}
-          onClick={(e: React.MouseEvent) => {
-            e.stopPropagation();
-            setShowMenu(!showMenu);
-          }}
-          className="w-6 h-6 rounded-full bg-base-300/80 backdrop-blur-sm flex items-center justify-center hover:bg-base-300 transition-colors"
-        >
-          <MoreHorizontal className="w-3.5 h-3.5 text-base-content/60" />
-        </motion.button>
+      {/* Menu trigger - only show for owners */}
+      {isOwner && (
+        <div className="absolute -top-0.5 -right-0.5 z-10">
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={(e: React.MouseEvent) => {
+              e.stopPropagation();
+              setIsMenuOpen(!isMenuOpen);
+            }}
+            className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${
+              isMenuOpen ? "bg-primary text-primary-content" : "bg-base-300/90 backdrop-blur-sm hover:bg-base-300"
+            }`}
+          >
+            <Settings2 className={`w-2.5 h-2.5 ${isMenuOpen ? "" : "text-base-content/60"}`} />
+          </motion.button>
 
-        {/* Dropdown menu */}
-        <AnimatePresence>
-          {showMenu && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 5 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 5 }}
-              className="absolute right-0 bottom-8 bg-base-200 rounded-xl shadow-xl border border-base-300 overflow-hidden min-w-[140px] z-50"
-            >
-              <button
-                onClick={e => {
-                  e.stopPropagation();
-                  onToggleActive();
-                  setShowMenu(false);
-                }}
-                className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-base-content hover:bg-base-300 transition-colors"
-              >
-                <Power className="w-4 h-4" />
-                {circle.is_active ? "Deactivate" : "Activate"}
-              </button>
-              <button
-                onClick={e => {
-                  e.stopPropagation();
-                  onEdit();
-                  setShowMenu(false);
-                }}
-                className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-base-content hover:bg-base-300 transition-colors"
-              >
-                <Edit3 className="w-4 h-4" />
-                Edit
-              </button>
-              <button
-                onClick={e => {
-                  e.stopPropagation();
-                  onDelete();
-                  setShowMenu(false);
-                }}
-                className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-error hover:bg-error/10 transition-colors"
-              >
-                <Trash2 className="w-4 h-4" />
-                Delete
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+          {/* Radial Action Menu */}
+          <RadialActionMenu
+            isOpen={isMenuOpen}
+            onClose={() => setIsMenuOpen(false)}
+            isActive={circle.is_active}
+            onToggleActive={onToggleActive}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            triggerSize={20}
+          />
+        </div>
+      )}
 
       {/* Circle with ring */}
-      <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={onSelect} className="relative">
+      <motion.button
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={isOwner ? onSelect : undefined}
+        className={`relative ${!isOwner ? "cursor-default" : ""}`}
+        disabled={!isOwner}
+      >
         {/* Ring */}
         <div
           className={`p-1 rounded-full ${
@@ -260,6 +224,18 @@ const CircleItem = ({
             <CircleCollage members={circle.members} size={56} />
           </div>
         </div>
+
+        {/* Non-ownership indicator - shown only for circles user didn't create */}
+        {!isOwner && (
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            className="absolute -bottom-0.5 -left-0.5 w-5 h-5 rounded-full bg-slate-500 flex items-center justify-center ring-2 ring-base-100"
+            title="Shared with you"
+          >
+            <Eye className="w-2.5 h-2.5 text-white" strokeWidth={2.5} />
+          </motion.div>
+        )}
 
         {/* Active checkmark */}
         {circle.is_active && (
@@ -303,75 +279,43 @@ const AddCircleButton = ({ onClick }: { onClick: () => void }) => (
 
 export const CircleSection = () => {
   const { user } = usePrivy();
-  const [circles, setCircles] = useState<CircleWithMembers[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { circles, loading, refresh: refreshCircles } = useCirclesRealtime();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingCircle, setEditingCircle] = useState<CircleWithMembers | null>(null);
+  const [editingCircle, setEditingCircle] = useState<CircleWithMembersAndOwnership | null>(null);
 
   const walletAddress = user?.wallet?.address;
-
-  const fetchCircles = useCallback(async () => {
-    if (!walletAddress) return;
-
-    setLoading(true);
-    try {
-      const userCircles = await getCirclesByCreator(walletAddress);
-
-      const circlesWithMembers: CircleWithMembers[] = [];
-      for (const circle of userCircles) {
-        const withMembers = await getCircleWithMembers(circle.id);
-        if (withMembers) {
-          circlesWithMembers.push(withMembers);
-        }
-      }
-
-      setCircles(circlesWithMembers);
-    } catch (err) {
-      console.error("Error fetching circles:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [walletAddress]);
-
-  useEffect(() => {
-    fetchCircles();
-  }, [fetchCircles]);
 
   const handleCreateCircle = () => {
     setEditingCircle(null);
     setIsModalOpen(true);
   };
 
-  const handleEditCircle = (circle: CircleWithMembers) => {
+  const handleEditCircle = (circle: CircleWithMembersAndOwnership) => {
     setEditingCircle(circle);
     setIsModalOpen(true);
   };
 
   const handleDeleteCircle = async (circleId: string) => {
-    // Optimistically remove from UI
-    setCircles(prev => prev.filter(c => c.id !== circleId));
-
     try {
       await deleteCircle(circleId);
+      // Real-time subscription will auto-update the list
     } catch (err) {
       console.error("Error deleting circle:", err);
       // Refetch on error to restore
-      fetchCircles();
+      refreshCircles();
     }
   };
 
-  const handleToggleActive = async (circle: CircleWithMembers) => {
-    if (!walletAddress) return;
-
-    // Optimistically update local state
-    setCircles(prev => prev.map(c => (c.id === circle.id ? { ...c, is_active: !c.is_active } : c)));
+  const handleToggleActive = async (circle: CircleWithMembersAndOwnership) => {
+    if (!walletAddress || !circle.isOwner) return;
 
     try {
       await setCircleActive(circle.id, walletAddress, !circle.is_active);
+      // Real-time subscription will auto-update the list
     } catch (err) {
       console.error("Error toggling circle:", err);
-      // Revert on error
-      setCircles(prev => prev.map(c => (c.id === circle.id ? { ...c, is_active: circle.is_active } : c)));
+      // Refetch on error
+      refreshCircles();
     }
   };
 
@@ -382,12 +326,15 @@ export const CircleSection = () => {
 
   const handleModalSuccess = () => {
     handleModalClose();
-    fetchCircles();
+    // Real-time subscription will auto-update, but manual refresh for immediate feedback
+    refreshCircles();
   };
 
-  const handleSelectCircle = (circle: CircleWithMembers) => {
-    // Toggle active state when clicking on circle
-    handleToggleActive(circle);
+  const handleSelectCircle = (circle: CircleWithMembersAndOwnership) => {
+    // Only owners can toggle active state
+    if (circle.isOwner) {
+      handleToggleActive(circle);
+    }
   };
 
   if (loading) {
@@ -411,24 +358,21 @@ export const CircleSection = () => {
       {/* Header */}
       <h3 className="text-sm font-semibold text-base-content/70 uppercase tracking-wider mb-3 px-1">Circles</h3>
 
-      {/* Wrapper for overflow handling */}
-      <div className="relative">
-        {/* Horizontal scroll container with top padding for dropdown */}
-        <div className="flex gap-4 pt-32 -mt-32 pb-2 px-1 overflow-x-auto scrollbar-hide">
-          {circles.map(circle => (
-            <CircleItem
-              key={circle.id}
-              circle={circle}
-              onSelect={() => handleSelectCircle(circle)}
-              onToggleActive={() => handleToggleActive(circle)}
-              onEdit={() => handleEditCircle(circle)}
-              onDelete={() => handleDeleteCircle(circle.id)}
-            />
-          ))}
+      {/* Horizontal scroll container */}
+      <div className="flex gap-6 pb-2 px-1 overflow-x-auto scrollbar-hide">
+        {circles.map(circle => (
+          <CircleItem
+            key={circle.id}
+            circle={circle}
+            onSelect={() => handleSelectCircle(circle)}
+            onToggleActive={() => handleToggleActive(circle)}
+            onEdit={() => handleEditCircle(circle)}
+            onDelete={() => handleDeleteCircle(circle.id)}
+          />
+        ))}
 
-          {/* Add new circle button */}
-          <AddCircleButton onClick={handleCreateCircle} />
-        </div>
+        {/* Add new circle button */}
+        <AddCircleButton onClick={handleCreateCircle} />
       </div>
 
       {/* Modal */}

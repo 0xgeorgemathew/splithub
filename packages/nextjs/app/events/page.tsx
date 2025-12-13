@@ -160,10 +160,6 @@ export default function EventsPage() {
     );
   }
 
-  const handleCreateEvent = () => {
-    setIsEventModalOpen(true);
-  };
-
   const handleModalSuccess = () => {
     setIsEventModalOpen(false);
     refresh();
@@ -181,13 +177,7 @@ export default function EventsPage() {
   return (
     <div className="px-4 py-4 pb-24">
       {/* Hero Revenue Card (or Empty CTA) */}
-      <DashboardHero
-        mode={mode}
-        metrics={metrics}
-        onCreateEvent={handleCreateEvent}
-        activeContext={activeContext}
-        hasDualRole={hasDualRole}
-      />
+      <DashboardHero mode={mode} metrics={metrics} activeContext={activeContext} hasDualRole={hasDualRole} />
 
       {/* Live Activity Feed */}
       {mode !== "empty" && (

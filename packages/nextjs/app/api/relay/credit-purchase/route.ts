@@ -119,7 +119,6 @@ export async function POST(request: NextRequest) {
     try {
       const { getActiveCircle, getCircleMembers } = await import("~~/services/circleService");
       const { createExpense } = await import("~~/services/expenseService");
-      const { supabase } = await import("~~/lib/supabase");
 
       const activeCircle = await getActiveCircle(buyer);
 
@@ -157,54 +156,16 @@ export async function POST(request: NextRequest) {
               participantWallets,
             });
             console.log("Expense created:", expenseResult.expense.id);
+
+            circleSplitResult = {
+              circleName: activeCircle.name,
+              memberCount: members.length,
+              splitAmount: splitAmountFormatted,
+              expenseId: expenseResult.expense.id,
+            };
           } catch (expenseError) {
             console.error("Failed to create expense (non-critical):", expenseError);
           }
-
-          // Get buyer's user info for the memo
-          const { data: buyerUser } = await supabase
-            .from("users")
-            .select("name, twitter_handle")
-            .eq("wallet_address", buyer.toLowerCase())
-            .single();
-
-          // Create payment requests for each Circle member to reimburse buyer
-          const paymentRequests = [];
-          const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-
-          for (const member of members) {
-            // Skip if somehow the member is the buyer
-            if (member.wallet_address.toLowerCase() === buyer.toLowerCase()) continue;
-
-            const { data: request, error: requestError } = await supabase
-              .from("payment_requests")
-              .insert({
-                payer: member.wallet_address.toLowerCase(),
-                recipient: buyer.toLowerCase(),
-                token: usdcAddress.toLowerCase(),
-                amount: splitAmountFormatted,
-                memo: `Circle split: ${activeCircle.name} (credits)`,
-                status: "pending",
-                expires_at: expiresAt,
-                payer_twitter: member.twitter_handle || null,
-                requester_twitter: buyerUser?.twitter_handle || null,
-              })
-              .select()
-              .single();
-
-            if (requestError) {
-              console.error(`Failed to create payment request for ${member.wallet_address}:`, requestError);
-            } else {
-              paymentRequests.push(request);
-              console.log(`Payment request created for ${member.name || member.wallet_address}`);
-            }
-          }
-
-          circleSplitResult = {
-            circleName: activeCircle.name,
-            membersNotified: paymentRequests.length,
-            splitAmount: splitAmountFormatted,
-          };
         }
       }
     } catch (circleError) {

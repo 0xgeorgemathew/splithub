@@ -4,17 +4,31 @@ import { useState } from "react";
 import Image from "next/image";
 import { usePrivy } from "@privy-io/react-auth";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowDownRight, ArrowUpRight, Bell, Plus, Sparkles, TrendingUp, Wallet } from "lucide-react";
+import {
+  ArrowDownRight,
+  ArrowUpRight,
+  BanknoteArrowDown,
+  Bell,
+  Check,
+  Nfc,
+  Plus,
+  Sparkles,
+  TrendingUp,
+  Wallet,
+} from "lucide-react";
 import { ExpenseModal } from "~~/components/expense/ExpenseModal";
 import { SettleModal } from "~~/components/settle/SettleModal";
 import { type PaymentParams } from "~~/components/settle/types";
 import { useFriendBalancesRealtime } from "~~/hooks/useFriendBalancesRealtime";
+import { usePaymentRequestsRealtime } from "~~/hooks/usePaymentRequestsRealtime";
 import { useUSDCBalance } from "~~/hooks/useUSDCBalance";
 import { type FriendBalance } from "~~/lib/supabase";
 
 export const FriendBalancesList = () => {
   const { user } = usePrivy();
   const { balances, overallBalance, loading, error, refresh: refreshBalances } = useFriendBalancesRealtime();
+  // Use realtime hook for payment requests - updates automatically when DB changes
+  const { requests: outgoingRequests, refresh: refreshRequests } = usePaymentRequestsRealtime("outgoing");
 
   // Modal states
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
@@ -22,14 +36,28 @@ export const FriendBalancesList = () => {
   const [selectedFriend, setSelectedFriend] = useState<FriendBalance | null>(null);
   const [settlementParams, setSettlementParams] = useState<PaymentParams | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [isCreatingRequest, setIsCreatingRequest] = useState(false);
-  const [requestSuccess, setRequestSuccess] = useState(false);
+  const [isProcessingRequest, setIsProcessingRequest] = useState(false);
+  const [processingFriendWallet, setProcessingFriendWallet] = useState<string | null>(null);
+  const [successFriendWallet, setSuccessFriendWallet] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const walletAddress = user?.wallet?.address;
 
   // Fetch actual USDC wallet balance
   const { formattedBalance: walletBalance, isLoading: isWalletBalanceLoading } = useUSDCBalance();
+
+  // Get pending requests only - filtered from realtime data
+  const pendingRequests = outgoingRequests.filter(req => req.status === "pending");
+
+  // Helper to get pending request for a friend (simplified - just checks if any request exists)
+  const getRequestForFriend = (friendWallet: string) => {
+    return pendingRequests.find(req => req.payer.toLowerCase() === friendWallet.toLowerCase()) || null;
+  };
+
+  // Simple check if friend has any pending request
+  const hasRequestForFriend = (friendWallet: string): boolean => {
+    return pendingRequests.some(req => req.payer.toLowerCase() === friendWallet.toLowerCase());
+  };
 
   const formatAmount = (amount: number): string => {
     return Math.abs(amount).toFixed(2);
@@ -41,91 +69,99 @@ export const FriendBalancesList = () => {
     return "settled up";
   };
 
-  const canSettle = (balance: number): boolean => {
-    // Can only settle if you owe them (negative balance)
-    return balance < 0;
-  };
-
-  const canRequestPayment = (balance: number): boolean => {
-    // Can request payment if they owe you (positive balance)
-    return balance > 0;
-  };
-
+  // Row click only triggers settlement (when you owe them)
   const handleFriendClick = async (friend: FriendBalance) => {
-    if (!walletAddress) return;
-
-    // Case 1: They owe you - create a payment request
-    if (canRequestPayment(friend.net_balance)) {
-      await handleCreateRequest(friend);
-      return;
-    }
-
-    // Case 2: You owe them - open settlement modal
-    if (canSettle(friend.net_balance)) {
-      await handleSettlement(friend);
-      return;
-    }
+    if (!walletAddress || friend.net_balance >= 0) return;
+    await handleSettlement(friend);
   };
 
-  const handleCreateRequest = async (friend: FriendBalance) => {
-    if (!walletAddress || isCreatingRequest) return;
+  // Handle payment request icon click - creates request or sends reminder
+  const handlePaymentRequestClick = async (friend: FriendBalance, e: React.MouseEvent) => {
+    e.stopPropagation(); // Don't trigger row click
+    if (!walletAddress || isProcessingRequest) return;
+
+    const existingRequest = getRequestForFriend(friend.friend_wallet);
 
     setSelectedFriend(friend);
-    setIsCreatingRequest(true);
+    setProcessingFriendWallet(friend.friend_wallet);
+    setIsProcessingRequest(true);
     setActionError(null);
 
     try {
-      // Fetch token address from their expenses
-      const tokenResponse = await fetch(
-        `/api/balances/token?userWallet=${walletAddress}&friendWallet=${friend.friend_wallet}`,
-      );
-      const tokenData = await tokenResponse.json();
+      if (existingRequest) {
+        // Send reminder for existing request
+        const reminderResponse = await fetch(`/api/payment-requests/${existingRequest.id}/remind`, {
+          method: "POST",
+        });
 
-      if (!tokenResponse.ok) {
-        throw new Error(tokenData.error || "Failed to fetch token address");
+        const reminderData = await reminderResponse.json();
+
+        if (!reminderResponse.ok) {
+          throw new Error(reminderData.error || "Failed to send reminder");
+        }
+
+        // Show success checkmark animation
+        setIsProcessingRequest(false);
+        setProcessingFriendWallet(null);
+        setSuccessFriendWallet(friend.friend_wallet);
+        setTimeout(() => {
+          setSuccessFriendWallet(null);
+          setSelectedFriend(null);
+        }, 1500);
+        return;
+      } else {
+        // Create new payment request
+        const tokenResponse = await fetch(
+          `/api/balances/token?userWallet=${walletAddress}&friendWallet=${friend.friend_wallet}`,
+        );
+        const tokenData = await tokenResponse.json();
+
+        if (!tokenResponse.ok) {
+          throw new Error(tokenData.error || "Failed to fetch token address");
+        }
+
+        const requestResponse = await fetch("/api/payment-requests", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            payer: friend.friend_wallet,
+            recipient: walletAddress,
+            token: tokenData.tokenAddress,
+            amount: formatAmount(friend.net_balance),
+            memo: `Settlement request from ${user?.twitter?.username || "you"}`,
+            payerTwitter: friend.friend_twitter_handle,
+            requesterTwitter: user?.twitter?.username,
+          }),
+        });
+
+        const requestData = await requestResponse.json();
+
+        if (!requestResponse.ok) {
+          throw new Error(requestData.error || "Failed to create request");
+        }
+
+        // Show success animation - realtime subscription will update pendingRequests
+        setIsProcessingRequest(false);
+        setProcessingFriendWallet(null);
+        setSuccessFriendWallet(friend.friend_wallet);
+        refreshRequests(); // Fire-and-forget, realtime handles the actual update
+
+        if (!requestData.isExisting) {
+          setSuccessMessage(`Payment request sent to ${friend.friend_name}`);
+          setTimeout(() => setSuccessMessage(null), 3000);
+        }
+
+        setTimeout(() => {
+          setSuccessFriendWallet(null);
+          setSelectedFriend(null);
+        }, 1500);
+        return;
       }
-
-      // Create payment request
-      const requestResponse = await fetch("/api/payment-requests", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          payer: friend.friend_wallet,
-          recipient: walletAddress,
-          token: tokenData.tokenAddress,
-          amount: formatAmount(friend.net_balance),
-          memo: `Settlement request from ${user?.twitter?.username || "you"}`,
-          payerTwitter: friend.friend_twitter_handle,
-          requesterTwitter: user?.twitter?.username,
-        }),
-      });
-
-      const requestData = await requestResponse.json();
-
-      if (!requestResponse.ok) {
-        throw new Error(requestData.error || "Failed to create request");
-      }
-
-      // Show success state in modal
-      setRequestSuccess(true);
-
-      // Show success message for existing requests
-      if (requestData.isExisting) {
-        setSuccessMessage(`A payment request for ${friend.friend_name} already exists and is still pending.`);
-        setTimeout(() => setSuccessMessage(null), 5000);
-      }
-
-      // Auto-close after showing success
-      setTimeout(() => {
-        setIsCreatingRequest(false);
-        setRequestSuccess(false);
-        setSelectedFriend(null);
-      }, 2000);
     } catch (err) {
-      console.error("Error creating request:", err);
-      setActionError(err instanceof Error ? err.message : "Failed to create payment request");
-      setIsCreatingRequest(false);
-      setRequestSuccess(false);
+      console.error("Error with payment request:", err);
+      setActionError(err instanceof Error ? err.message : "Failed to process request");
+      setIsProcessingRequest(false);
+      setProcessingFriendWallet(null);
     }
   };
 
@@ -205,13 +241,6 @@ export const FriendBalancesList = () => {
     setIsSettleModalOpen(false);
     setSelectedFriend(null);
     setSettlementParams(null);
-  };
-
-  // Handler for bell icon - shows message that notifications are not available
-  const handleNotifyFriend = (friend: FriendBalance, e: React.MouseEvent) => {
-    e.stopPropagation(); // Don't trigger card click
-    setSuccessMessage(`Notifications not available. Tap ${friend.friend_name} to send a payment request.`);
-    setTimeout(() => setSuccessMessage(null), 3000);
   };
 
   if (loading) {
@@ -356,7 +385,7 @@ export const FriendBalancesList = () => {
       <div className="flex items-center justify-between mb-4 px-1">
         <div className="flex items-center gap-2">
           <Wallet className="w-4 h-4 text-primary" />
-          <span className="text-sm font-semibold text-base-content/70 uppercase tracking-wider">Balances</span>
+          <span className="text-sm font-semibold text-base-content/70 uppercase tracking-wider">Ledger</span>
           <span className="text-xs text-base-content/50 bg-base-300/50 px-2 py-0.5 rounded-full">
             {balances.length}
           </span>
@@ -418,11 +447,44 @@ export const FriendBalancesList = () => {
             className="space-y-0"
           >
             {balances.map((balance, index) => {
-              const isSettleable = canSettle(balance.net_balance);
-              const isRequestable = canRequestPayment(balance.net_balance);
-              const isClickable = isSettleable || isRequestable;
               const isPositive = balance.net_balance > 0;
+              const isNegative = balance.net_balance < 0;
               const isLast = index === balances.length - 1;
+
+              // Icon state for positive balances (they owe you)
+              const isProcessing = isProcessingRequest && processingFriendWallet === balance.friend_wallet;
+              const isSuccess = successFriendWallet === balance.friend_wallet;
+              const hasPendingRequest = hasRequestForFriend(balance.friend_wallet);
+
+              // Determine which icon to show
+              const getIconContent = () => {
+                if (isNegative) {
+                  // You owe them - show NFC icon
+                  return <Nfc className="w-5 h-5 text-rose-500/70" />;
+                }
+                if (isPositive) {
+                  // They owe you - show Bell (or Check on success)
+                  if (isSuccess) {
+                    return <Check className="w-5 h-5 text-[#00E0B8]" />;
+                  }
+                  if (isProcessing) {
+                    return (
+                      <motion.div
+                        animate={{ rotate: [-8, 8, -8] }}
+                        transition={{ duration: 0.4, repeat: Infinity, ease: "easeInOut" }}
+                      >
+                        <Bell className="w-5 h-5 text-[#00E0B8]" />
+                      </motion.div>
+                    );
+                  }
+                  return hasPendingRequest ? (
+                    <Bell className="w-5 h-5 text-[#00E0B8]" />
+                  ) : (
+                    <BanknoteArrowDown className="w-5 h-5 text-[#00E0B8]/70" />
+                  );
+                }
+                return null;
+              };
 
               return (
                 <motion.div
@@ -430,16 +492,14 @@ export const FriendBalancesList = () => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: index * 0.05 }}
-                  whileTap={isClickable ? { scale: 0.98 } : {}}
-                  className={`group flex items-center justify-between px-4 py-5 transition-colors ${
-                    isClickable
-                      ? "cursor-pointer hover:bg-white/[0.02] active:bg-white/[0.04]"
-                      : "cursor-default opacity-60"
+                  whileTap={isNegative ? { scale: 0.98 } : {}}
+                  className={`group flex items-center px-4 py-5 transition-colors ${
+                    isNegative ? "cursor-pointer hover:bg-white/[0.02] active:bg-white/[0.04]" : "cursor-default"
                   } ${!isLast ? "border-b border-white/5" : ""}`}
-                  onClick={() => isClickable && handleFriendClick(balance)}
+                  onClick={() => isNegative && handleFriendClick(balance)}
                 >
-                  <div className="flex items-center gap-4">
-                    {/* Avatar */}
+                  {/* Left: Avatar + Name */}
+                  <div className="flex items-center gap-4 flex-1 min-w-0">
                     {balance.friend_twitter_profile_url ? (
                       <Image
                         src={balance.friend_twitter_profile_url}
@@ -455,8 +515,6 @@ export const FriendBalancesList = () => {
                         </span>
                       </div>
                     )}
-
-                    {/* Name & Status */}
                     <div className="flex flex-col min-w-0">
                       <span className="font-semibold text-white truncate">{balance.friend_name}</span>
                       <span className={`text-xs ${isPositive ? "text-[#00E0B8]/70" : "text-rose-500/70"}`}>
@@ -465,25 +523,34 @@ export const FriendBalancesList = () => {
                     </div>
                   </div>
 
-                  {/* Amount & Action */}
-                  <div className="flex items-center gap-4">
-                    <span
-                      className={`font-mono text-lg font-bold tracking-wide ${isPositive ? "text-[#00E0B8]" : "text-rose-500"}`}
+                  {/* Right: Amount + Icon - CSS Grid enforces exact column widths */}
+                  <div className="grid grid-cols-[100px_40px] gap-2 items-center flex-shrink-0">
+                    <div
+                      className={`font-mono text-lg font-bold tabular-nums text-right ${
+                        isPositive ? "text-[#00E0B8]" : "text-rose-500"
+                      }`}
                     >
                       ${formatAmount(balance.net_balance)}
-                    </span>
+                    </div>
 
-                    {/* Notify button - shows message that notifications are not available */}
-                    {isRequestable && (
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={(e: React.MouseEvent<HTMLButtonElement>) => handleNotifyFriend(balance, e)}
-                        className="btn btn-circle btn-sm btn-ghost text-warning hover:bg-warning/20"
-                      >
-                        <Bell className="w-5 h-5" />
-                      </motion.button>
-                    )}
+                    <div
+                      role={isPositive ? "button" : undefined}
+                      tabIndex={isPositive ? 0 : undefined}
+                      onClick={
+                        isPositive
+                          ? e => {
+                              e.stopPropagation();
+                              handlePaymentRequestClick(balance, e);
+                            }
+                          : undefined
+                      }
+                      className={`w-10 h-10 flex items-center justify-center rounded-full transition-colors ${
+                        isPositive && !isProcessing && !isSuccess ? "cursor-pointer hover:bg-[#00E0B8]/10" : ""
+                      }`}
+                      title={isPositive ? (hasPendingRequest ? "Send reminder" : "Send payment request") : undefined}
+                    >
+                      {getIconContent()}
+                    </div>
                   </div>
                 </motion.div>
               );
@@ -497,8 +564,8 @@ export const FriendBalancesList = () => {
         isOpen={isExpenseModalOpen}
         onClose={() => setIsExpenseModalOpen(false)}
         onSuccess={() => {
-          // Refresh balances after adding expense
           refreshBalances();
+          refreshRequests(); // Refresh to show updated icons (stale requests are deleted)
         }}
       />
 
@@ -510,36 +577,6 @@ export const FriendBalancesList = () => {
           params={settlementParams}
           onSuccess={handleSettlementSuccess}
         />
-      )}
-
-      {/* Loading/Success Overlay */}
-      {isCreatingRequest && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-base-100 rounded-2xl p-8 shadow-2xl flex flex-col items-center gap-4 max-w-sm mx-4">
-            {requestSuccess ? (
-              <>
-                {/* Success State */}
-                <div className="w-16 h-16 rounded-full bg-success/20 flex items-center justify-center">
-                  <svg className="w-8 h-8 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <p className="text-lg font-semibold text-success">Payment request sent!</p>
-              </>
-            ) : (
-              <>
-                {/* Loading State */}
-                <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
-                <div className="text-center">
-                  <p className="text-lg font-semibold text-base-content mb-1">Sending Request</p>
-                  <p className="text-sm text-base-content/60">
-                    {selectedFriend ? `To ${selectedFriend.friend_name}...` : "Please wait..."}
-                  </p>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
       )}
 
       {/* Error Toast */}

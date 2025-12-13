@@ -134,5 +134,10 @@ export type CircleWithMembers = Circle & {
   members: User[];
 };
 
+// Circle with members and ownership flag (for combined creator/member views)
+export type CircleWithMembersAndOwnership = CircleWithMembers & {
+  isOwner: boolean;
+};
+
 // Realtime types for subscriptions
 export type { RealtimeChannel, RealtimePostgresChangesPayload };

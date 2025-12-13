@@ -11,6 +11,7 @@ import { type PaymentParams } from "~~/components/settle/types";
 import { BalancesLiveFeed } from "~~/components/splits/BalancesLiveFeed";
 import { SplitsHero } from "~~/components/splits/SplitsHero";
 import { useFriendBalancesRealtime } from "~~/hooks/useFriendBalancesRealtime";
+import { usePaymentRequestsRealtime } from "~~/hooks/usePaymentRequestsRealtime";
 import { useUSDCBalance } from "~~/hooks/useUSDCBalance";
 import { type FriendBalance } from "~~/lib/supabase";
 
@@ -18,6 +19,8 @@ export default function SplitsPage() {
   const { ready, authenticated, user, login } = usePrivy();
   const { balances, overallBalance, loading, error, refresh: refreshBalances } = useFriendBalancesRealtime();
   const { formattedBalance: walletBalance, isLoading: isWalletBalanceLoading } = useUSDCBalance();
+  // Use realtime hook for payment requests - updates automatically when DB changes
+  const { requests: outgoingRequests, refresh: refreshRequests } = usePaymentRequestsRealtime("outgoing");
 
   // Modal states
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
@@ -25,11 +28,19 @@ export default function SplitsPage() {
   const [selectedFriend, setSelectedFriend] = useState<FriendBalance | null>(null);
   const [settlementParams, setSettlementParams] = useState<PaymentParams | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [isCreatingRequest, setIsCreatingRequest] = useState(false);
-  const [requestSuccess, setRequestSuccess] = useState(false);
+  const [processingFriendWallet, setProcessingFriendWallet] = useState<string | null>(null);
+  const [successFriendWallet, setSuccessFriendWallet] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const walletAddress = user?.wallet?.address;
+
+  // Get pending requests only - filtered from realtime data
+  const pendingRequests = outgoingRequests.filter(req => req.status === "pending");
+
+  // Helper to get pending request for a friend (simplified - just checks if any request exists)
+  const getRequestForFriend = (friendWallet: string) => {
+    return pendingRequests.find(req => req.payer.toLowerCase() === friendWallet.toLowerCase()) || null;
+  };
 
   const formatAmount = (amount: number): string => {
     return Math.abs(amount).toFixed(2);
@@ -39,85 +50,105 @@ export default function SplitsPage() {
     return balance < 0;
   };
 
-  const canRequestPayment = (balance: number): boolean => {
+  const _canRequestPayment = (balance: number): boolean => {
     return balance > 0;
   };
 
   const handleFriendClick = async (friend: FriendBalance) => {
     if (!walletAddress) return;
 
-    // Case 1: They owe you - create a payment request
-    if (canRequestPayment(friend.net_balance)) {
-      await handleCreateRequest(friend);
-      return;
-    }
-
-    // Case 2: You owe them - open settlement modal
+    // Only handle settlement when clicking on the row (you owe them)
     if (canSettle(friend.net_balance)) {
       await handleSettlement(friend);
       return;
     }
+
+    // For positive balances (they owe you), do nothing on row click
+    // The payment request is triggered via the icon
   };
 
-  const handleCreateRequest = async (friend: FriendBalance) => {
-    if (!walletAddress || isCreatingRequest) return;
+  // Handle payment request icon click - creates request or sends reminder
+  const handlePaymentRequestClick = async (friend: FriendBalance) => {
+    if (!walletAddress || processingFriendWallet) return;
+
+    const existingRequest = getRequestForFriend(friend.friend_wallet);
 
     setSelectedFriend(friend);
-    setIsCreatingRequest(true);
+    setProcessingFriendWallet(friend.friend_wallet);
     setActionError(null);
 
     try {
-      // Fetch token address from their expenses
-      const tokenResponse = await fetch(
-        `/api/balances/token?userWallet=${walletAddress}&friendWallet=${friend.friend_wallet}`,
-      );
-      const tokenData = await tokenResponse.json();
+      if (existingRequest) {
+        // Send reminder for existing request
+        const reminderResponse = await fetch(`/api/payment-requests/${existingRequest.id}/remind`, {
+          method: "POST",
+        });
 
-      if (!tokenResponse.ok) {
-        throw new Error(tokenData.error || "Failed to fetch token address");
+        const reminderData = await reminderResponse.json();
+
+        if (!reminderResponse.ok) {
+          throw new Error(reminderData.error || "Failed to send reminder");
+        }
+
+        // Show success checkmark animation
+        setProcessingFriendWallet(null);
+        setSuccessFriendWallet(friend.friend_wallet);
+        setTimeout(() => {
+          setSuccessFriendWallet(null);
+          setSelectedFriend(null);
+        }, 1500);
+        return;
+      } else {
+        // Create new payment request
+        const tokenResponse = await fetch(
+          `/api/balances/token?userWallet=${walletAddress}&friendWallet=${friend.friend_wallet}`,
+        );
+        const tokenData = await tokenResponse.json();
+
+        if (!tokenResponse.ok) {
+          throw new Error(tokenData.error || "Failed to fetch token address");
+        }
+
+        const requestResponse = await fetch("/api/payment-requests", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            payer: friend.friend_wallet,
+            recipient: walletAddress,
+            token: tokenData.tokenAddress,
+            amount: formatAmount(friend.net_balance),
+            memo: `Settlement request from ${user?.twitter?.username || "you"}`,
+            payerTwitter: friend.friend_twitter_handle,
+            requesterTwitter: user?.twitter?.username,
+          }),
+        });
+
+        const requestData = await requestResponse.json();
+
+        if (!requestResponse.ok) {
+          throw new Error(requestData.error || "Failed to create request");
+        }
+
+        // Show success animation - realtime subscription will update pendingRequests
+        setProcessingFriendWallet(null);
+        setSuccessFriendWallet(friend.friend_wallet);
+        refreshRequests(); // Fire-and-forget, realtime handles the actual update
+
+        if (!requestData.isExisting) {
+          setSuccessMessage(`Payment request sent to ${friend.friend_name}`);
+          setTimeout(() => setSuccessMessage(null), 3000);
+        }
+
+        setTimeout(() => {
+          setSuccessFriendWallet(null);
+          setSelectedFriend(null);
+        }, 1500);
+        return;
       }
-
-      // Create payment request
-      const requestResponse = await fetch("/api/payment-requests", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          payer: friend.friend_wallet,
-          recipient: walletAddress,
-          token: tokenData.tokenAddress,
-          amount: formatAmount(friend.net_balance),
-          memo: `Settlement request from ${user?.twitter?.username || "you"}`,
-          payerTwitter: friend.friend_twitter_handle,
-          requesterTwitter: user?.twitter?.username,
-        }),
-      });
-
-      const requestData = await requestResponse.json();
-
-      if (!requestResponse.ok) {
-        throw new Error(requestData.error || "Failed to create request");
-      }
-
-      // Show success state in modal
-      setRequestSuccess(true);
-
-      // Show success message for existing requests
-      if (requestData.isExisting) {
-        setSuccessMessage(`A payment request for ${friend.friend_name} already exists and is still pending.`);
-        setTimeout(() => setSuccessMessage(null), 5000);
-      }
-
-      // Auto-close after showing success
-      setTimeout(() => {
-        setIsCreatingRequest(false);
-        setRequestSuccess(false);
-        setSelectedFriend(null);
-      }, 2000);
     } catch (err) {
-      console.error("Error creating request:", err);
-      setActionError(err instanceof Error ? err.message : "Failed to create payment request");
-      setIsCreatingRequest(false);
-      setRequestSuccess(false);
+      console.error("Error with payment request:", err);
+      setActionError(err instanceof Error ? err.message : "Failed to process request");
+      setProcessingFriendWallet(null);
     }
   };
 
@@ -197,13 +228,6 @@ export default function SplitsPage() {
     setIsSettleModalOpen(false);
     setSelectedFriend(null);
     setSettlementParams(null);
-  };
-
-  // Handler for bell icon - shows message that notifications are not available
-  const handleNotifyFriend = (friend: FriendBalance, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setSuccessMessage(`Notifications not available. Tap ${friend.friend_name} to send a payment request.`);
-    setTimeout(() => setSuccessMessage(null), 3000);
   };
 
   // Loading state - Privy not ready
@@ -356,8 +380,11 @@ export default function SplitsPage() {
           balances={balances}
           loading={false}
           onFriendClick={handleFriendClick}
-          onNotifyFriend={handleNotifyFriend}
           onAddExpense={() => setIsExpenseModalOpen(true)}
+          pendingRequests={pendingRequests}
+          onPaymentRequestClick={handlePaymentRequestClick}
+          processingFriendWallet={processingFriendWallet}
+          successFriendWallet={successFriendWallet}
         />
       )}
 
@@ -367,6 +394,7 @@ export default function SplitsPage() {
         onClose={() => setIsExpenseModalOpen(false)}
         onSuccess={() => {
           refreshBalances();
+          refreshRequests(); // Refresh to show updated icons (stale requests are deleted)
         }}
       />
 
@@ -378,36 +406,6 @@ export default function SplitsPage() {
           params={settlementParams}
           onSuccess={handleSettlementSuccess}
         />
-      )}
-
-      {/* Loading/Success Overlay */}
-      {isCreatingRequest && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-base-100 rounded-2xl p-8 shadow-2xl flex flex-col items-center gap-4 max-w-sm mx-4">
-            {requestSuccess ? (
-              <>
-                {/* Success State */}
-                <div className="w-16 h-16 rounded-full bg-success/20 flex items-center justify-center">
-                  <svg className="w-8 h-8 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <p className="text-lg font-semibold text-success">Payment request sent!</p>
-              </>
-            ) : (
-              <>
-                {/* Loading State */}
-                <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
-                <div className="text-center">
-                  <p className="text-lg font-semibold text-base-content mb-1">Sending Request</p>
-                  <p className="text-sm text-base-content/60">
-                    {selectedFriend ? `To ${selectedFriend.friend_name}...` : "Please wait..."}
-                  </p>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
       )}
 
       {/* Error Toast */}

@@ -1,13 +1,12 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { CalendarDays, CreditCard, Plus, Store, TrendingUp, Zap } from "lucide-react";
+import { CalendarDays, Store, Zap } from "lucide-react";
 import type { ActiveContext, DashboardMetrics, DashboardMode } from "~~/hooks/useDashboardRealtime";
 
 interface DashboardHeroProps {
   mode: DashboardMode;
   metrics: DashboardMetrics;
-  onCreateEvent: () => void;
   activeContext?: ActiveContext;
   hasDualRole?: boolean;
 }
@@ -249,105 +248,9 @@ const HeroCard = ({ metrics, activeContext, mode, hasDualRole }: HeroCardProps) 
   );
 };
 
-// Enhanced Empty state hero with value proposition
-const EmptyHero = ({ onCreateEvent }: { onCreateEvent: () => void }) => (
-  <div className="flex flex-col min-h-[50vh] items-center justify-center text-center p-6">
-    <motion.div
-      initial={{ scale: 0.8, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      transition={{ type: "spring", stiffness: 300, damping: 25 }}
-      className="w-full max-w-sm rounded-3xl p-8 relative overflow-hidden border border-white/[0.05]"
-      style={{
-        background: "linear-gradient(145deg, #1a1a1a 0%, #0d0d0d 100%)",
-      }}
-    >
-      {/* Gradient overlay */}
-      <div
-        className="absolute inset-0 opacity-30"
-        style={{
-          backgroundImage:
-            "radial-gradient(at 30% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 50%), radial-gradient(at 70% 80%, rgba(242, 169, 0, 0.1) 0%, transparent 50%)",
-        }}
-      />
-
-      <div className="relative">
-        {/* Feature Icons */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="flex items-center justify-center gap-3 mb-6"
-        >
-          <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
-            <Store className="w-6 h-6 text-primary" />
-          </div>
-          <div className="w-12 h-12 rounded-2xl bg-[#00E0B8]/10 flex items-center justify-center">
-            <CreditCard className="w-6 h-6 text-[#00E0B8]" />
-          </div>
-          <div className="w-12 h-12 rounded-2xl bg-warning/10 flex items-center justify-center">
-            <TrendingUp className="w-6 h-6 text-warning" />
-          </div>
-        </motion.div>
-
-        <motion.h2
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15 }}
-          className="text-2xl font-bold mb-3 text-white"
-        >
-          Event Payments Made Easy
-        </motion.h2>
-
-        <motion.p
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="text-base-content/60 mb-6 text-sm"
-        >
-          Create events, add vendor stalls, and let customers pay with a tap.
-        </motion.p>
-
-        {/* Feature List */}
-        <motion.ul
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25 }}
-          className="text-left text-sm text-base-content/70 space-y-3 mb-8"
-        >
-          <li className="flex items-center gap-3">
-            <span className="w-2 h-2 rounded-full bg-[#00E0B8]" />
-            <span>Gasless NFC payments</span>
-          </li>
-          <li className="flex items-center gap-3">
-            <span className="w-2 h-2 rounded-full bg-[#00E0B8]" />
-            <span>Instant vendor settlement</span>
-          </li>
-          <li className="flex items-center gap-3">
-            <span className="w-2 h-2 rounded-full bg-[#00E0B8]" />
-            <span>Real-time revenue tracking</span>
-          </li>
-        </motion.ul>
-
-        <motion.button
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={onCreateEvent}
-          className="w-full py-4 bg-primary text-primary-content font-semibold rounded-xl shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all flex items-center justify-center gap-2"
-        >
-          <Plus className="w-5 h-5" />
-          Create Your First Event
-        </motion.button>
-      </div>
-    </motion.div>
-  </div>
-);
-
-export const DashboardHero = ({ mode, metrics, onCreateEvent, activeContext, hasDualRole }: DashboardHeroProps) => {
+export const DashboardHero = ({ mode, metrics, activeContext, hasDualRole }: DashboardHeroProps) => {
   if (mode === "empty") {
-    return <EmptyHero onCreateEvent={onCreateEvent} />;
+    return null;
   }
 
   return <HeroCard mode={mode} metrics={metrics} activeContext={activeContext} hasDualRole={hasDualRole} />;

@@ -85,6 +85,23 @@ export async function createExpense(params: CreateExpenseParams): Promise<Create
     throw new Error(`Failed to add participants: ${participantsError?.message}`);
   }
 
+  // 3. Cancel any pending payment requests for these participants
+  // (the balance has changed, so old requests are now stale)
+  const otherParticipants = normalizedParticipantWallets.filter(w => w !== normalizedCreatorWallet);
+  if (otherParticipants.length > 0) {
+    const { error: cancelError } = await supabase
+      .from("payment_requests")
+      .delete()
+      .eq("recipient", normalizedCreatorWallet)
+      .eq("status", "pending")
+      .in("payer", otherParticipants);
+
+    if (cancelError) {
+      console.error("Failed to cancel stale payment requests:", cancelError);
+      // Don't throw - this is not critical
+    }
+  }
+
   return {
     expense,
     participants: participantsData as ExpenseParticipant[],

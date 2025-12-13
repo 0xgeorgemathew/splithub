@@ -3,15 +3,30 @@
 import { useState } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowDownRight, ArrowUpRight, Bell, ChevronDown, Plus, Wallet } from "lucide-react";
-import { type FriendBalance } from "~~/lib/supabase";
+import {
+  ArrowDownRight,
+  ArrowUpRight,
+  BanknoteArrowDown,
+  Bell,
+  Check,
+  ChevronDown,
+  Nfc,
+  Plus,
+  Wallet,
+} from "lucide-react";
+import { type FriendBalance, type PaymentRequest } from "~~/lib/supabase";
 
 interface BalancesLiveFeedProps {
   balances: FriendBalance[];
   loading: boolean;
   onFriendClick: (friend: FriendBalance) => void;
-  onNotifyFriend: (friend: FriendBalance, e: React.MouseEvent) => void;
   onAddExpense: () => void;
+  // Payment requests for checking valid active requests (with amount matching)
+  pendingRequests?: PaymentRequest[];
+  onPaymentRequestClick?: (friend: FriendBalance) => void;
+  processingFriendWallet?: string | null;
+  // Success state for showing checkmark animation
+  successFriendWallet?: string | null;
 }
 
 const formatAmount = (amount: number): string => {
@@ -40,17 +55,31 @@ const BalanceItem = ({
   balance,
   isLast,
   onFriendClick,
-  onNotifyFriend,
+  hasValidRequest,
+  onPaymentRequestClick,
+  isProcessing,
+  isSuccess,
 }: {
   balance: FriendBalance;
   isLast: boolean;
   onFriendClick: (friend: FriendBalance) => void;
-  onNotifyFriend: (friend: FriendBalance, e: React.MouseEvent) => void;
+  hasValidRequest?: boolean;
+  onPaymentRequestClick?: (friend: FriendBalance) => void;
+  isProcessing?: boolean;
+  isSuccess?: boolean;
 }) => {
   const isPositive = balance.net_balance > 0;
   const isSettleable = canSettle(balance.net_balance);
   const isRequestable = canRequestPayment(balance.net_balance);
-  const isClickable = isSettleable || isRequestable;
+  // Only settleable items are clickable on row (for negative balances)
+  const isClickable = isSettleable;
+
+  const handleIconClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onPaymentRequestClick && !isProcessing) {
+      onPaymentRequestClick(balance);
+    }
+  };
 
   return (
     <motion.div
@@ -60,8 +89,8 @@ const BalanceItem = ({
       whileTap={isClickable ? { scale: 0.98 } : {}}
       onClick={() => isClickable && onFriendClick(balance)}
       className={`flex items-center justify-between py-4 px-1 transition-colors ${!isLast ? "border-b border-white/5" : ""} ${
-        isClickable ? "cursor-pointer hover:bg-white/[0.02] active:bg-white/[0.04]" : "cursor-default opacity-60"
-      }`}
+        isClickable ? "cursor-pointer hover:bg-white/[0.02] active:bg-white/[0.04]" : "cursor-default"
+      } ${!isClickable && !isRequestable ? "opacity-60" : ""}`}
     >
       <div className="flex items-center gap-3">
         {/* Avatar */}
@@ -88,30 +117,46 @@ const BalanceItem = ({
         </div>
       </div>
 
-      {/* Amount & Actions */}
-      <div className="flex items-center gap-3">
-        <div className="text-right flex-shrink-0">
-          <span className={`font-mono text-base font-bold ${isPositive ? "text-[#00E0B8]" : "text-rose-500"}`}>
-            {isPositive ? "+" : "-"}${formatAmount(balance.net_balance)}
-          </span>
-          {isSettleable && <div className="text-[9px] text-rose-500/70 uppercase tracking-wider">tap to pay</div>}
-          {isRequestable && <div className="text-[9px] text-[#00E0B8]/70 uppercase tracking-wider">tap to request</div>}
+      {/* Amount & Actions - CSS Grid for alignment */}
+      <div className="grid grid-cols-[80px_32px] gap-2 items-center">
+        <div
+          className={`font-mono text-base font-bold tabular-nums text-right ${isPositive ? "text-[#00E0B8]" : "text-rose-500"}`}
+        >
+          ${formatAmount(balance.net_balance)}
         </div>
 
-        {/* Notify button */}
-        {isRequestable && (
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-              e.stopPropagation();
-              onNotifyFriend(balance, e);
-            }}
-            className="w-9 h-9 rounded-full bg-warning/10 hover:bg-warning/20 flex items-center justify-center transition-colors"
-          >
-            <Bell className="w-4 h-4 text-warning" />
-          </motion.button>
-        )}
+        {/* Icon column - fixed width for alignment */}
+        <div className="w-8 h-8 flex items-center justify-center">
+          {isSettleable && <Nfc className="w-5 h-5 text-rose-500/70" />}
+          {isRequestable && onPaymentRequestClick && (
+            <motion.button
+              whileHover={!isProcessing && !isSuccess ? { scale: 1.1 } : {}}
+              whileTap={!isProcessing && !isSuccess ? { scale: 0.9 } : {}}
+              onClick={handleIconClick}
+              disabled={isProcessing || isSuccess}
+              className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors ${
+                isSuccess
+                  ? "text-[#00E0B8]"
+                  : hasValidRequest
+                    ? "text-[#00E0B8] hover:bg-[#00E0B8]/20"
+                    : "text-[#00E0B8]/70 hover:bg-[#00E0B8]/20"
+              }`}
+              title={hasValidRequest ? "Send reminder" : "Send payment request"}
+            >
+              {isProcessing ? (
+                <motion.div animate={{ rotate: [-8, 8, -8] }} transition={{ duration: 0.4, repeat: Infinity }}>
+                  <Bell className="w-5 h-5" />
+                </motion.div>
+              ) : isSuccess ? (
+                <Check className="w-5 h-5" />
+              ) : hasValidRequest ? (
+                <Bell className="w-5 h-5" />
+              ) : (
+                <BanknoteArrowDown className="w-5 h-5" />
+              )}
+            </motion.button>
+          )}
+        </div>
       </div>
     </motion.div>
   );
@@ -121,10 +166,18 @@ export const BalancesLiveFeed = ({
   balances,
   loading,
   onFriendClick,
-  onNotifyFriend,
   onAddExpense,
+  pendingRequests = [],
+  onPaymentRequestClick,
+  processingFriendWallet,
+  successFriendWallet,
 }: BalancesLiveFeedProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
+
+  // Simple check if friend has any pending request (no amount matching)
+  const hasRequestForFriend = (friendWallet: string): boolean => {
+    return pendingRequests.some(req => req.payer.toLowerCase() === friendWallet.toLowerCase());
+  };
 
   // Don't show if loading
   if (loading) {
@@ -216,7 +269,10 @@ export const BalancesLiveFeed = ({
                 balance={balance}
                 isLast={index === Math.min(1, balances.length - 1)}
                 onFriendClick={onFriendClick}
-                onNotifyFriend={onNotifyFriend}
+                hasValidRequest={hasRequestForFriend(balance.friend_wallet)}
+                onPaymentRequestClick={onPaymentRequestClick}
+                isProcessing={processingFriendWallet === balance.friend_wallet}
+                isSuccess={successFriendWallet === balance.friend_wallet}
               />
             ))}
 
@@ -265,7 +321,10 @@ export const BalancesLiveFeed = ({
                     balance={balance}
                     isLast={index === balances.length - 1}
                     onFriendClick={onFriendClick}
-                    onNotifyFriend={onNotifyFriend}
+                    hasValidRequest={hasRequestForFriend(balance.friend_wallet)}
+                    onPaymentRequestClick={onPaymentRequestClick}
+                    isProcessing={processingFriendWallet === balance.friend_wallet}
+                    isSuccess={successFriendWallet === balance.friend_wallet}
                   />
                 ))}
               </div>
