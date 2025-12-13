@@ -3,7 +3,6 @@
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { Store } from "lucide-react";
 import { POSFullScreen } from "~~/components/credits/POSFullScreen";
 import { VenueCard } from "~~/components/credits/VenueCard";
 import { Activity, getAllActivities } from "~~/config/activities";
@@ -159,7 +158,6 @@ export default function CreditsPage() {
           transition={{ delay: 0.5, duration: 0.3 }}
         >
           {"//LAUNCH POINT-OF-SALE TERMINAL"}
-          <span className="ml-0.5 inline-block h-4 w-[2px] animate-pulse bg-[var(--venue-accent)]" />
         </motion.p>
       </motion.header>
 
@@ -171,7 +169,7 @@ export default function CreditsPage() {
         animate="visible"
       >
         <motion.div variants={itemVariants}>
-          <VenueCard name="SplitHub HQ" status="ready" icon={Store} onClick={handleLaunchPOS} />
+          <VenueCard name="SplitHub HQ" status="ready" onClick={handleLaunchPOS} />
         </motion.div>
       </motion.main>
 
