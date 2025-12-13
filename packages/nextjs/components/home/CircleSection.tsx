@@ -171,13 +171,16 @@ const CircleItem = ({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const isOwner = circle.isOwner;
 
+  // Logic Rule 2: Active state only applies to owners
+  const showActiveState = isOwner && circle.is_active;
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       className="flex flex-col items-center gap-2 relative"
     >
-      {/* Menu trigger - only show for owners */}
+      {/* Menu trigger - only show for owners (Step 2: Settings Access) */}
       {isOwner && (
         <div className="absolute -top-0.5 -right-0.5 z-10">
           <motion.button
@@ -207,26 +210,47 @@ const CircleItem = ({
       )}
 
       {/* Circle with ring */}
-      <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={isOwner ? onSelect : undefined}
-        className={`relative ${!isOwner ? "cursor-default" : ""}`}
-        disabled={!isOwner}
-      >
-        {/* Ring */}
-        <div
-          className={`p-1 rounded-full ${
-            circle.is_active ? "bg-gradient-to-br from-emerald-400 to-teal-500" : "bg-base-300/50"
-          }`}
+      {isOwner ? (
+        // Owner: Interactive button with hover/tap effects
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={onSelect}
+          className="relative cursor-pointer"
         >
-          <div className="rounded-full bg-base-100 p-0.5">
-            <CircleCollage members={circle.members} size={56} />
+          {/* Ring - gradient only for owner's active circles (Step 2: Ring Styling) */}
+          <div
+            className={`p-1 rounded-full ${
+              showActiveState ? "bg-gradient-to-br from-emerald-400 to-teal-500" : "bg-base-300/50"
+            }`}
+          >
+            <div className="rounded-full bg-base-100 p-0.5">
+              <CircleCollage members={circle.members} size={56} />
+            </div>
           </div>
-        </div>
 
-        {/* Non-ownership indicator - shown only for circles user didn't create */}
-        {!isOwner && (
+          {/* Active checkmark - only for owner when active (Step 2: Active Indicator) */}
+          {showActiveState && (
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              className="absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center ring-2 ring-base-100"
+            >
+              <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />
+            </motion.div>
+          )}
+        </motion.button>
+      ) : (
+        // Member: Non-interactive, view-only state (Step 3: Interaction Lock)
+        <div className="relative cursor-default" title="Shared with you">
+          {/* Ring - always inactive style for members (Step 3: Ambiguity Fix) */}
+          <div className="p-1 rounded-full bg-base-300/50">
+            <div className="rounded-full bg-base-100 p-0.5">
+              <CircleCollage members={circle.members} size={56} />
+            </div>
+          </div>
+
+          {/* View-only indicator - bottom-left (Step 3: Status Badge) */}
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
@@ -235,19 +259,8 @@ const CircleItem = ({
           >
             <Eye className="w-2.5 h-2.5 text-white" strokeWidth={2.5} />
           </motion.div>
-        )}
-
-        {/* Active checkmark */}
-        {circle.is_active && (
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            className="absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center ring-2 ring-base-100"
-          >
-            <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />
-          </motion.div>
-        )}
-      </motion.button>
+        </div>
+      )}
 
       {/* Circle name */}
       <span className="text-xs font-medium text-base-content/70 text-center max-w-[80px] truncate">{circle.name}</span>

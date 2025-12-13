@@ -131,6 +131,32 @@ Trigger Build Compatibility Styles
   color: var(--color-base-content);
 }
 
+/* Play Zone Theme Variables - SplitHub Gold */
+.venue-launcher {
+  --venue-bg: #1b1b1b;
+  --venue-surface: #292929;
+  --venue-surface-gradient: linear-gradient(145deg, #1a1a1a 0%, #0d0d0d 100%);
+  --venue-border: rgba(255, 255, 255, 0.1);
+  --venue-border-hover: rgba(242, 169, 0, 0.5);
+  --venue-accent: #f2a900;
+  --venue-accent-dim: #d49500;
+  --venue-accent-glow: rgba(242, 169, 0, 0.3);
+  --venue-accent-glow-intense: rgba(242, 169, 0, 0.5);
+  --venue-text: #f8fafc;
+  --venue-text-muted: #a1a1aa;
+  --venue-halo: 0 0 30px -5px rgba(242, 169, 0, 0.3);
+  --venue-halo-hover: 0 0 40px -5px rgba(242, 169, 0, 0.5);
+}
+
+/* Venue typography utilities */
+.font-bricolage {
+  font-family: var(--font-bricolage), system-ui, sans-serif;
+}
+
+.font-jetbrains {
+  font-family: var(--font-jetbrains), monospace;
+}
+
 .btn {
   @apply shadow-md;
 }

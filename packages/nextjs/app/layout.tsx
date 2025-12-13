@@ -1,4 +1,4 @@
-import { Archivo, JetBrains_Mono, Outfit } from "next/font/google";
+import { Archivo, Bricolage_Grotesque, JetBrains_Mono, Outfit } from "next/font/google";
 import "@scaffold-ui/components/styles.css";
 import { ScaffoldEthAppWithProviders } from "~~/components/ScaffoldEthAppWithProviders";
 import { ThemeProvider } from "~~/components/ThemeProvider";
@@ -25,6 +25,13 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
+const bricolage = Bricolage_Grotesque({
+  subsets: ["latin"],
+  variable: "--font-bricolage",
+  display: "swap",
+  weight: ["200", "400", "700", "800"],
+});
+
 export const metadata = getMetadata({
   title: "SplitHub | Split Bills Instantly with NFC Tap-to-Pay",
   description:
@@ -41,7 +48,10 @@ export const viewport = {
 
 const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {
   return (
-    <html suppressHydrationWarning className={`${archivo.variable} ${outfit.variable} ${jetbrainsMono.variable}`}>
+    <html
+      suppressHydrationWarning
+      className={`${archivo.variable} ${outfit.variable} ${jetbrainsMono.variable} ${bricolage.variable}`}
+    >
       <body>
         <ThemeProvider enableSystem>
           <ScaffoldEthAppWithProviders>{children}</ScaffoldEthAppWithProviders>

@@ -5,3 +5,4 @@ export { POSCardStack } from "./POSCardStack";
 export { POSLed, type LedState } from "./POSLed";
 export { ActivityPanel } from "./ActivityPanel";
 export { ActivityCardStack } from "./ActivityCardStack";
+export { VenueCard } from "./VenueCard";
