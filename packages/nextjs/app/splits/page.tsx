@@ -369,18 +369,16 @@ export default function SplitsPage() {
       <CircleSection />
 
       {/* Balances Live Feed */}
-      {balances.length > 0 && (
-        <BalancesLiveFeed
-          balances={balances}
-          loading={false}
-          onFriendClick={handleFriendClick}
-          onAddExpense={() => setIsExpenseModalOpen(true)}
-          pendingRequests={pendingRequests}
-          onPaymentRequestClick={handlePaymentRequestClick}
-          processingFriendWallet={processingFriendWallet}
-          successFriendWallet={successFriendWallet}
-        />
-      )}
+      <BalancesLiveFeed
+        balances={balances}
+        loading={false}
+        onFriendClick={handleFriendClick}
+        onAddExpense={() => setIsExpenseModalOpen(true)}
+        pendingRequests={pendingRequests}
+        onPaymentRequestClick={handlePaymentRequestClick}
+        processingFriendWallet={processingFriendWallet}
+        successFriendWallet={successFriendWallet}
+      />
 
       {/* Expense Modal */}
       <ExpenseModal
