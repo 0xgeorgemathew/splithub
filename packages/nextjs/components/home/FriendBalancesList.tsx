@@ -24,6 +24,62 @@ import { usePaymentRequestsRealtime } from "~~/hooks/usePaymentRequestsRealtime"
 import { useUSDCBalance } from "~~/hooks/useUSDCBalance";
 import { type FriendBalance } from "~~/lib/supabase";
 
+// Icon animation variants for smooth transitions
+const iconVariants = {
+  initial: { scale: 0, opacity: 0, rotate: -180 },
+  animate: { scale: 1, opacity: 1, rotate: 0 },
+  exit: { scale: 0, opacity: 0, rotate: 180 },
+};
+
+// Animated icon component for payment request state transitions
+const AnimatedRequestIcon = ({
+  isProcessing,
+  isSuccess,
+  hasValidRequest,
+}: {
+  isProcessing: boolean;
+  isSuccess: boolean;
+  hasValidRequest: boolean;
+}) => {
+  // Determine which icon to show based on state
+  // Flow: Banknote → Loading → Check → Bell (new request)
+  // Flow: Bell → Loading → Check → Bell (reminder)
+  const getIconKey = () => {
+    if (isProcessing) return "loading";
+    if (isSuccess) return "check";
+    if (hasValidRequest) return "bell";
+    return "banknote";
+  };
+
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={getIconKey()}
+        variants={iconVariants}
+        initial="initial"
+        animate="animate"
+        exit="exit"
+        transition={{ duration: 0.2, ease: "easeInOut" }}
+        className="flex items-center justify-center"
+      >
+        {isProcessing ? (
+          <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>
+            <Bell className="w-5 h-5 text-[#00E0B8]" />
+          </motion.div>
+        ) : isSuccess ? (
+          <motion.div initial={{ scale: 0.8 }} animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 0.3 }}>
+            <Check className="w-5 h-5 text-[#00E0B8]" />
+          </motion.div>
+        ) : hasValidRequest ? (
+          <Bell className="w-5 h-5 text-[#00E0B8]" />
+        ) : (
+          <BanknoteArrowDown className="w-5 h-5 text-[#00E0B8]/70" />
+        )}
+      </motion.div>
+    </AnimatePresence>
+  );
+};
+
 export const FriendBalancesList = () => {
   const { user } = usePrivy();
   const { balances, overallBalance, loading, error, refresh: refreshBalances } = useFriendBalancesRealtime();
@@ -35,7 +91,6 @@ export const FriendBalancesList = () => {
   const [isSettleModalOpen, setIsSettleModalOpen] = useState(false);
   const [selectedFriend, setSelectedFriend] = useState<FriendBalance | null>(null);
   const [settlementParams, setSettlementParams] = useState<PaymentParams | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isProcessingRequest, setIsProcessingRequest] = useState(false);
   const [processingFriendWallet, setProcessingFriendWallet] = useState<string | null>(null);
   const [successFriendWallet, setSuccessFriendWallet] = useState<string | null>(null);
@@ -145,11 +200,6 @@ export const FriendBalancesList = () => {
         setProcessingFriendWallet(null);
         setSuccessFriendWallet(friend.friend_wallet);
         refreshRequests(); // Fire-and-forget, realtime handles the actual update
-
-        if (!requestData.isExisting) {
-          setSuccessMessage(`Payment request sent to ${friend.friend_name}`);
-          setTimeout(() => setSuccessMessage(null), 3000);
-        }
 
         setTimeout(() => {
           setSuccessFriendWallet(null);
@@ -456,36 +506,6 @@ export const FriendBalancesList = () => {
               const isSuccess = successFriendWallet === balance.friend_wallet;
               const hasPendingRequest = hasRequestForFriend(balance.friend_wallet);
 
-              // Determine which icon to show
-              const getIconContent = () => {
-                if (isNegative) {
-                  // You owe them - show NFC icon
-                  return <Nfc className="w-5 h-5 text-rose-500/70" />;
-                }
-                if (isPositive) {
-                  // They owe you - show Bell (or Check on success)
-                  if (isSuccess) {
-                    return <Check className="w-5 h-5 text-[#00E0B8]" />;
-                  }
-                  if (isProcessing) {
-                    return (
-                      <motion.div
-                        animate={{ rotate: [-8, 8, -8] }}
-                        transition={{ duration: 0.4, repeat: Infinity, ease: "easeInOut" }}
-                      >
-                        <Bell className="w-5 h-5 text-[#00E0B8]" />
-                      </motion.div>
-                    );
-                  }
-                  return hasPendingRequest ? (
-                    <Bell className="w-5 h-5 text-[#00E0B8]" />
-                  ) : (
-                    <BanknoteArrowDown className="w-5 h-5 text-[#00E0B8]/70" />
-                  );
-                }
-                return null;
-              };
-
               return (
                 <motion.div
                   key={balance.friend_wallet}
@@ -549,7 +569,14 @@ export const FriendBalancesList = () => {
                       }`}
                       title={isPositive ? (hasPendingRequest ? "Send reminder" : "Send payment request") : undefined}
                     >
-                      {getIconContent()}
+                      {isNegative && <Nfc className="w-5 h-5 text-rose-500/70" />}
+                      {isPositive && (
+                        <AnimatedRequestIcon
+                          isProcessing={isProcessing}
+                          isSuccess={isSuccess}
+                          hasValidRequest={hasPendingRequest}
+                        />
+                      )}
                     </div>
                   </div>
                 </motion.div>
@@ -592,18 +619,6 @@ export const FriendBalancesList = () => {
               />
             </svg>
             <span className="font-medium text-sm">{actionError}</span>
-          </div>
-        </div>
-      )}
-
-      {/* Success Toast */}
-      {successMessage && (
-        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-2 duration-300">
-          <div className="bg-success text-success-content px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 max-w-md">
-            <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            <span className="font-medium text-sm">{successMessage}</span>
           </div>
         </div>
       )}

@@ -10,11 +10,70 @@ import {
   Bell,
   Check,
   ChevronDown,
+  Loader2,
   Nfc,
   Plus,
   Wallet,
 } from "lucide-react";
 import { type FriendBalance, type PaymentRequest } from "~~/lib/supabase";
+
+// Icon animation variants for smooth transitions
+const iconVariants = {
+  initial: { scale: 0, opacity: 0, rotate: -180 },
+  animate: { scale: 1, opacity: 1, rotate: 0 },
+  exit: { scale: 0, opacity: 0, rotate: 180 },
+};
+
+// Animated icon component for payment request state transitions
+const AnimatedRequestIcon = ({
+  isProcessing,
+  isSuccess,
+  hasValidRequest,
+  onComplete,
+}: {
+  isProcessing: boolean;
+  isSuccess: boolean;
+  hasValidRequest: boolean;
+  onComplete?: () => void;
+}) => {
+  // Determine which icon to show based on state
+  // Flow: Banknote → Loading → Check → Bell (new request)
+  // Flow: Bell → Loading → Check → Bell (reminder)
+  const getIconKey = () => {
+    if (isProcessing) return "loading";
+    if (isSuccess) return "check";
+    if (hasValidRequest) return "bell";
+    return "banknote";
+  };
+
+  return (
+    <AnimatePresence mode="wait" onExitComplete={onComplete}>
+      <motion.div
+        key={getIconKey()}
+        variants={iconVariants}
+        initial="initial"
+        animate="animate"
+        exit="exit"
+        transition={{ duration: 0.2, ease: "easeInOut" }}
+        className="flex items-center justify-center"
+      >
+        {isProcessing ? (
+          <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>
+            <Loader2 className="w-5 h-5 text-[#00E0B8]" />
+          </motion.div>
+        ) : isSuccess ? (
+          <motion.div initial={{ scale: 0.8 }} animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 0.3 }}>
+            <Check className="w-5 h-5 text-[#00E0B8]" />
+          </motion.div>
+        ) : hasValidRequest ? (
+          <Bell className="w-5 h-5 text-[#00E0B8]" />
+        ) : (
+          <BanknoteArrowDown className="w-5 h-5 text-[#00E0B8]/70" />
+        )}
+      </motion.div>
+    </AnimatePresence>
+  );
+};
 
 interface BalancesLiveFeedProps {
   balances: FriendBalance[];
@@ -134,26 +193,14 @@ const BalanceItem = ({
               whileTap={!isProcessing && !isSuccess ? { scale: 0.9 } : {}}
               onClick={handleIconClick}
               disabled={isProcessing || isSuccess}
-              className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors ${
-                isSuccess
-                  ? "text-[#00E0B8]"
-                  : hasValidRequest
-                    ? "text-[#00E0B8] hover:bg-[#00E0B8]/20"
-                    : "text-[#00E0B8]/70 hover:bg-[#00E0B8]/20"
-              }`}
+              className="w-8 h-8 flex items-center justify-center rounded-full transition-colors hover:bg-[#00E0B8]/20"
               title={hasValidRequest ? "Send reminder" : "Send payment request"}
             >
-              {isProcessing ? (
-                <motion.div animate={{ rotate: [-8, 8, -8] }} transition={{ duration: 0.4, repeat: Infinity }}>
-                  <Bell className="w-5 h-5" />
-                </motion.div>
-              ) : isSuccess ? (
-                <Check className="w-5 h-5" />
-              ) : hasValidRequest ? (
-                <Bell className="w-5 h-5" />
-              ) : (
-                <BanknoteArrowDown className="w-5 h-5" />
-              )}
+              <AnimatedRequestIcon
+                isProcessing={isProcessing ?? false}
+                isSuccess={isSuccess ?? false}
+                hasValidRequest={hasValidRequest ?? false}
+              />
             </motion.button>
           )}
         </div>

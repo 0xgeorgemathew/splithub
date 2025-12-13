@@ -27,7 +27,6 @@ export default function SplitsPage() {
   const [isSettleModalOpen, setIsSettleModalOpen] = useState(false);
   const [selectedFriend, setSelectedFriend] = useState<FriendBalance | null>(null);
   const [settlementParams, setSettlementParams] = useState<PaymentParams | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [processingFriendWallet, setProcessingFriendWallet] = useState<string | null>(null);
   const [successFriendWallet, setSuccessFriendWallet] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -133,11 +132,6 @@ export default function SplitsPage() {
         setProcessingFriendWallet(null);
         setSuccessFriendWallet(friend.friend_wallet);
         refreshRequests(); // Fire-and-forget, realtime handles the actual update
-
-        if (!requestData.isExisting) {
-          setSuccessMessage(`Payment request sent to ${friend.friend_name}`);
-          setTimeout(() => setSuccessMessage(null), 3000);
-        }
 
         setTimeout(() => {
           setSuccessFriendWallet(null);
@@ -421,18 +415,6 @@ export default function SplitsPage() {
               />
             </svg>
             <span className="font-medium text-sm">{actionError}</span>
-          </div>
-        </div>
-      )}
-
-      {/* Success Toast */}
-      {successMessage && (
-        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-2 duration-300">
-          <div className="bg-success text-success-content px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 max-w-md">
-            <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            <span className="font-medium text-sm">{successMessage}</span>
           </div>
         </div>
       )}
