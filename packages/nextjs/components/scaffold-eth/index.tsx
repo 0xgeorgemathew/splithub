@@ -1,2 +1,1 @@
-export * from "./BlockieAvatar";
-export * from "./RainbowKitCustomConnectButton";
+// Exports removed - RainbowKit components no longer used (app uses Privy)
