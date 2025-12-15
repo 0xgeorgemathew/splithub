@@ -114,7 +114,10 @@ export const useDashboardRealtime = (): UseDashboardRealtimeReturn => {
             `
             *,
             owner_user:users!owner_wallet(name, twitter_handle, twitter_profile_url),
-            stalls(*)
+            stalls(
+              *,
+              operator_user:users!operator_wallet(name, twitter_handle, twitter_profile_url)
+            )
           `,
           )
           .eq("owner_wallet", wallet)

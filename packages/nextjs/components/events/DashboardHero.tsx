@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { CalendarDays, Store, Zap } from "lucide-react";
+import { CalendarDays, Plus, Store, Zap } from "lucide-react";
 import type { ActiveContext, DashboardMetrics, DashboardMode } from "~~/hooks/useDashboardRealtime";
 
 interface DashboardHeroProps {
@@ -9,6 +9,7 @@ interface DashboardHeroProps {
   metrics: DashboardMetrics;
   activeContext?: ActiveContext;
   hasDualRole?: boolean;
+  onCreateEvent?: () => void;
 }
 
 const formatCurrency = (amount: number): string => {
@@ -248,9 +249,56 @@ const HeroCard = ({ metrics, activeContext, mode, hasDualRole }: HeroCardProps) 
   );
 };
 
-export const DashboardHero = ({ mode, metrics, activeContext, hasDualRole }: DashboardHeroProps) => {
+// Compact empty state hero - encourages event creation without competing with Active Stalls
+const EmptyStateHero = ({ onCreateEvent }: { onCreateEvent?: () => void }) => {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="mb-5 rounded-2xl p-4 relative overflow-hidden border border-white/[0.03]"
+      style={{
+        background: "linear-gradient(145deg, #161616 0%, #0f0f0f 100%)",
+      }}
+    >
+      {/* Subtle gradient overlay */}
+      <div
+        className="absolute inset-0 opacity-30"
+        style={{
+          backgroundImage: "radial-gradient(at 30% 40%, rgba(139, 92, 246, 0.08) 0%, transparent 50%)",
+        }}
+      />
+
+      <div className="relative flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+            <CalendarDays className="w-4.5 h-4.5 text-primary/70" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-base-content/80">Want to host an event?</p>
+            <p className="text-xs text-base-content/40">Accept tap-to-pay at your venue</p>
+          </div>
+        </div>
+
+        {onCreateEvent && (
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={onCreateEvent}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-primary/15 hover:bg-primary/25 text-primary rounded-xl text-xs font-semibold transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Create Event
+          </motion.button>
+        )}
+      </div>
+    </motion.div>
+  );
+};
+
+export const DashboardHero = ({ mode, metrics, activeContext, hasDualRole, onCreateEvent }: DashboardHeroProps) => {
   if (mode === "empty") {
-    return null;
+    return <EmptyStateHero onCreateEvent={onCreateEvent} />;
   }
 
   return <HeroCard mode={mode} metrics={metrics} activeContext={activeContext} hasDualRole={hasDualRole} />;

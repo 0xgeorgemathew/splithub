@@ -84,6 +84,15 @@ export async function updateEvent(eventId: number, updates: Partial<Event>): Pro
   return data as Event;
 }
 
+/**
+ * Delete event (and associated stalls via cascade)
+ */
+export async function deleteEvent(eventId: number): Promise<void> {
+  const { error } = await supabase.from("events").delete().eq("id", eventId);
+
+  if (error) throw new Error(`Failed to delete event: ${error.message}`);
+}
+
 // ============================================================================
 // STALLS
 // ============================================================================
@@ -158,6 +167,15 @@ export async function updateStall(stallId: number, updates: Partial<Stall>): Pro
 
   if (error) throw new Error(`Failed to update stall: ${error.message}`);
   return data as Stall;
+}
+
+/**
+ * Delete stall
+ */
+export async function deleteStall(stallId: number): Promise<void> {
+  const { error } = await supabase.from("stalls").delete().eq("id", stallId);
+
+  if (error) throw new Error(`Failed to delete stall: ${error.message}`);
 }
 
 /**

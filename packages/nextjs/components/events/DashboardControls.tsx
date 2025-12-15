@@ -1,13 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { EventModal } from "./EventModal";
 import { StallModal } from "./StallModal";
 import { StallSection } from "./StallSection";
 import { AnimatePresence, motion } from "framer-motion";
-import { CalendarDays, ChevronRight, Copy, DollarSign, ExternalLink, Plus, Store } from "lucide-react";
+import {
+  CalendarDays,
+  ChevronRight,
+  Copy,
+  DollarSign,
+  Edit2,
+  ExternalLink,
+  Pause,
+  Play,
+  Plus,
+  Radio,
+  Store,
+  Trash2,
+} from "lucide-react";
 import type { ActiveContext, DashboardMode, EventWithRevenue } from "~~/hooks/useDashboardRealtime";
 import type { Event, Stall } from "~~/lib/events.types";
+import { supabase } from "~~/lib/supabase";
+import { deleteEvent, updateEvent } from "~~/services/eventsService";
 
 interface DashboardControlsProps {
   mode: DashboardMode;
@@ -151,6 +166,120 @@ const OperatorStallsSection = ({ stalls, isCollapsible = true }: { stalls: Stall
   );
 };
 
+// Subtle hint to discover active stalls - minimal footprint
+const DiscoverStallsHint = () => {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  return (
+    <div className="pt-2">
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="flex items-center gap-1.5 text-xs text-base-content/40 hover:text-base-content/60 transition-colors"
+      >
+        <Radio className="w-3 h-3" />
+        <span>Browse active stalls</span>
+        <motion.div animate={{ rotate: isExpanded ? 90 : 0 }} transition={{ duration: 0.2 }}>
+          <ChevronRight className="w-3 h-3" />
+        </motion.div>
+      </button>
+
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="pt-3">
+              <PublicStallsSectionInline />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+// Inline version of PublicStallsSection for discover hint
+const PublicStallsSectionInline = () => {
+  const [stalls, setStalls] = useState<Stall[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPublicStalls = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("stalls")
+          .select(
+            `
+            *,
+            event:events!event_id(id, event_name, event_slug, status),
+            operator_user:users!operator_wallet(name, twitter_handle, twitter_profile_url)
+          `,
+          )
+          .eq("status", "active")
+          .order("updated_at", { ascending: false })
+          .limit(5);
+
+        if (error) throw error;
+
+        // Filter to only stalls from active events
+        const activeStalls = (data || []).filter(
+          (stall: Stall & { event?: { status: string } }) => stall.event?.status === "active",
+        );
+
+        setStalls(activeStalls);
+      } catch (err) {
+        console.error("Error fetching public stalls:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPublicStalls();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-4">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="w-4 h-4 border-2 border-emerald-500/20 border-t-emerald-500 rounded-full"
+        />
+      </div>
+    );
+  }
+
+  if (stalls.length === 0) {
+    return <p className="text-xs text-base-content/40 py-2">No active stalls at the moment</p>;
+  }
+
+  return (
+    <div className="space-y-2">
+      {stalls.map(stall => {
+        const event = stall.event as { event_slug: string; event_name: string } | undefined;
+        const publicUrl = `/events/${event?.event_slug || ""}/${stall.stall_slug}`;
+
+        return (
+          <a
+            key={stall.id}
+            href={publicUrl}
+            className="flex items-center gap-2 p-2 rounded-lg bg-base-200/30 hover:bg-base-200/50 transition-colors"
+          >
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-xs text-base-content/70 truncate flex-1">{stall.stall_name}</span>
+            <span className="text-[10px] text-base-content/40 truncate max-w-[80px]">{event?.event_name}</span>
+            <ExternalLink className="w-3 h-3 text-base-content/30" />
+          </a>
+        );
+      })}
+    </div>
+  );
+};
+
 // Format currency for inline display
 const formatRevenue = (amount: number): string => {
   if (amount >= 1000) {
@@ -166,17 +295,23 @@ const EventsSection = ({
   onEditEvent,
   onRefresh,
   onAddStall,
+  onToggleEventStatus,
+  onDeleteEvent,
   isCollapsible = true,
+  defaultCollapsed = false,
 }: {
   eventsWithRevenue: EventWithRevenue[];
   onCreateEvent: () => void;
   onEditEvent: (event: Event) => void;
   onRefresh: () => void;
   onAddStall: (event: Event) => void;
+  onToggleEventStatus: (event: Event) => void;
+  onDeleteEvent: (event: Event) => void;
   isCollapsible?: boolean;
+  defaultCollapsed?: boolean;
 }) => {
   const [expandedEventId, setExpandedEventId] = useState<number | null>(null);
-  const [isSectionExpanded, setIsSectionExpanded] = useState(true);
+  const [isSectionExpanded, setIsSectionExpanded] = useState(!defaultCollapsed);
 
   const toggleExpand = (eventId: number) => {
     setExpandedEventId(prev => (prev === eventId ? null : eventId));
@@ -315,8 +450,59 @@ const EventsSection = ({
                                 onAddStall(event);
                               }}
                               className="w-6 h-6 rounded-lg bg-primary/10 hover:bg-primary/20 flex items-center justify-center transition-colors"
+                              title="Add stall"
                             >
                               <Plus className="w-3 h-3 text-primary" />
+                            </motion.button>
+
+                            {/* Activate/Deactivate Toggle */}
+                            <motion.button
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                              onClick={(e: React.MouseEvent) => {
+                                e.stopPropagation();
+                                onToggleEventStatus(event);
+                              }}
+                              className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors ${
+                                event.status === "active"
+                                  ? "bg-warning/10 hover:bg-warning/20"
+                                  : "bg-emerald-500/10 hover:bg-emerald-500/20"
+                              }`}
+                              title={event.status === "active" ? "Pause event" : "Activate event"}
+                            >
+                              {event.status === "active" ? (
+                                <Pause className="w-3 h-3 text-warning" />
+                              ) : (
+                                <Play className="w-3 h-3 text-emerald-500" />
+                              )}
+                            </motion.button>
+
+                            {/* Edit */}
+                            <motion.button
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                              onClick={(e: React.MouseEvent) => {
+                                e.stopPropagation();
+                                onEditEvent(event);
+                              }}
+                              className="w-6 h-6 rounded-lg bg-base-300/50 hover:bg-base-300 flex items-center justify-center transition-colors"
+                              title="Edit event"
+                            >
+                              <Edit2 className="w-3 h-3 text-base-content/50" />
+                            </motion.button>
+
+                            {/* Delete */}
+                            <motion.button
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                              onClick={(e: React.MouseEvent) => {
+                                e.stopPropagation();
+                                onDeleteEvent(event);
+                              }}
+                              className="w-6 h-6 rounded-lg bg-base-300/50 hover:bg-error/20 flex items-center justify-center transition-colors group"
+                              title="Delete event"
+                            >
+                              <Trash2 className="w-3 h-3 text-base-content/40 group-hover:text-error" />
                             </motion.button>
 
                             {/* Expand/Collapse */}
@@ -373,6 +559,7 @@ export const DashboardControls = ({
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [isStallModalOpen, setIsStallModalOpen] = useState(false);
   const [stallTargetEvent, setStallTargetEvent] = useState<Event | null>(null);
+  const [deletingEvent, setDeletingEvent] = useState<Event | null>(null);
 
   const handleCreateEvent = () => {
     setEditingEvent(null);
@@ -387,6 +574,31 @@ export const DashboardControls = ({
   const handleAddStall = (event: Event) => {
     setStallTargetEvent(event);
     setIsStallModalOpen(true);
+  };
+
+  const handleToggleEventStatus = async (event: Event) => {
+    try {
+      const newStatus = event.status === "active" ? "paused" : "active";
+      await updateEvent(event.id, { status: newStatus });
+      onRefresh();
+    } catch (error) {
+      console.error("Failed to update event status:", error);
+    }
+  };
+
+  const handleDeleteEvent = (event: Event) => {
+    setDeletingEvent(event);
+  };
+
+  const confirmDeleteEvent = async () => {
+    if (!deletingEvent) return;
+    try {
+      await deleteEvent(deletingEvent.id);
+      setDeletingEvent(null);
+      onRefresh();
+    } catch (error) {
+      console.error("Failed to delete event:", error);
+    }
   };
 
   const handleModalSuccess = () => {
@@ -424,13 +636,16 @@ export const DashboardControls = ({
         <>
           {/* Operator sees their stalls first */}
           <OperatorStallsSection stalls={operatorStalls} />
-          {/* Then events (secondary) */}
+          {/* Then events (secondary, collapsed by default) */}
           <EventsSection
             eventsWithRevenue={eventsWithRevenue}
             onCreateEvent={handleCreateEvent}
             onEditEvent={handleEditEvent}
             onRefresh={onRefresh}
             onAddStall={handleAddStall}
+            onToggleEventStatus={handleToggleEventStatus}
+            onDeleteEvent={handleDeleteEvent}
+            defaultCollapsed={true}
           />
         </>
       ) : (
@@ -442,11 +657,16 @@ export const DashboardControls = ({
             onEditEvent={handleEditEvent}
             onRefresh={onRefresh}
             onAddStall={handleAddStall}
+            onToggleEventStatus={handleToggleEventStatus}
+            onDeleteEvent={handleDeleteEvent}
           />
           {/* Then operator stalls (if they happen to operate any) */}
           <OperatorStallsSection stalls={operatorStalls} />
         </>
       )}
+
+      {/* Subtle discover stalls hint */}
+      <DiscoverStallsHint />
 
       {/* Event Modal */}
       <EventModal
@@ -473,6 +693,63 @@ export const DashboardControls = ({
           editingStall={null}
         />
       )}
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {deletingEvent && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            onClick={() => setDeletingEvent(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              className="bg-base-200 rounded-2xl p-5 max-w-sm w-full shadow-xl border border-base-300"
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-error/10 flex items-center justify-center">
+                  <Trash2 className="w-5 h-5 text-error" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-base-content">Delete Event</h3>
+                  <p className="text-xs text-base-content/50">This action cannot be undone</p>
+                </div>
+              </div>
+
+              <p className="text-sm text-base-content/70 mb-5">
+                Are you sure you want to delete{" "}
+                <span className="font-medium text-base-content">{deletingEvent.event_name}</span>? All stalls and
+                payment history will be permanently removed.
+              </p>
+
+              <div className="flex gap-2">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setDeletingEvent(null)}
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-base-300 hover:bg-base-300/80 text-sm font-medium transition-colors"
+                >
+                  Cancel
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={confirmDeleteEvent}
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-error hover:bg-error/90 text-error-content text-sm font-medium transition-colors"
+                >
+                  Delete
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

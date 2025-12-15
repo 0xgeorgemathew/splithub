@@ -4,10 +4,22 @@ import { useState } from "react";
 import Image from "next/image";
 import { StallModal } from "./StallModal";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronRight, Copy, DollarSign, Edit2, ExternalLink, Pause, Play, Plus, Store, User } from "lucide-react";
+import {
+  ChevronRight,
+  Copy,
+  DollarSign,
+  Edit2,
+  ExternalLink,
+  Pause,
+  Play,
+  Plus,
+  Store,
+  Trash2,
+  User,
+} from "lucide-react";
 import { useStallPaymentsRealtime } from "~~/hooks/useEventsRealtime";
 import type { Event, Stall } from "~~/lib/events.types";
-import { updateStall } from "~~/services/eventsService";
+import { deleteStall, updateStall } from "~~/services/eventsService";
 
 interface StallSectionProps {
   event: Event & { stalls?: Stall[]; totalRevenue: number };
@@ -19,11 +31,13 @@ const StallCard = ({
   stall,
   eventSlug,
   onEdit,
+  onDelete,
   onRefresh,
 }: {
   stall: Stall;
   eventSlug: string;
   onEdit: () => void;
+  onDelete: () => void;
   onRefresh: () => void;
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -79,35 +93,86 @@ const StallCard = ({
             }`}
           />
 
+          {/* Operator avatar */}
+          {stall.operator_user?.twitter_profile_url ? (
+            <Image
+              src={stall.operator_user.twitter_profile_url}
+              alt={stall.operator_twitter_handle}
+              width={24}
+              height={24}
+              className="w-6 h-6 rounded-full flex-shrink-0"
+            />
+          ) : (
+            <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+              <User className="w-3 h-3 text-primary" />
+            </div>
+          )}
+
           {/* Stall info */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <Store className="w-3.5 h-3.5 text-base-content/50 flex-shrink-0" />
-              <span className="font-medium text-sm text-base-content truncate">{stall.stall_name}</span>
-            </div>
-            <div className="flex items-center gap-2 mt-0.5">
-              {/* Operator info */}
-              {stall.operator_user?.twitter_profile_url ? (
-                <Image
-                  src={stall.operator_user.twitter_profile_url}
-                  alt={stall.operator_twitter_handle}
-                  width={16}
-                  height={16}
-                  className="w-4 h-4 rounded-full"
-                />
-              ) : (
-                <div className="w-4 h-4 rounded-full bg-primary/20 flex items-center justify-center">
-                  <User className="w-2.5 h-2.5 text-primary" />
-                </div>
-              )}
-              <span className="text-[11px] text-base-content/50">@{stall.operator_twitter_handle}</span>
-            </div>
+            <span className="font-medium text-sm text-base-content truncate block">{stall.stall_name}</span>
+            <span className="text-[11px] text-base-content/50">@{stall.operator_twitter_handle}</span>
           </div>
         </div>
 
-        <ChevronRight
-          className={`w-4 h-4 text-base-content/40 transition-transform flex-shrink-0 ${isExpanded ? "rotate-90" : ""}`}
-        />
+        {/* Quick Actions - matching event cards */}
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {/* Activate/Deactivate Toggle */}
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={handleToggleStatus}
+            className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors ${
+              stall.status === "active"
+                ? "bg-warning/10 hover:bg-warning/20"
+                : "bg-emerald-500/10 hover:bg-emerald-500/20"
+            }`}
+            title={stall.status === "active" ? "Pause stall" : "Activate stall"}
+          >
+            {stall.status === "active" ? (
+              <Pause className="w-3 h-3 text-warning" />
+            ) : (
+              <Play className="w-3 h-3 text-emerald-500" />
+            )}
+          </motion.button>
+
+          {/* Edit */}
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={(e: React.MouseEvent) => {
+              e.stopPropagation();
+              onEdit();
+            }}
+            className="w-6 h-6 rounded-lg bg-base-300/50 hover:bg-base-300 flex items-center justify-center transition-colors"
+            title="Edit stall"
+          >
+            <Edit2 className="w-3 h-3 text-base-content/50" />
+          </motion.button>
+
+          {/* Delete */}
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={(e: React.MouseEvent) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            className="w-6 h-6 rounded-lg bg-base-300/50 hover:bg-error/20 flex items-center justify-center transition-colors group"
+            title="Delete stall"
+          >
+            <Trash2 className="w-3 h-3 text-base-content/40 group-hover:text-error" />
+          </motion.button>
+
+          {/* Expand/Collapse */}
+          <motion.div
+            animate={{ rotate: isExpanded ? 90 : 0 }}
+            transition={{ duration: 0.2 }}
+            className="w-6 h-6 rounded-lg bg-base-300/50 flex items-center justify-center"
+          >
+            <ChevronRight className="w-3.5 h-3.5 text-base-content/40" />
+          </motion.div>
+        </div>
       </div>
 
       {/* Expanded Content */}
@@ -207,39 +272,6 @@ const StallCard = ({
                   <p className="text-[11px] text-base-content/40">No payments yet</p>
                 </div>
               )}
-
-              {/* Actions */}
-              <div className="flex items-center gap-2 pt-1">
-                <button
-                  onClick={handleToggleStatus}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-medium transition-colors ${
-                    stall.status === "active"
-                      ? "bg-base-300/50 text-base-content/70 hover:bg-base-300"
-                      : "bg-emerald-500 text-white hover:bg-emerald-500/90"
-                  }`}
-                >
-                  {stall.status === "active" ? (
-                    <>
-                      <Pause className="w-3 h-3" />
-                      Pause
-                    </>
-                  ) : (
-                    <>
-                      <Play className="w-3 h-3" />
-                      Activate
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={e => {
-                    e.stopPropagation();
-                    onEdit();
-                  }}
-                  className="px-3 py-2 rounded-lg bg-base-300/50 text-base-content/70 hover:bg-base-300 text-[11px] font-medium transition-colors"
-                >
-                  <Edit2 className="w-3 h-3" />
-                </button>
-              </div>
             </div>
           </motion.div>
         )}
@@ -251,6 +283,7 @@ const StallCard = ({
 export const StallSection = ({ event, onEditEvent, onRefresh }: StallSectionProps) => {
   const [isStallModalOpen, setIsStallModalOpen] = useState(false);
   const [editingStall, setEditingStall] = useState<Stall | null>(null);
+  const [deletingStall, setDeletingStall] = useState<Stall | null>(null);
 
   const stalls = event.stalls || [];
 
@@ -262,6 +295,21 @@ export const StallSection = ({ event, onEditEvent, onRefresh }: StallSectionProp
   const handleEditStall = (stall: Stall) => {
     setEditingStall(stall);
     setIsStallModalOpen(true);
+  };
+
+  const handleDeleteStall = (stall: Stall) => {
+    setDeletingStall(stall);
+  };
+
+  const confirmDeleteStall = async () => {
+    if (!deletingStall) return;
+    try {
+      await deleteStall(deletingStall.id);
+      setDeletingStall(null);
+      onRefresh();
+    } catch (error) {
+      console.error("Failed to delete stall:", error);
+    }
   };
 
   const handleStallModalSuccess = () => {
@@ -325,6 +373,7 @@ export const StallSection = ({ event, onEditEvent, onRefresh }: StallSectionProp
               stall={stall}
               eventSlug={event.event_slug}
               onEdit={() => handleEditStall(stall)}
+              onDelete={() => handleDeleteStall(stall)}
               onRefresh={onRefresh}
             />
           ))}
@@ -343,6 +392,63 @@ export const StallSection = ({ event, onEditEvent, onRefresh }: StallSectionProp
         eventSlug={event.event_slug}
         editingStall={editingStall}
       />
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {deletingStall && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            onClick={() => setDeletingStall(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              className="bg-base-200 rounded-2xl p-5 max-w-sm w-full shadow-xl border border-base-300"
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-error/10 flex items-center justify-center">
+                  <Trash2 className="w-5 h-5 text-error" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-base-content">Delete Stall</h3>
+                  <p className="text-xs text-base-content/50">This action cannot be undone</p>
+                </div>
+              </div>
+
+              <p className="text-sm text-base-content/70 mb-5">
+                Are you sure you want to delete{" "}
+                <span className="font-medium text-base-content">{deletingStall.stall_name}</span>? All payment history
+                for this stall will be permanently removed.
+              </p>
+
+              <div className="flex gap-2">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setDeletingStall(null)}
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-base-300 hover:bg-base-300/80 text-sm font-medium transition-colors"
+                >
+                  Cancel
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={confirmDeleteStall}
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-error hover:bg-error/90 text-error-content text-sm font-medium transition-colors"
+                >
+                  Delete
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

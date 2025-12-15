@@ -8,6 +8,7 @@ import { DashboardControls } from "~~/components/events/DashboardControls";
 import { DashboardHero } from "~~/components/events/DashboardHero";
 import { EventModal } from "~~/components/events/EventModal";
 import { LiveFeed } from "~~/components/events/LiveFeed";
+import { PublicStallsSection } from "~~/components/events/PublicStallsSection";
 import { StallModal } from "~~/components/events/StallModal";
 import { useDashboardRealtime } from "~~/hooks/useDashboardRealtime";
 
@@ -177,7 +178,13 @@ export default function EventsPage() {
   return (
     <div className="px-4 py-4 pb-24">
       {/* Hero Revenue Card (or Empty CTA) */}
-      <DashboardHero mode={mode} metrics={metrics} activeContext={activeContext} hasDualRole={hasDualRole} />
+      <DashboardHero
+        mode={mode}
+        metrics={metrics}
+        activeContext={activeContext}
+        hasDualRole={hasDualRole}
+        onCreateEvent={() => setIsEventModalOpen(true)}
+      />
 
       {/* Live Activity Feed */}
       {mode !== "empty" && (
@@ -195,6 +202,9 @@ export default function EventsPage() {
           activeContext={activeContext}
         />
       )}
+
+      {/* Empty State: Discover Active Stalls */}
+      {mode === "empty" && <PublicStallsSection />}
 
       {/* Event Modal */}
       <EventModal
