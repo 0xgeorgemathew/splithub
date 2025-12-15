@@ -6,7 +6,6 @@ export const dynamic = "force-dynamic";
 interface StallPaymentRequest {
   stallId: number;
   eventId: number;
-  ownerWallet: string;
   operatorWallet: string | null;
   splitPercentage: number;
   amount: string;
@@ -68,8 +67,7 @@ export async function POST(request: NextRequest) {
     // Update payment with tx hash
     const updatedPayment = await updatePaymentStatus(payment.id, "completed", relayResult.txHash);
 
-    // TODO: If operator has wallet, create second settlement for split
-    // For now, simplified version - all goes to recipient in auth
+    // Payment goes directly to the stall operator (auth.recipient)
 
     return NextResponse.json({
       success: true,

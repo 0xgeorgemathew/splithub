@@ -11,7 +11,6 @@ export type StallPaymentFlowState = "idle" | "tapping" | "submitting" | "confirm
 
 interface UseStallPaymentOptions {
   stall: Stall;
-  eventOwnerWallet: string;
   onSuccess?: (txHash: string) => void;
   onError?: (error: Error) => void;
 }
@@ -59,12 +58,7 @@ const PAYMENTS_ABI = [
   },
 ] as const;
 
-export function useStallPayment({
-  stall,
-  eventOwnerWallet,
-  onSuccess,
-  onError,
-}: UseStallPaymentOptions): UseStallPaymentReturn {
+export function useStallPayment({ stall, onSuccess, onError }: UseStallPaymentOptions): UseStallPaymentReturn {
   const { signTypedData } = useHaloChip();
 
   const [flowState, setFlowState] = useState<StallPaymentFlowState>("idle");
@@ -94,13 +88,19 @@ export function useStallPayment({
         return;
       }
 
+      if (!stall.operator_wallet) {
+        setError("Stall operator has not registered their wallet");
+        setFlowState("error");
+        return;
+      }
+
       setError(null);
       setTxHash(null);
       setFlowState("tapping");
 
       try {
-        // Recipient is event owner (for now - split execution is TODO)
-        const recipient = eventOwnerWallet.toLowerCase() as `0x${string}`;
+        // Recipient is the stall operator
+        const recipient = stall.operator_wallet.toLowerCase() as `0x${string}`;
         const token = stall.token_address.toLowerCase() as `0x${string}`;
         const amountInWei = parseUnits(amount.toString(), USDC_DECIMALS);
         const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
@@ -184,7 +184,6 @@ export function useStallPayment({
           body: JSON.stringify({
             stallId: stall.id,
             eventId: stall.event_id,
-            ownerWallet: eventOwnerWallet,
             operatorWallet: stall.operator_wallet,
             splitPercentage: stall.split_percentage,
             amount: amount.toString(),
@@ -223,7 +222,7 @@ export function useStallPayment({
         onError?.(err instanceof Error ? err : new Error(message));
       }
     },
-    [paymentsAddress, registryAddress, eventOwnerWallet, stall, publicClient, signTypedData, onSuccess, onError],
+    [paymentsAddress, registryAddress, stall, publicClient, signTypedData, onSuccess, onError],
   );
 
   const reset = useCallback(() => {

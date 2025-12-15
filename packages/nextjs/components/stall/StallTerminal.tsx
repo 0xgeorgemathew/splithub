@@ -117,7 +117,6 @@ export function StallTerminal({ stall, event }: StallTerminalProps) {
 
   const { flowState, error, txHash, initiatePayment, reset } = useStallPayment({
     stall,
-    eventOwnerWallet: event.owner_wallet,
     onSuccess: hash => {
       console.log("Payment successful:", hash);
       // Play PhonePe-style notification: chime + voice announcement
