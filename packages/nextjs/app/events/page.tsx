@@ -5,7 +5,7 @@ import { usePrivy } from "@privy-io/react-auth";
 import { motion } from "framer-motion";
 import { CalendarDays, Sparkles } from "lucide-react";
 import { DashboardControls } from "~~/components/events/DashboardControls";
-import { DashboardHero } from "~~/components/events/DashboardHero";
+import { DashboardHero, EmptyStateCreateEvent } from "~~/components/events/DashboardHero";
 import { EventModal } from "~~/components/events/EventModal";
 import { LiveFeed } from "~~/components/events/LiveFeed";
 import { PublicStallsSection } from "~~/components/events/PublicStallsSection";
@@ -177,14 +177,8 @@ export default function EventsPage() {
 
   return (
     <div className="px-4 py-4 pb-24">
-      {/* Hero Revenue Card (or Empty CTA) */}
-      <DashboardHero
-        mode={mode}
-        metrics={metrics}
-        activeContext={activeContext}
-        hasDualRole={hasDualRole}
-        onCreateEvent={() => setIsEventModalOpen(true)}
-      />
+      {/* Hero Revenue Card */}
+      <DashboardHero mode={mode} metrics={metrics} activeContext={activeContext} hasDualRole={hasDualRole} />
 
       {/* Live Activity Feed */}
       {mode !== "empty" && (
@@ -203,8 +197,13 @@ export default function EventsPage() {
         />
       )}
 
-      {/* Empty State: Discover Active Stalls */}
-      {mode === "empty" && <PublicStallsSection />}
+      {/* Empty State: Discover Active Stalls + Create Event CTA */}
+      {mode === "empty" && (
+        <>
+          <PublicStallsSection />
+          <EmptyStateCreateEvent onCreateEvent={() => setIsEventModalOpen(true)} />
+        </>
+      )}
 
       {/* Event Modal */}
       <EventModal

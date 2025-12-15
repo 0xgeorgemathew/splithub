@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import Link from "next/link";
 import { EventModal } from "./EventModal";
 import { StallModal } from "./StallModal";
 import { StallSection } from "./StallSection";
@@ -21,7 +22,6 @@ import {
 } from "lucide-react";
 import type { ActiveContext, DashboardMode, EventWithRevenue } from "~~/hooks/useDashboardRealtime";
 import type { Event, Stall } from "~~/lib/events.types";
-import { supabase } from "~~/lib/supabase";
 import { deleteEvent, updateEvent } from "~~/services/eventsService";
 
 interface DashboardControlsProps {
@@ -166,116 +166,18 @@ const OperatorStallsSection = ({ stalls, isCollapsible = true }: { stalls: Stall
   );
 };
 
-// Subtle hint to discover active stalls - minimal footprint
-const DiscoverStallsHint = () => {
-  const [isExpanded, setIsExpanded] = useState(false);
-
+// Subtle link to discover active stalls - just redirects, no inline component
+const DiscoverStallsLink = () => {
   return (
-    <div className="pt-2">
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
+    <div className="pt-3 flex justify-center">
+      <Link
+        href="/events/discover"
         className="flex items-center gap-1.5 text-xs text-base-content/40 hover:text-base-content/60 transition-colors"
       >
         <Radio className="w-3 h-3" />
         <span>Browse active stalls</span>
-        <motion.div animate={{ rotate: isExpanded ? 90 : 0 }} transition={{ duration: 0.2 }}>
-          <ChevronRight className="w-3 h-3" />
-        </motion.div>
-      </button>
-
-      <AnimatePresence>
-        {isExpanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden"
-          >
-            <div className="pt-3">
-              <PublicStallsSectionInline />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-};
-
-// Inline version of PublicStallsSection for discover hint
-const PublicStallsSectionInline = () => {
-  const [stalls, setStalls] = useState<Stall[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchPublicStalls = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("stalls")
-          .select(
-            `
-            *,
-            event:events!event_id(id, event_name, event_slug, status),
-            operator_user:users!operator_wallet(name, twitter_handle, twitter_profile_url)
-          `,
-          )
-          .eq("status", "active")
-          .order("updated_at", { ascending: false })
-          .limit(5);
-
-        if (error) throw error;
-
-        // Filter to only stalls from active events
-        const activeStalls = (data || []).filter(
-          (stall: Stall & { event?: { status: string } }) => stall.event?.status === "active",
-        );
-
-        setStalls(activeStalls);
-      } catch (err) {
-        console.error("Error fetching public stalls:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchPublicStalls();
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-4">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="w-4 h-4 border-2 border-emerald-500/20 border-t-emerald-500 rounded-full"
-        />
-      </div>
-    );
-  }
-
-  if (stalls.length === 0) {
-    return <p className="text-xs text-base-content/40 py-2">No active stalls at the moment</p>;
-  }
-
-  return (
-    <div className="space-y-2">
-      {stalls.map(stall => {
-        const event = stall.event as { event_slug: string; event_name: string } | undefined;
-        const publicUrl = `/events/${event?.event_slug || ""}/${stall.stall_slug}`;
-
-        return (
-          <a
-            key={stall.id}
-            href={publicUrl}
-            className="flex items-center gap-2 p-2 rounded-lg bg-base-200/30 hover:bg-base-200/50 transition-colors"
-          >
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-xs text-base-content/70 truncate flex-1">{stall.stall_name}</span>
-            <span className="text-[10px] text-base-content/40 truncate max-w-[80px]">{event?.event_name}</span>
-            <ExternalLink className="w-3 h-3 text-base-content/30" />
-          </a>
-        );
-      })}
+        <ChevronRight className="w-3 h-3" />
+      </Link>
     </div>
   );
 };
@@ -665,8 +567,8 @@ export const DashboardControls = ({
         </>
       )}
 
-      {/* Subtle discover stalls hint */}
-      <DiscoverStallsHint />
+      {/* Subtle discover stalls link */}
+      <DiscoverStallsLink />
 
       {/* Event Modal */}
       <EventModal

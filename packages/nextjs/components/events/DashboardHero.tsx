@@ -249,56 +249,38 @@ const HeroCard = ({ metrics, activeContext, mode, hasDualRole }: HeroCardProps) 
   );
 };
 
-// Compact empty state hero - encourages event creation without competing with Active Stalls
-const EmptyStateHero = ({ onCreateEvent }: { onCreateEvent?: () => void }) => {
+// Minimal CTA for empty state - appears AFTER active stalls, styled like "New Event" button
+export const EmptyStateCreateEvent = ({ onCreateEvent }: { onCreateEvent?: () => void }) => {
+  if (!onCreateEvent) return null;
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="mb-5 rounded-2xl p-4 relative overflow-hidden border border-white/[0.03]"
-      style={{
-        background: "linear-gradient(145deg, #161616 0%, #0f0f0f 100%)",
-      }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 0.2 }}
+      className="flex justify-center pt-4"
     >
-      {/* Subtle gradient overlay */}
-      <div
-        className="absolute inset-0 opacity-30"
-        style={{
-          backgroundImage: "radial-gradient(at 30% 40%, rgba(139, 92, 246, 0.08) 0%, transparent 50%)",
-        }}
-      />
-
-      <div className="relative flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-            <CalendarDays className="w-4.5 h-4.5 text-primary/70" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-base-content/80">Want to host an event?</p>
-            <p className="text-xs text-base-content/40">Accept tap-to-pay at your venue</p>
-          </div>
-        </div>
-
-        {onCreateEvent && (
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={onCreateEvent}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-primary/15 hover:bg-primary/25 text-primary rounded-xl text-xs font-semibold transition-colors"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Create Event
-          </motion.button>
-        )}
-      </div>
+      <motion.button
+        whileHover={{ scale: 1.03 }}
+        whileTap={{ scale: 0.97 }}
+        onClick={onCreateEvent}
+        className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/15 hover:bg-primary/25 text-primary rounded-full text-xs font-semibold transition-colors shadow-sm"
+      >
+        <Plus className="w-3.5 h-3.5" />
+        New Event
+      </motion.button>
     </motion.div>
   );
 };
 
-export const DashboardHero = ({ mode, metrics, activeContext, hasDualRole, onCreateEvent }: DashboardHeroProps) => {
+export const DashboardHero = ({
+  mode,
+  metrics,
+  activeContext,
+  hasDualRole,
+}: Omit<DashboardHeroProps, "onCreateEvent">) => {
   if (mode === "empty") {
-    return <EmptyStateHero onCreateEvent={onCreateEvent} />;
+    return null;
   }
 
   return <HeroCard mode={mode} metrics={metrics} activeContext={activeContext} hasDualRole={hasDualRole} />;
