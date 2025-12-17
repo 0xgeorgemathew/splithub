@@ -1,368 +1,199 @@
-<div align="center">
+# SplitHub
 
-<img src="https://img.shields.io/badge/Base-0052FF?style=for-the-badge&logo=ethereum&logoColor=white" alt="Base" />
-<img src="https://img.shields.io/badge/Solidity-363636?style=for-the-badge&logo=solidity&logoColor=white" alt="Solidity" />
-<img src="https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=next.js&logoColor=white" alt="Next.js" />
-<img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
-
-<br />
-<br />
-
-# ✨ SplitHub
-
-### Tap-to-Pay Payments on the Blockchain
-
-**Splitwise meets web3 — powered by Arx Halo Chips**
-
-<br />
-
-[Features](#-features) · [How It Works](#-how-it-works) · [Architecture](#-technical-architecture) · [Quick Start](#-quick-start)
-
-</div>
-
-<br />
+SplitHub is a tap-to-pay payment platform built on blockchain. Users authenticate payments by tapping an Arx Halo Chip—an NFC wearable containing a secure private key—against their phone. The chip signs an EIP-712 message authorizing the transaction, a relayer submits it on-chain and pays gas, and the user never sees a wallet popup or confirmation screen. This enables three core experiences: splitting expenses with friends, collecting payments at events, and purchasing prepaid venue credits.
 
 ---
 
-<br />
+## Core Concepts
 
-## 🎯 What is SplitHub?
+### Users
 
-SplitHub makes crypto payments as simple as tapping your phone.
-
-No wallet popups. No seed phrases. No gas fees to manage.
-
-**Just tap your Arx Halo Chip and go.**
-
-<br />
-
-> We built two products on a single platform — a **consumer app** for friend groups and a **B2B solution** for venues.
-
-<br />
-
----
-
-<br />
-
-## 🚀 Features
-
-<br />
-
-### 💸 Bill Split
-
-<table>
-<tr>
-<td width="50%">
-
-**The Problem**
-
-Splitting bills with friends is awkward. Venmo requests go ignored. "I'll get you next time" never happens.
-
-And if your friends hold crypto? Wallet confirmations and gas fees kill the vibe.
-
-</td>
-<td width="50%">
-
-**The Solution**
-
-Track who owes what, then settle instantly with a single tap of your Arx Halo Chip.
-
-No apps to open. No amounts to confirm. No gas to calculate.
-
-</td>
-</tr>
-</table>
-
-**How it works:**
-
-```
-1. View your balances — green means they owe you, red means you owe them
-2. Tap a friend's card to settle up
-3. Hold your Arx Halo Chip to your phone
-4. Done. Payment complete. On-chain. Final.
-```
-
-<br />
-
----
-
-<br />
-
-### 🎮 Closed-Loop Stored Value
-
-<table>
-<tr>
-<td width="50%">
-
-**The Problem**
-
-Venues want cashless payments. Users don't want to fumble with cards or phones.
-
-Traditional systems require expensive POS integrations.
-
-</td>
-<td width="50%">
-
-**The Solution**
-
-A prepaid credit system powered by blockchain. Buy credits with USDC, spend them at activities — all with a tap of your Arx Halo Chip.
-
-</td>
-</tr>
-</table>
-
-<br />
-
-| Buy Credits | Spend Credits |
-|-------------|---------------|
-| 1. Enter USDC amount | 1. Select an activity |
-| 2. Tap your Arx Halo Chip | 2. Tap your Arx Halo Chip |
-| 3. Credits added instantly | 3. Access granted |
-
-<br />
-
-> **1 USDC = 10 Credits**
->
-> Perfect for arcades, festivals, resorts, theme parks — anywhere you want frictionless, cashless payments.
-
-<br />
-
----
-
-<br />
-
-## 🔐 How It Works
-
-<br />
+Users sign in with Twitter via Privy, which creates an embedded blockchain wallet linked to their account. During onboarding, users register their Arx Halo Chip by tapping it to cryptographically link the chip's address to their wallet. Once registered, the chip becomes the user's authentication method for all payments.
 
 ### The Arx Halo Chip
 
-The **Arx Halo Chip** is a secure element that stores your private key. When you tap:
+The Halo Chip is a secure element embedded in an NFC wearable (wristband, ring, or card). It stores a private key that never leaves the chip and cannot be extracted or cloned. When tapped against a phone:
 
-- ✅ The chip signs an EIP-712 message authorizing the payment
-- ✅ The private key **never leaves** the chip
-- ✅ No wallet popup, no confirmation screen
-- ✅ Impossible to clone or extract the key
+1. The app presents an EIP-712 typed data structure describing the payment
+2. The chip signs this data, producing a cryptographic signature
+3. The signature proves the chip holder authorized this specific transaction
 
-It's the same security model as your credit card's EMV chip — but for crypto.
+This is the same security model as EMV credit card chips, applied to blockchain payments.
 
-<br />
+### Real-time Updates
 
-### The Flow
+All state changes appear instantly across devices. When an expense is created, balances update immediately. When a payment completes at an event stall, the operator sees it appear in their dashboard with an audio notification. This is powered by Supabase real-time subscriptions that push database changes to connected clients.
 
-```
-┌─────────────────┐      ┌─────────────────┐      ┌─────────────────┐      ┌─────────────────┐
-│                 │      │                 │      │                 │      │                 │
-│  Arx Halo Chip  │ ───▶ │     Relayer     │ ───▶ │    Contract     │ ───▶ │   Settlement    │
-│     (Sign)      │      │    (Submit)     │      │    (Verify)     │      │   (Transfer)    │
-│                 │      │                 │      │                 │      │                 │
-└─────────────────┘      └─────────────────┘      └─────────────────┘      └─────────────────┘
-```
+### Gasless Transactions
 
-<br />
+Users never pay gas fees or manage blockchain complexity. The flow works as follows:
 
-| Step | What Happens |
-|------|--------------|
-| **1. Sign** | Arx Halo Chip signs EIP-712 typed data containing payer, recipient, amount, nonce, deadline |
-| **2. Submit** | Relayer receives signature, wraps it in a transaction, pays gas, submits on-chain |
-| **3. Verify** | Smart contract verifies signature matches a registered chip |
-| **4. Transfer** | Tokens move instantly. On-chain finality. No chargebacks. |
+User taps chip → Chip signs authorization → App sends signature to relayer → Relayer submits transaction and pays gas → Contract verifies signature and executes
 
-<br />
+The relayer cannot steal funds or modify payments because the signature locks every field. Any change invalidates the signature.
 
-> **Why can't the relayer steal funds?**
->
-> The signature locks every field. If the relayer changes anything — even 1 wei — the signature becomes invalid. The relayer can only deliver the payment as-is.
+### Balance Model
 
-<br />
+When you owe someone money, your balance with them is negative (displayed in red). When someone owes you, your balance is positive (displayed in teal). Settlements move balances toward zero. A fully settled relationship shows no entry in your ledger.
 
 ---
 
-<br />
+## Splitting Expenses
 
-## 🏗 Technical Architecture
+Splitting expenses lets users track shared costs with friends and settle debts with a single tap.
 
-<br />
+### Creating an Expense
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              USER LAYER                                     │
-│                                                                             │
-│           ┌──────────────┐    ┌──────────────┐    ┌──────────────┐         │
-│           │   Register   │    │     Home     │    │   Credits    │         │
-│           │     Page     │    │   Balances   │    │     Page     │         │
-│           └──────┬───────┘    └──────┬───────┘    └──────┬───────┘         │
-│                  │                   │                   │                  │
-└──────────────────┼───────────────────┼───────────────────┼──────────────────┘
-                   │                   │                   │
-                   ▼                   ▼                   ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                          ARX HALO CHIP LAYER                                │
-│                                                                             │
-│                      Signs EIP-712 typed data on tap                        │
-│                  Private key never leaves secure element                    │
-│                                                                             │
-└─────────────────────────────────────┬───────────────────────────────────────┘
-                                      │
-                                      ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                            RELAYER LAYER                                    │
-│                                                                             │
-│                 Receives signature • Submits tx • Pays gas                  │
-│                       Cannot modify signed payload                          │
-│                                                                             │
-└─────────────────────────────────────┬───────────────────────────────────────┘
-                                      │
-                                      ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           CONTRACT LAYER                                    │
-│                                                                             │
-│    ┌───────────────────┐  ┌───────────────────┐  ┌───────────────────┐     │
-│    │  SplitHubRegistry │  │ SplitHubPayments  │  │    CreditToken    │     │
-│    │                   │  │                   │  │                   │     │
-│    │   chip ↔ wallet   │  │  verify + send    │  │   buy + spend     │     │
-│    │      mapping      │  │      tokens       │  │     credits       │     │
-│    └───────────────────┘  └───────────────────┘  └───────────────────┘     │
-│                                                                             │
-└─────────────────────────────────────┬───────────────────────────────────────┘
-                                      │
-                                      ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                          BASE L2 (BLOCKCHAIN)                               │
-│                                                                             │
-│               Instant finality  •  Sub-cent fees  •  EVM                    │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+From the splits dashboard, users tap "Add Expense" and enter:
+- An amount
+- A description (e.g., "Dinner at Joe's")
+- One or more friends to split with
 
-<br />
+The app divides the total equally among all participants, including the creator. Each participant's share appears as an update to their balance with the expense creator.
+
+### The Balance Ledger
+
+The splits dashboard shows a ledger of all friends you have active balances with:
+
+- **Teal entries** show friends who owe you money, with the amount displayed
+- **Red entries** show friends you owe money to
+
+The list is sorted by amount, with the largest balances first. When all debts are settled with a friend, they disappear from the ledger.
+
+### Settling a Debt
+
+When you owe someone money, tapping their entry in the ledger initiates settlement:
+
+1. A confirmation screen shows the recipient and amount
+2. You tap your Halo Chip to authorize
+3. The app shows processing states as the transaction confirms
+4. On success, you see a receipt with the transaction hash
+5. Your balance updates immediately
+
+The payment transfers USDC directly from your wallet to theirs, recorded permanently on-chain.
+
+### Requesting Payment
+
+When someone owes you money, you can request payment by tapping the request icon on their ledger entry. This sends them a notification. If they don't respond, you can send reminders. They can settle directly from their notifications or from their own splits dashboard.
+
+### User Flow
+
+Add expense → Balances update for all participants → Debtor taps chip to settle → USDC transfers on-chain → Balances update to reflect settlement
 
 ---
 
-<br />
+## Events
 
-## 📜 Smart Contracts
+Events enable tap-to-pay payments at venues with multiple vendors. An event is a container that holds vendor stalls, each operated by someone who receives payments from attendees.
 
-<br />
+### How Events Work
 
-### `SplitHubRegistry`
+An event owner creates an event and adds stalls to it. Each stall is assigned to an operator (identified by their Twitter handle) who runs that vendor location. When attendees pay at a stall, the payment can be split between the operator and the event owner based on a configured percentage.
 
-> Links Arx Halo Chips to user wallets. The identity layer.
+### Participating in Events
 
-| Function | Purpose |
-|----------|---------|
-| `register(signer, owner, signature)` | Link a chip to a wallet. Requires Arx Halo Chip signature to prove ownership. |
-| `ownerOf(signer)` | Look up which wallet owns a chip |
-| `signerOf(owner)` | Look up which chip belongs to a wallet |
+**As an attendee**, you browse active stalls, select one, and choose an amount to pay. The stall terminal shows a "tap to pay" prompt. You tap your Halo Chip, see processing animations, and receive a confirmation with the transaction hash. The operator sees your payment appear in their dashboard instantly.
 
-<br />
+**As a stall operator**, you see a dashboard showing your earnings across all stalls you operate. Each stall shows its revenue, transaction count, and recent activity. When payments arrive, you hear an audio notification and see the payer's identity and amount appear in real-time.
 
-### `SplitHubPayments`
+**As an event owner**, you see aggregate metrics across all your events and stalls: total revenue, transaction counts, and active stall status. You can pause or unpause stalls and monitor the live activity feed showing all payments across your events.
 
-> Executes peer-to-peer token transfers via Arx Halo Chip signatures.
+### Payment Splitting
 
-| Function | Purpose |
-|----------|---------|
-| `executePayment(auth, signature)` | Transfer tokens from payer to recipient. Verifies chip signature, checks nonce, moves funds. |
-| `getNonce(payer)` | Get current nonce for replay protection |
-| `getDigest(auth)` | Compute signing hash for off-chain use |
+Each stall has a split percentage (0-100%) that determines how revenue is divided:
 
-```solidity
-struct PaymentAuth {
-    address payer;      // Who's paying
-    address recipient;  // Who receives
-    address token;      // Which token
-    uint256 amount;     // How much
-    uint256 nonce;      // Replay protection
-    uint256 deadline;   // Expiration
-}
-```
+- **Operator amount**: The percentage that goes to the stall operator
+- **Owner amount**: The remainder that goes to the event owner
 
-<br />
+For example, with a 70% split, an operator receives 70% of each payment and the event owner receives 30%.
 
-### `CreditToken`
+### Event Structure
 
-> ERC-20 token for the closed-loop stored value system.
+Event → Contains multiple stalls → Each stall has an operator → Attendees pay at stalls → Revenue splits between operator and owner
 
-| Function | Purpose |
-|----------|---------|
-| `purchaseCredits(purchase, signature)` | Buy credits with USDC. Transfers USDC, mints credits. |
-| `spendCredits(spend, signature)` | Spend credits at an activity. Burns credits, emits event. |
-| `withdrawUSDC(to)` | Venue withdraws collected USDC |
+### Real-time Dashboard
 
-<br />
+All event participants see live updates:
+- New payments appear instantly in activity feeds
+- Revenue metrics update as transactions confirm
+- Audio notifications alert operators to incoming payments
+- Stall status changes propagate immediately
 
 ---
 
-<br />
+## Venue Credits
 
-## 🗺 User Flows
+Venue credits are prepaid tokens for activity-based payments at entertainment venues. Instead of paying per-transaction, users load credits in advance and spend them at activities like laser tag, bowling, or arcade games.
 
-<br />
+### Why Credits Exist
 
-| Route | What You Do |
-|-------|-------------|
-| `/register` | Create profile, link your Arx Halo Chip |
-| `/` | View all balances, tap a friend to pay |
-| `/credits` | Buy credits with USDC, spend at activities |
-| `/approve` | One-time token approval setup |
+Credits provide a frictionless experience for high-frequency, small-value transactions. Rather than authorizing each $5 arcade play individually, users load credits once and tap to access activities instantly. This also enables venues to create closed-loop economies where credits are venue-specific.
 
-<br />
+### Purchasing Credits
 
----
+From the credits terminal, users:
 
-<br />
+1. Select a USDC amount ($1, $10, $20, or $50)
+2. See the credit conversion—1 USDC equals 10 credits
+3. Tap their Halo Chip to authorize the purchase
+4. Credits are minted to their wallet
 
-## ⚡ Quick Start
+The UI shows the conversion in real-time: selecting $20 displays "+200 Credits" before confirmation.
 
-<br />
+### Spending Credits
 
-```bash
-# Install dependencies
-yarn install
+From the activity panel, users:
 
-# Start local chain
-yarn chain
+1. Select an activity (each has a fixed credit cost)
+2. See the credits that will be deducted
+3. Tap their Halo Chip to authorize
+4. Credits are burned and access is granted
+5. Their remaining balance updates
 
-# Deploy contracts (new terminal)
-yarn deploy
+Unlike regular payments where tokens transfer between wallets, spending credits burns (destroys) them. This reflects that the user has consumed a service rather than paid another person.
 
-# Run frontend (new terminal)
-yarn start
-```
+### Credits vs Direct Payments
 
-Visit **http://localhost:3000**
+| Aspect | Credits | Direct Payments |
+|--------|---------|-----------------|
+| Use case | Activity access at venues | Settling debts, event payments |
+| Token type | Activity Credits (CR) | USDC stablecoin |
+| On spend | Credits are burned | Tokens transfer to recipient |
+| Conversion | 1 USDC = 10 Credits | 1:1 (USDC to USDC) |
 
-<br />
+### User Flow
 
----
-
-<br />
-
-## 🛠 Tech Stack
-
-<br />
-
-| Layer | Technology |
-|-------|------------|
-| **Contracts** | Solidity, Foundry, OpenZeppelin |
-| **Frontend** | Next.js 15, TypeScript, Wagmi, Viem |
-| **Chain** | Base (Ethereum L2) |
-| **Signing** | EIP-712 typed data, ECDSA |
-| **Hardware** | Arx Halo Chips (secure element) |
-
-<br />
+Select USDC amount → See credit preview → Tap chip to purchase → Credits minted → Select activity → Tap chip to access → Credits burned
 
 ---
 
-<br />
+## How Everything Connects
 
-<div align="center">
+Across all three features, the core experience remains consistent:
 
-### ✨ Tap. Pay. Done. ✨
+**Same authentication**: Every transaction—settling an expense, paying at a stall, or accessing an activity—requires tapping your Halo Chip. One gesture, one interaction model.
 
-<br />
+**Same gasless model**: Users never see gas fees, wallet popups, or confirmation dialogs. The relayer handles blockchain complexity invisibly.
 
-**Built with Arx Halo Chips**
+**Unified identity**: Your Twitter login, embedded wallet, and registered Halo Chip form a single identity that works across splits, events, and credits.
 
-</div>
+**Real-time everywhere**: Whether watching your balance update after settling a debt, seeing payments arrive at your stall, or watching credits load to your account, all state changes appear instantly.
+
+---
+
+## Design Principles
+
+**Real-time first**
+Every state change appears instantly. No refresh buttons, no polling, no stale data. Users see the current state of the system at all times.
+
+**Tap-to-pay simplicity**
+One physical gesture—tapping the Halo Chip—completes any transaction. No wallet apps to open, no amounts to confirm, no gas to calculate.
+
+**Gasless by default**
+Users interact with blockchain without knowing it. No seed phrases, no gas management, no transaction confirmations. The relayer abstracts this entirely.
+
+**Clarity over complexity**
+Visual indicators are unambiguous: teal means positive, red means negative. Status states are explicit. Users always know what's happening and what happened.
+
+**Predictable state changes**
+When a user takes an action, the result is immediate and obvious. Balances update. Payments appear. Credits load. No uncertainty about whether something worked.
