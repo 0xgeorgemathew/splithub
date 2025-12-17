@@ -1,9 +1,58 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+/**
+ * =============================================================================
+ * TEST PAGE - Direct Chip-to-Chain Transactions (No Relayer)
+ * =============================================================================
+ *
+ * PURPOSE:
+ * This page tests sending ETH and ERC-20 tokens directly from a Halo NFC chip
+ * WITHOUT using the app's gasless relayer system. The chip itself pays for gas.
+ *
+ * WHY THIS EXISTS:
+ * The main SplitHub app uses a relayer pattern where:
+ *   1. User signs EIP-712 typed data with their chip
+ *   2. Relayer receives the signature and submits the TX (paying gas)
+ *   3. Smart contract verifies signature and executes transfer
+ *
+ * This test page bypasses all of that to test raw transaction signing:
+ *   1. User taps chip to get public keys/addresses
+ *   2. App builds an unsigned transaction
+ *   3. User taps chip to sign the raw TX hash (digest)
+ *   4. App broadcasts the signed TX directly to the network
+ *
+ * KEY DIFFERENCES FROM MAIN APP:
+ * - No relayer API calls
+ * - No EIP-712 typed data (raw digest signing)
+ * - Chip address pays gas fees (must have ETH)
+ * - No SplitHub smart contracts involved
+ * - Uses key slot 1 (slot 2 has RAW_DIGEST_PROHIBITED)
+ *
+ * FLOW:
+ * [Tap to Connect] → get_pkeys → derive addresses → show wallet
+ *        ↓
+ * [User fills form] → recipient + amount
+ *        ↓
+ * [Tap to Send] → build TX → serialize → keccak256 hash
+ *        ↓
+ * [Chip signs] → sign digest → get r,s,v
+ *        ↓
+ * [Broadcast] → serialize with signature → sendRawTransaction
+ *
+ * =============================================================================
+ */
+import { useCallback, useMemo, useState } from "react";
+import {
+  ChipWalletCard,
+  DebugTerminal,
+  ERC20_ABI,
+  LogEntry,
+  SendEthCard,
+  SendTokenCard,
+  Status,
+  StatusCard,
+} from "./_components";
 import { execHaloCmdWeb } from "@arx-research/libhalo/api/web";
-import { motion } from "framer-motion";
-import { AlertCircle, CheckCircle, Loader2, Nfc, Send, Terminal, Trash2, Wallet } from "lucide-react";
 import {
   createPublicClient,
   encodeFunctionData,
@@ -16,65 +65,41 @@ import {
 } from "viem";
 import { baseSepolia } from "viem/chains";
 
-type Status = "idle" | "connecting" | "building" | "signing" | "broadcasting" | "success" | "error";
-
-type LogEntry = {
-  time: string;
-  type: "info" | "success" | "error" | "data";
-  message: string;
-};
-
-const ERC20_ABI = [
-  {
-    name: "decimals",
-    type: "function",
-    inputs: [],
-    outputs: [{ type: "uint8" }],
-    stateMutability: "view",
-  },
-  {
-    name: "transfer",
-    type: "function",
-    inputs: [
-      { name: "to", type: "address" },
-      { name: "amount", type: "uint256" },
-    ],
-    outputs: [{ type: "bool" }],
-    stateMutability: "nonpayable",
-  },
-  {
-    name: "symbol",
-    type: "function",
-    inputs: [],
-    outputs: [{ type: "string" }],
-    stateMutability: "view",
-  },
-] as const;
-
 export default function TestPage() {
-  // Chip state
+  // =========================================================================
+  // STATE
+  // =========================================================================
+
+  // Chip wallet state - populated after "Tap to Connect"
   const [chipAddress, setChipAddress] = useState<`0x${string}` | null>(null);
   const [chipBalance, setChipBalance] = useState<string | null>(null);
   const [allChipAddresses, setAllChipAddresses] = useState<Record<string, string>>({});
 
-  // Transaction state
+  // Transaction flow state - tracks progress through build/sign/broadcast
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
 
-  // ETH form
+  // Form inputs for ETH transfer
   const [ethTo, setEthTo] = useState("");
   const [ethAmount, setEthAmount] = useState("");
 
-  // Token form
+  // Form inputs for ERC-20 token transfer
   const [tokenAddress, setTokenAddress] = useState("");
   const [tokenTo, setTokenTo] = useState("");
   const [tokenAmount, setTokenAmount] = useState("");
 
-  // Debug logs
+  // Debug terminal logs - visible in UI since we can't access browser console
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const logContainerRef = useRef<HTMLDivElement>(null);
 
+  // =========================================================================
+  // UTILITIES
+  // =========================================================================
+
+  /**
+   * Logging utility that displays in the debug terminal.
+   * Useful because this runs on mobile where console isn't accessible.
+   */
   const log = useCallback((type: LogEntry["type"], message: string) => {
     const time = new Date().toLocaleTimeString("en-US", {
       hour12: false,
@@ -84,16 +109,14 @@ export default function TestPage() {
       fractionalSecondDigits: 3,
     });
     setLogs(prev => [...prev, { time, type, message }]);
-    // Auto-scroll to bottom
-    setTimeout(() => {
-      if (logContainerRef.current) {
-        logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
-      }
-    }, 10);
   }, []);
 
   const clearLogs = () => setLogs([]);
 
+  /**
+   * Viem public client for reading chain data and broadcasting transactions.
+   * Connected to Base Sepolia testnet.
+   */
   const publicClient = useMemo(
     () =>
       createPublicClient({
@@ -103,6 +126,10 @@ export default function TestPage() {
     [],
   );
 
+  /**
+   * Fetches ETH balance for a given address.
+   * Called after connecting chip and after successful transactions.
+   */
   const refreshBalance = async (address: `0x${string}`) => {
     try {
       log("info", `Fetching balance for ${address.slice(0, 10)}...`);
@@ -115,6 +142,20 @@ export default function TestPage() {
     }
   };
 
+  // =========================================================================
+  // CHIP CONNECTION
+  // =========================================================================
+
+  /**
+   * Connects to the Halo chip and retrieves all public keys/addresses.
+   *
+   * Uses the "get_pkeys" command which returns:
+   * - publicKeys: { "1": "04abc...", "2": "04def...", "3": "04ghi..." }
+   * - etherAddresses: { "1": "0xABC...", "2": "0xDEF...", "3": "0xGHI..." }
+   *
+   * We use slot 1 for transactions because slot 2 has RAW_DIGEST_PROHIBITED
+   * which prevents signing arbitrary hashes (security feature).
+   */
   const connectChip = async () => {
     setStatus("connecting");
     setError(null);
@@ -126,25 +167,50 @@ export default function TestPage() {
       log("success", "Got response from chip");
       log("data", `Result keys: ${Object.keys(result).join(", ")}`);
 
+      // Log all available public keys
       if (result.publicKeys) {
         log("data", `publicKeys: ${JSON.stringify(result.publicKeys)}`);
       }
+
+      // Store and display all Ethereum addresses from the chip
       if (result.etherAddresses) {
         log("data", `etherAddresses: ${JSON.stringify(result.etherAddresses)}`);
-        // Store all addresses
         setAllChipAddresses(result.etherAddresses);
-        // Log each address
+
+        // Log ALL slots from get_pkeys
         Object.entries(result.etherAddresses).forEach(([slot, addr]) => {
           log("info", `Slot ${slot}: ${addr}`);
         });
+
+        // Check slot 9 (BurnerOS wallet slot - password protected)
+        try {
+          log("info", "Checking slot 9 (Burner wallet)...");
+          const slot9Result: any = await execHaloCmdWeb({
+            name: "get_key_info",
+            keyNo: 9,
+          });
+
+          if (slot9Result.publicKey) {
+            // Derive Ethereum address: remove 04 prefix, keccak256 hash, take last 20 bytes
+            const pubKeyNoPrefix = slot9Result.publicKey.slice(2);
+            const hash = keccak256(`0x${pubKeyNoPrefix}`);
+            const burnerAddress = `0x${hash.slice(-40)}` as `0x${string}`;
+            log("success", `Slot 9 (Burner): ${burnerAddress}`);
+            setAllChipAddresses(prev => ({ ...prev, "9": burnerAddress }));
+          }
+        } catch (slot9Err) {
+          log("info", `Slot 9 not accessible: ${slot9Err instanceof Error ? slot9Err.message : String(slot9Err)}`);
+        }
       }
 
+      // Verify slot 1 exists (our signing slot)
       const publicKey = result.publicKeys?.["1"];
       if (!publicKey) {
         throw new Error("No public key found in slot 1");
       }
       log("info", `Public key slot 1: ${publicKey.slice(0, 20)}...`);
 
+      // Use slot 1 address as the active wallet
       const address = result.etherAddresses?.["1"] as `0x${string}`;
       if (!address) {
         throw new Error("Could not derive address from chip");
@@ -163,6 +229,21 @@ export default function TestPage() {
     }
   };
 
+  // =========================================================================
+  // SEND ETH
+  // =========================================================================
+
+  /**
+   * Sends ETH directly from the chip address.
+   *
+   * Process:
+   * 1. BUILD: Fetch nonce and gas prices, construct unsigned EIP-1559 TX
+   * 2. HASH: Serialize TX and compute keccak256 hash (this is what gets signed)
+   * 3. SIGN: Chip signs the raw hash digest, returns r/s/v signature components
+   * 4. BROADCAST: Append signature to TX and send via sendRawTransaction
+   *
+   * Gas is fixed at 21000 for simple ETH transfers.
+   */
   const sendEth = async () => {
     if (!chipAddress || !ethTo || !ethAmount) {
       setError("Please fill in all fields");
@@ -177,7 +258,7 @@ export default function TestPage() {
     log("info", `Amount: ${ethAmount} ETH`);
 
     try {
-      // Build transaction
+      // Step 1: Fetch chain state needed for transaction
       log("info", "Fetching nonce...");
       const nonce = await publicClient.getTransactionCount({ address: chipAddress });
       log("data", `Nonce: ${nonce}`);
@@ -187,22 +268,31 @@ export default function TestPage() {
       log("data", `maxFeePerGas: ${feeData.maxFeePerGas}`);
       log("data", `maxPriorityFeePerGas: ${feeData.maxPriorityFeePerGas}`);
 
+      // Step 2: Build unsigned transaction object
+      // Using EIP-1559 format with maxFeePerGas and maxPriorityFeePerGas
       const tx = {
         type: "eip1559" as const,
         nonce,
         to: ethTo as `0x${string}`,
         value: parseEther(ethAmount),
-        gas: 21000n,
+        gas: 21000n, // Fixed gas for simple ETH transfer
         maxFeePerGas: feeData.maxFeePerGas ?? 1000000000n,
         maxPriorityFeePerGas: feeData.maxPriorityFeePerGas ?? 1000000n,
         chainId: baseSepolia.id,
       };
       log(
         "data",
-        `TX object: ${JSON.stringify({ ...tx, value: tx.value.toString(), gas: tx.gas.toString(), maxFeePerGas: tx.maxFeePerGas.toString(), maxPriorityFeePerGas: tx.maxPriorityFeePerGas.toString() })}`,
+        `TX object: ${JSON.stringify({
+          ...tx,
+          value: tx.value.toString(),
+          gas: tx.gas.toString(),
+          maxFeePerGas: tx.maxFeePerGas.toString(),
+          maxPriorityFeePerGas: tx.maxPriorityFeePerGas.toString(),
+        })}`,
       );
 
-      // Serialize and hash
+      // Step 3: Serialize and hash the transaction
+      // The hash is what the chip will sign
       log("info", "Serializing transaction...");
       const serialized = serializeTransaction(tx);
       log("data", `Serialized (${serialized.length} chars): ${serialized.slice(0, 50)}...`);
@@ -210,19 +300,22 @@ export default function TestPage() {
       const hash = keccak256(serialized);
       log("data", `TX Hash to sign: ${hash}`);
 
+      // Step 4: Request chip signature
+      // IMPORTANT: digest must NOT have 0x prefix for libhalo
       setStatus("signing");
       log("info", "Requesting chip signature...");
       log("info", `Calling execHaloCmdWeb({ name: 'sign', keyNo: 1, digest: '${hash.slice(2, 20)}...' })`);
 
       const sigResult: any = await execHaloCmdWeb({
         name: "sign",
-        keyNo: 1,
-        digest: hash.slice(2),
+        keyNo: 1, // Must use slot 1 (slot 2 prohibits raw digest signing)
+        digest: hash.slice(2), // Remove 0x prefix
       });
 
       log("success", "Got signature from chip");
       log("data", `Signature result keys: ${Object.keys(sigResult).join(", ")}`);
 
+      // Log signature details for debugging
       if (sigResult.signature) {
         log("data", `signature keys: ${Object.keys(sigResult.signature).join(", ")}`);
         if (sigResult.signature.raw) {
@@ -236,10 +329,13 @@ export default function TestPage() {
         }
       }
 
+      // Validate signature response
       if (!sigResult.signature?.raw) {
         throw new Error("Invalid signature response from chip - no raw signature");
       }
 
+      // Step 5: Serialize signed transaction
+      // Combine original TX with signature components (r, s, v)
       const { r, s, v } = sigResult.signature.raw;
       log("info", "Serializing signed transaction...");
 
@@ -250,6 +346,7 @@ export default function TestPage() {
       });
       log("data", `Signed TX (${signedTx.length} chars): ${signedTx.slice(0, 50)}...`);
 
+      // Step 6: Broadcast to network
       setStatus("broadcasting");
       log("info", "Broadcasting transaction...");
 
@@ -261,6 +358,7 @@ export default function TestPage() {
       setTxHash(txHashResult);
       setStatus("success");
 
+      // Refresh balance to show updated amount
       await refreshBalance(chipAddress);
       log("success", "=== ETH Transfer Complete ===");
     } catch (err) {
@@ -274,6 +372,19 @@ export default function TestPage() {
     }
   };
 
+  // =========================================================================
+  // SEND TOKEN (ERC-20)
+  // =========================================================================
+
+  /**
+   * Sends ERC-20 tokens from the chip address.
+   *
+   * Similar to sendEth but:
+   * - Calls token contract's transfer(to, amount) function
+   * - Needs to fetch token decimals for proper amount formatting
+   * - Estimates gas (not fixed like ETH transfer)
+   * - TX value is 0 (no ETH being sent), data contains the function call
+   */
   const sendToken = async () => {
     if (!chipAddress || !tokenAddress || !tokenTo || !tokenAmount) {
       setError("Please fill in all fields");
@@ -289,6 +400,8 @@ export default function TestPage() {
     log("info", `Amount: ${tokenAmount}`);
 
     try {
+      // Step 1: Get token decimals (needed to format amount correctly)
+      // e.g., USDC has 6 decimals, so 1 USDC = 1000000 in raw units
       log("info", "Fetching token decimals...");
       const decimals = await publicClient.readContract({
         address: tokenAddress as `0x${string}`,
@@ -297,6 +410,8 @@ export default function TestPage() {
       });
       log("data", `Token decimals: ${decimals}`);
 
+      // Step 2: Encode the transfer function call
+      // This creates the calldata for: transfer(recipient, amount)
       log("info", "Encoding transfer function data...");
       const data = encodeFunctionData({
         abi: ERC20_ABI,
@@ -305,6 +420,8 @@ export default function TestPage() {
       });
       log("data", `Calldata: ${data.slice(0, 50)}...`);
 
+      // Step 3: Estimate gas for the token transfer
+      // Unlike ETH transfers, this varies based on token contract complexity
       log("info", "Estimating gas...");
       const gasEstimate = await publicClient.estimateGas({
         account: chipAddress,
@@ -313,6 +430,7 @@ export default function TestPage() {
       });
       log("data", `Gas estimate: ${gasEstimate}`);
 
+      // Step 4: Fetch nonce and gas prices
       log("info", "Fetching nonce...");
       const nonce = await publicClient.getTransactionCount({ address: chipAddress });
       log("data", `Nonce: ${nonce}`);
@@ -321,23 +439,27 @@ export default function TestPage() {
       const feeData = await publicClient.estimateFeesPerGas();
       log("data", `maxFeePerGas: ${feeData.maxFeePerGas}`);
 
+      // Step 5: Build unsigned transaction
+      // Note: value is 0n (not sending ETH), data contains the transfer call
       const tx = {
         type: "eip1559" as const,
         nonce,
-        to: tokenAddress as `0x${string}`,
-        value: 0n,
-        data,
+        to: tokenAddress as `0x${string}`, // Token contract address
+        value: 0n, // No ETH being sent
+        data, // The encoded transfer(to, amount) call
         gas: gasEstimate,
         maxFeePerGas: feeData.maxFeePerGas ?? 1000000000n,
         maxPriorityFeePerGas: feeData.maxPriorityFeePerGas ?? 1000000n,
         chainId: baseSepolia.id,
       };
 
+      // Step 6: Serialize and hash
       log("info", "Serializing transaction...");
       const serialized = serializeTransaction(tx);
       const hash = keccak256(serialized);
       log("data", `TX Hash to sign: ${hash}`);
 
+      // Step 7: Request chip signature
       setStatus("signing");
       log("info", "Requesting chip signature...");
 
@@ -354,6 +476,7 @@ export default function TestPage() {
         throw new Error("Invalid signature response from chip - no raw signature");
       }
 
+      // Step 8: Serialize signed transaction
       const { r, s, v } = sigResult.signature.raw;
       log("data", `r=${r?.slice(0, 16)}..., s=${s?.slice(0, 16)}..., v=${v}`);
 
@@ -364,6 +487,7 @@ export default function TestPage() {
         v: BigInt(v),
       });
 
+      // Step 9: Broadcast
       setStatus("broadcasting");
       log("info", "Broadcasting transaction...");
 
@@ -388,28 +512,23 @@ export default function TestPage() {
     }
   };
 
+  // =========================================================================
+  // UI HELPERS
+  // =========================================================================
+
+  /** Resets status/error/txHash to allow a new transaction */
   const reset = () => {
     setStatus("idle");
     setError(null);
     setTxHash(null);
   };
 
+  /** True when any async operation is in progress (disables buttons) */
   const isLoading = status !== "idle" && status !== "success" && status !== "error";
 
-  const getLogColor = (type: LogEntry["type"]) => {
-    switch (type) {
-      case "info":
-        return "text-info";
-      case "success":
-        return "text-success";
-      case "error":
-        return "text-error";
-      case "data":
-        return "text-warning";
-      default:
-        return "text-base-content";
-    }
-  };
+  // =========================================================================
+  // RENDER
+  // =========================================================================
 
   return (
     <div className="min-h-screen bg-base-200 p-4 pb-28">
@@ -420,262 +539,50 @@ export default function TestPage() {
           <p className="text-sm text-base-content/60 mt-1">Direct chip signing (no relayer)</p>
         </div>
 
-        {/* Connect Section */}
-        <motion.div
-          className="card bg-base-100 shadow-lg"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <div className="card-body">
-            <h2 className="card-title text-lg">
-              <Wallet className="w-5 h-5" />
-              Chip Wallet
-            </h2>
+        {/* Chip wallet connection card */}
+        <ChipWalletCard
+          chipAddress={chipAddress}
+          chipBalance={chipBalance}
+          allChipAddresses={allChipAddresses}
+          status={status}
+          isLoading={isLoading}
+          onConnect={connectChip}
+        />
 
-            {chipAddress ? (
-              <div className="space-y-3">
-                {/* Active Address (Slot 1) - Full */}
-                <div className="bg-base-200 rounded-lg p-2">
-                  <div className="text-xs text-base-content/60 mb-1">Active (Slot 1)</div>
-                  <div className="font-mono text-xs break-all select-all">{chipAddress}</div>
-                </div>
-
-                {/* Balance */}
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-base-content/60">Balance:</span>
-                  <span className="font-semibold">{chipBalance ?? "..."} ETH</span>
-                </div>
-
-                {/* All Slots */}
-                {Object.keys(allChipAddresses).length > 1 && (
-                  <div className="border-t border-base-300 pt-2">
-                    <div className="text-xs text-base-content/60 mb-2">All Chip Addresses</div>
-                    <div className="space-y-1">
-                      {Object.entries(allChipAddresses).map(([slot, addr]) => (
-                        <div key={slot} className="flex items-start gap-2 text-xs">
-                          <span className="text-base-content/50 w-12 flex-shrink-0">Slot {slot}:</span>
-                          <span className="font-mono break-all select-all text-base-content/70">{addr}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <button className="btn btn-sm btn-outline w-full mt-2" onClick={connectChip} disabled={isLoading}>
-                  Refresh
-                </button>
-              </div>
-            ) : (
-              <button className="btn btn-primary w-full gap-2" onClick={connectChip} disabled={status === "connecting"}>
-                {status === "connecting" ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Tap NFC Chip...
-                  </>
-                ) : (
-                  <>
-                    <Nfc className="w-5 h-5" />
-                    Tap to Connect
-                  </>
-                )}
-              </button>
-            )}
-          </div>
-        </motion.div>
-
-        {/* Send ETH Section */}
+        {/* Transaction forms - only shown after chip is connected */}
         {chipAddress && (
-          <motion.div
-            className="card bg-base-100 shadow-lg"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
-            <div className="card-body">
-              <h2 className="card-title text-lg">
-                <Send className="w-5 h-5" />
-                Send ETH
-              </h2>
+          <>
+            <SendEthCard
+              ethTo={ethTo}
+              ethAmount={ethAmount}
+              status={status}
+              isLoading={isLoading}
+              onEthToChange={setEthTo}
+              onEthAmountChange={setEthAmount}
+              onSend={sendEth}
+            />
 
-              <div className="space-y-3">
-                <input
-                  type="text"
-                  placeholder="Recipient address (0x...)"
-                  className="input input-bordered w-full text-sm"
-                  value={ethTo}
-                  onChange={e => setEthTo(e.target.value)}
-                  disabled={isLoading}
-                />
-                <input
-                  type="text"
-                  placeholder="Amount (ETH)"
-                  className="input input-bordered w-full text-sm"
-                  value={ethAmount}
-                  onChange={e => setEthAmount(e.target.value)}
-                  disabled={isLoading}
-                />
-                <button
-                  className="btn btn-primary w-full gap-2"
-                  onClick={sendEth}
-                  disabled={isLoading || !ethTo || !ethAmount}
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      {status === "building" && "Building TX..."}
-                      {status === "signing" && "Tap to Sign..."}
-                      {status === "broadcasting" && "Broadcasting..."}
-                    </>
-                  ) : (
-                    <>
-                      <Nfc className="w-5 h-5" />
-                      Tap to Send ETH
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </motion.div>
+            <SendTokenCard
+              tokenAddress={tokenAddress}
+              tokenTo={tokenTo}
+              tokenAmount={tokenAmount}
+              status={status}
+              isLoading={isLoading}
+              onTokenAddressChange={setTokenAddress}
+              onTokenToChange={setTokenTo}
+              onTokenAmountChange={setTokenAmount}
+              onSend={sendToken}
+            />
+          </>
         )}
 
-        {/* Send Token Section */}
-        {chipAddress && (
-          <motion.div
-            className="card bg-base-100 shadow-lg"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <div className="card-body">
-              <h2 className="card-title text-lg">
-                <Send className="w-5 h-5" />
-                Send Token
-              </h2>
+        {/* Success/Error status display */}
+        <StatusCard status={status} txHash={txHash} error={error} onDismiss={reset} />
 
-              <div className="space-y-3">
-                <input
-                  type="text"
-                  placeholder="Token address (0x...)"
-                  className="input input-bordered w-full text-sm"
-                  value={tokenAddress}
-                  onChange={e => setTokenAddress(e.target.value)}
-                  disabled={isLoading}
-                />
-                <input
-                  type="text"
-                  placeholder="Recipient address (0x...)"
-                  className="input input-bordered w-full text-sm"
-                  value={tokenTo}
-                  onChange={e => setTokenTo(e.target.value)}
-                  disabled={isLoading}
-                />
-                <input
-                  type="text"
-                  placeholder="Amount"
-                  className="input input-bordered w-full text-sm"
-                  value={tokenAmount}
-                  onChange={e => setTokenAmount(e.target.value)}
-                  disabled={isLoading}
-                />
-                <button
-                  className="btn btn-primary w-full gap-2"
-                  onClick={sendToken}
-                  disabled={isLoading || !tokenAddress || !tokenTo || !tokenAmount}
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      {status === "building" && "Building TX..."}
-                      {status === "signing" && "Tap to Sign..."}
-                      {status === "broadcasting" && "Broadcasting..."}
-                    </>
-                  ) : (
-                    <>
-                      <Nfc className="w-5 h-5" />
-                      Tap to Send Token
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
+        {/* Debug log terminal - essential for mobile testing */}
+        <DebugTerminal logs={logs} onClear={clearLogs} />
 
-        {/* Status Section */}
-        {(status === "success" || status === "error") && (
-          <motion.div
-            className={`card shadow-lg ${status === "success" ? "bg-success/10" : "bg-error/10"}`}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-          >
-            <div className="card-body">
-              {status === "success" ? (
-                <div className="flex items-start gap-3">
-                  <CheckCircle className="w-6 h-6 text-success flex-shrink-0" />
-                  <div className="min-w-0">
-                    <p className="font-semibold text-success">Transaction Sent!</p>
-                    {txHash && (
-                      <a
-                        href={`https://sepolia.basescan.org/tx/${txHash}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-primary underline break-all"
-                      >
-                        {txHash}
-                      </a>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="w-6 h-6 text-error flex-shrink-0" />
-                  <div className="min-w-0">
-                    <p className="font-semibold text-error">Error</p>
-                    <p className="text-sm text-base-content/70 break-words">{error}</p>
-                  </div>
-                </div>
-              )}
-              <button className="btn btn-sm btn-ghost mt-2" onClick={reset}>
-                Dismiss
-              </button>
-            </div>
-          </motion.div>
-        )}
-
-        {/* Debug Terminal */}
-        <motion.div
-          className="card bg-base-300 shadow-lg"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <div className="card-body p-3">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="card-title text-sm">
-                <Terminal className="w-4 h-4" />
-                Debug Log
-              </h2>
-              <button className="btn btn-xs btn-ghost gap-1" onClick={clearLogs}>
-                <Trash2 className="w-3 h-3" />
-                Clear
-              </button>
-            </div>
-            <div ref={logContainerRef} className="bg-base-100 rounded-lg p-2 h-48 overflow-y-auto font-mono text-xs">
-              {logs.length === 0 ? (
-                <p className="text-base-content/40 italic">No logs yet. Tap to connect...</p>
-              ) : (
-                logs.map((entry, i) => (
-                  <div key={i} className="flex gap-2 leading-relaxed">
-                    <span className="text-base-content/40 flex-shrink-0">{entry.time}</span>
-                    <span className={`${getLogColor(entry.type)} break-all`}>{entry.message}</span>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Info */}
+        {/* Footer info */}
         <div className="text-center text-xs text-base-content/50 py-2">
           <p>Chain: Base Sepolia (84532)</p>
           <p>Chip must have ETH for gas</p>
