@@ -6,7 +6,8 @@
       "packages/nextjs/**",
       "railpack.json",
       "package.json",
-      ".yarnrc.yml"
+      ".yarnrc.yml",
+      "railway.json"
     ]
   },
   "deploy": {

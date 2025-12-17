@@ -6,6 +6,7 @@ import { supabase } from "~~/lib/supabase";
  * GET /api/balances/token
  * Fetches the token address used in expenses between two users
  */
+// railway
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
