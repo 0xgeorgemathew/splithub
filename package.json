@@ -68,6 +68,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.86.0",
-    "framer-motion": "^12.23.25"
+    "framer-motion": "^12.23.25",
+    "next": "^15.2.8"
   }
 }
