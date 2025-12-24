@@ -89,18 +89,9 @@ export function LandingFooter() {
           className="flex flex-col sm:flex-row items-center justify-between gap-6 pt-8 border-t border-base-300/20"
         >
           {/* Logo */}
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            className="flex items-center h-8 rounded-full overflow-hidden"
-            style={{
-              boxShadow: "inset 0 1px 3px rgba(0,0,0,0.2), 0 1px 0 rgba(255,255,255,0.03)",
-            }}
-          >
-            <span className="font-[family-name:var(--font-archivo)] bg-base-300 text-white h-full flex items-center font-bold text-xs tracking-tight px-2.5">
-              Split
-            </span>
-            <span className="font-[family-name:var(--font-archivo)] bg-primary text-primary-content h-full flex items-center font-bold text-xs tracking-tight px-2.5">
-              hub
+          <motion.div whileHover={{ scale: 1.05 }}>
+            <span className="text-2xl font-black tracking-tight">
+              Split<span className="text-primary">Hub</span>
             </span>
           </motion.div>
 

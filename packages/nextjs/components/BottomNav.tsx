@@ -63,7 +63,7 @@ export const BottomNav = () => {
               style={{
                 width: `calc(${100 / mainNavItems.length}% - 6px)`,
                 left: `calc(${(activeIndex / mainNavItems.length) * 100}% + 3px)`,
-                boxShadow: "0 4px 16px rgba(242, 169, 0, 0.45), inset 0 1px 1px rgba(255,255,255,0.15)",
+                boxShadow: "inset 0 1px 1px rgba(255,255,255,0.15)",
               }}
               transition={{
                 type: "spring",
