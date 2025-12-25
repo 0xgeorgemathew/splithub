@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Abi, formatUnits } from "viem";
+import { Abi } from "viem";
 import { createPublicClient, createWalletClient, http, isAddress } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { baseSepolia } from "viem/chains";
+import { TOKEN_DECIMALS } from "~~/config/tokens";
 import deployedContracts from "~~/contracts/deployedContracts";
+import { safeProcessCircleAutoSplit } from "~~/services/circleAutoSplitService";
+import { parseContractError } from "~~/utils/contractErrors";
 
 const CHAIN_ID = 84532; // Base Sepolia
 
@@ -145,60 +148,12 @@ export async function POST(request: NextRequest) {
     console.log("Transaction confirmed! Block:", receipt.blockNumber.toString());
 
     // Circle Auto-Split: Check if payer has an active Circle
-    // Using dynamic imports to prevent module-level loading issues
-    let circleSplitResult = null;
-    try {
-      // Dynamic imports to avoid affecting other routes if Circle tables don't exist
-      const { getActiveCircle, getCircleMembers } = await import("~~/services/circleService");
-      const { createExpense } = await import("~~/services/expenseService");
-
-      const activeCircle = await getActiveCircle(payer);
-
-      if (activeCircle) {
-        console.log("Active Circle found:", activeCircle.name);
-
-        const members = await getCircleMembers(activeCircle.id);
-        console.log("Circle members:", members.length);
-
-        if (members.length > 0) {
-          // Calculate split amount: original amount / (members + payer)
-          const amountBigInt = BigInt(amount);
-          const totalParticipants = members.length + 1; // members + payer
-          const splitAmountWei = amountBigInt / BigInt(totalParticipants);
-
-          // Convert to human-readable format (assuming 6 decimals for USDC)
-          const splitAmountFormatted = formatUnits(splitAmountWei, 6);
-          const totalAmountFormatted = parseFloat(formatUnits(amountBigInt, 6));
-
-          console.log(`Split: ${formatUnits(amountBigInt, 6)} / ${totalParticipants} = ${splitAmountFormatted} each`);
-
-          // Create expense record so balances update
-          const participantWallets = [payer.toLowerCase(), ...members.map(m => m.wallet_address.toLowerCase())];
-          try {
-            const expenseResult = await createExpense({
-              creatorWallet: payer.toLowerCase(),
-              description: `Circle: ${activeCircle.name}`,
-              totalAmount: totalAmountFormatted,
-              tokenAddress: token.toLowerCase(),
-              participantWallets,
-            });
-            console.log("Expense created:", expenseResult.expense.id);
-
-            circleSplitResult = {
-              circleName: activeCircle.name,
-              memberCount: members.length,
-              splitAmount: splitAmountFormatted,
-              expenseId: expenseResult.expense.id,
-            };
-          } catch (expenseError) {
-            console.error("Failed to create expense (non-critical):", expenseError);
-          }
-        }
-      }
-    } catch (circleError) {
-      // Circle split is non-critical, log but don't fail the payment
-      console.error("Circle auto-split error (non-critical):", circleError);
-    }
+    const circleSplitResult = await safeProcessCircleAutoSplit({
+      userWallet: payer,
+      amount,
+      tokenAddress: token,
+      decimals: TOKEN_DECIMALS.USDC,
+    });
 
     return NextResponse.json({
       success: true,
@@ -206,30 +161,9 @@ export async function POST(request: NextRequest) {
       blockNumber: receipt.blockNumber.toString(),
       circleSplit: circleSplitResult,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Relay payment error:", error);
-
-    // Extract more specific error message
-    let message = "Unknown error";
-    if (error instanceof Error) {
-      message = error.message;
-
-      // Check for specific contract errors
-      if (message.includes("UnauthorizedSigner")) {
-        message = "Unauthorized signer: The NFC chip is not registered to this wallet";
-      } else if (message.includes("InvalidNonce")) {
-        message = "Invalid nonce: Transaction out of order or already processed";
-      } else if (message.includes("ExpiredSignature")) {
-        message = "Signature expired: Please try again";
-      } else if (message.includes("InvalidSignature")) {
-        message = "Invalid signature: Signature verification failed";
-      } else if (message.includes("ERC20: insufficient allowance")) {
-        message = "Insufficient token allowance: Please approve the contract to spend your tokens";
-      } else if (message.includes("ERC20: transfer amount exceeds balance")) {
-        message = "Insufficient balance: You don't have enough tokens";
-      }
-    }
-
+    const message = parseContractError(error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

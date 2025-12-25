@@ -44,7 +44,7 @@ export function SettleModal({ isOpen, onClose, params, onSuccess, onError }: Set
   const displayName = recipientInfo?.name || (params.memo ? params.memo.replace("Settlement with ", "") : "Recipient");
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-4 overflow-y-auto">
       {/* Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
@@ -60,7 +60,7 @@ export function SettleModal({ isOpen, onClose, params, onSuccess, onError }: Set
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 20, scale: 0.95 }}
         transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-        className="relative w-full max-w-xs bg-gradient-to-b from-base-100 to-base-200 rounded-3xl shadow-2xl border border-white/10"
+        className="relative w-full max-w-xs bg-gradient-to-b from-base-100 to-base-200 rounded-3xl shadow-2xl border border-white/10 my-4"
       >
         {/* Close Button */}
         <button

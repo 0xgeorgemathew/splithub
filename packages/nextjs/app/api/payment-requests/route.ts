@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAddress } from "viem";
 import { supabase } from "~~/lib/supabase";
+import { sendPaymentRequestNotification } from "~~/services/notificationService";
+import { createPaymentRequest } from "~~/services/paymentRequestService";
+import {
+  calculateExpirationDate,
+  findExistingPendingRequest,
+  validatePaymentRequestInput,
+} from "~~/services/paymentRequestValidation";
 
 // GET /api/payment-requests - Fetch payment requests for a user
 export async function GET(request: NextRequest) {
@@ -79,105 +86,47 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-
     const { payer, recipient, token, amount, memo, payerTwitter, requesterTwitter } = body;
 
-    // Validate required fields
-    if (!payer || !recipient || !token || !amount) {
-      return NextResponse.json({ error: "Missing required fields: payer, recipient, token, amount" }, { status: 400 });
+    // Validate input using service
+    const validation = validatePaymentRequestInput({ payer, recipient, token, amount });
+    if (!validation.valid) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
-    // Validate addresses
-    if (!isAddress(payer)) {
-      return NextResponse.json({ error: "Invalid payer address" }, { status: 400 });
-    }
+    const { normalizedPayer, normalizedRecipient } = validation;
 
-    if (!isAddress(recipient)) {
-      return NextResponse.json({ error: "Invalid recipient address" }, { status: 400 });
-    }
-
-    if (!isAddress(token)) {
-      return NextResponse.json({ error: "Invalid token address" }, { status: 400 });
-    }
-
-    // Validate amount
-    const parsedAmount = parseFloat(amount);
-    if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
-    }
-
-    const payerLower = payer.toLowerCase();
-    const recipientLower = recipient.toLowerCase();
-
-    // Check if there's already a pending request for this payer-recipient pair
-    const { data: existingRequest, error: checkError } = await supabase
-      .from("payment_requests")
-      .select("id, amount")
-      .eq("payer", payerLower)
-      .eq("recipient", recipientLower)
-      .eq("status", "pending")
-      .single();
-
-    // If a pending request already exists, return it
-    if (existingRequest && !checkError) {
+    // Check for existing pending request
+    const existing = await findExistingPendingRequest(normalizedPayer!, normalizedRecipient!);
+    if (existing.exists) {
       return NextResponse.json({
-        requestId: existingRequest.id,
-        settleUrl: `/settle/${existingRequest.id}`,
+        requestId: existing.requestId,
+        settleUrl: `/settle/${existing.requestId}`,
         message: "A pending payment request already exists.",
         isExisting: true,
       });
     }
 
-    // Set expiration to 24 hours from now
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    // Create payment request
+    const data = await createPaymentRequest({
+      payer: normalizedPayer!,
+      recipient: normalizedRecipient!,
+      token,
+      amount: amount.toString(),
+      memo,
+      expiresAt: calculateExpirationDate(),
+      payerTwitter,
+      requesterTwitter,
+    });
 
-    // Insert into database
-    const { data, error } = await supabase
-      .from("payment_requests")
-      .insert({
-        payer: payerLower,
-        recipient: recipientLower,
-        token: token.toLowerCase(),
-        amount: amount.toString(),
-        memo: memo || null,
-        status: "pending",
-        expires_at: expiresAt,
-        payer_twitter: payerTwitter || null,
-        requester_twitter: requesterTwitter || null,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error("Supabase error:", error);
-      return NextResponse.json({ error: "Failed to create payment request" }, { status: 500 });
-    }
-
-    // Send push notification to payer
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://splithub.app";
-    const notificationPayload = {
-      recipientWallet: payerLower,
-      title: `Payment Request from @${requesterTwitter || "someone"}`,
-      message: `${amount} USDC${memo ? ` - ${memo}` : ""}`,
-      url: `${baseUrl}/settle/${data.id}`,
-    };
-    console.log("[PaymentRequest] Sending notification:", notificationPayload);
-
-    try {
-      const notifRes = await fetch(`${baseUrl}/api/notifications/send`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(notificationPayload),
-      });
-      const notifData = await notifRes.json();
-      if (notifRes.ok) {
-        console.log("[PaymentRequest] Notification sent:", notifData);
-      } else {
-        console.error("[PaymentRequest] Notification failed:", notifData);
-      }
-    } catch (err) {
-      console.error("[PaymentRequest] Notification error:", err);
-    }
+    // Send notification (non-blocking)
+    sendPaymentRequestNotification({
+      payerWallet: normalizedPayer!,
+      requestId: data.id,
+      amount: amount.toString(),
+      memo,
+      requesterTwitter,
+    });
 
     return NextResponse.json({
       requestId: data.id,

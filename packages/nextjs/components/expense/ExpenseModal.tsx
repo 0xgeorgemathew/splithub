@@ -169,7 +169,7 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess }: ExpenseModalProps) 
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center px-4 pt-16">
+        <div className="fixed inset-0 z-50 flex items-start justify-center px-4 pt-16 overflow-y-auto">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -186,7 +186,7 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess }: ExpenseModalProps) 
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -20 }}
             transition={{ type: "spring", stiffness: 400, damping: 30 }}
-            className="relative w-full max-w-sm bg-gradient-to-b from-base-100 to-base-200 rounded-2xl shadow-2xl border border-white/10 max-h-[85vh] flex flex-col"
+            className="relative w-full max-w-sm bg-gradient-to-b from-base-100 to-base-200 rounded-2xl shadow-2xl border border-white/10 max-h-[80dvh] flex flex-col mb-4"
           >
             <AnimatePresence mode="wait">
               {isSuccess ? (
@@ -199,7 +199,7 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess }: ExpenseModalProps) 
                   variants={staggerContainer}
                   initial="hidden"
                   animate="show"
-                  className="flex flex-col max-h-[85vh]"
+                  className="flex flex-col max-h-[80dvh]"
                 >
                   <ExpenseModalHeader onClose={handleClose} />
                   <ExpenseAmountInput

@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Abi, formatUnits } from "viem";
+import { Abi } from "viem";
 import { createPublicClient, createWalletClient, http, isAddress } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { baseSepolia } from "viem/chains";
-import { TOKENS } from "~~/config/tokens";
+import { TOKENS, TOKEN_DECIMALS } from "~~/config/tokens";
 import deployedContracts from "~~/contracts/deployedContracts";
+import { safeProcessCircleAutoSplit } from "~~/services/circleAutoSplitService";
+import { calculateCreditsMinted } from "~~/utils/creditCalculations";
 
 const CHAIN_ID = 84532; // Base Sepolia
 
@@ -107,71 +109,19 @@ export async function POST(request: NextRequest) {
     // Wait for confirmation
     const receipt = await publicClient.waitForTransactionReceipt({ hash });
 
-    // Calculate credits minted (1 USDC = 10 credits)
-    // USDC has 6 decimals, credits have 18 decimals
-    const creditsMinted = (BigInt(usdcAmount) * BigInt(10) * BigInt(10 ** 18)) / BigInt(10 ** 6);
+    // Calculate credits minted using utility
+    const creditsMinted = calculateCreditsMinted(BigInt(usdcAmount));
 
     console.log("Credit purchase confirmed! Block:", receipt.blockNumber.toString());
 
     // Circle Auto-Split: Check if buyer has an active Circle
-    // Using dynamic imports to prevent module-level loading issues
-    let circleSplitResult = null;
-    try {
-      const { getActiveCircle, getCircleMembers } = await import("~~/services/circleService");
-      const { createExpense } = await import("~~/services/expenseService");
-
-      const activeCircle = await getActiveCircle(buyer);
-
-      if (activeCircle) {
-        console.log("Active Circle found:", activeCircle.name);
-
-        const members = await getCircleMembers(activeCircle.id);
-        console.log("Circle members:", members.length);
-
-        if (members.length > 0) {
-          // Split USDC amount among Circle members (not credits)
-          const amountBigInt = BigInt(usdcAmount);
-          const totalParticipants = members.length + 1; // members + buyer
-          const splitAmountWei = amountBigInt / BigInt(totalParticipants);
-
-          // Convert to human-readable format (USDC has 6 decimals)
-          const splitAmountFormatted = formatUnits(splitAmountWei, 6);
-          const totalAmountFormatted = parseFloat(formatUnits(amountBigInt, 6));
-
-          console.log(
-            `Split: ${formatUnits(amountBigInt, 6)} USDC / ${totalParticipants} = ${splitAmountFormatted} each`,
-          );
-
-          // Get USDC token address from centralized config
-          const usdcAddress = TOKENS.USDC;
-
-          // Create expense record so balances update
-          const participantWallets = [buyer.toLowerCase(), ...members.map(m => m.wallet_address.toLowerCase())];
-          try {
-            const expenseResult = await createExpense({
-              creatorWallet: buyer.toLowerCase(),
-              description: `Circle: ${activeCircle.name} (credits)`,
-              totalAmount: totalAmountFormatted,
-              tokenAddress: usdcAddress.toLowerCase(),
-              participantWallets,
-            });
-            console.log("Expense created:", expenseResult.expense.id);
-
-            circleSplitResult = {
-              circleName: activeCircle.name,
-              memberCount: members.length,
-              splitAmount: splitAmountFormatted,
-              expenseId: expenseResult.expense.id,
-            };
-          } catch (expenseError) {
-            console.error("Failed to create expense (non-critical):", expenseError);
-          }
-        }
-      }
-    } catch (circleError) {
-      // Circle split is non-critical, log but don't fail the purchase
-      console.error("Circle auto-split error (non-critical):", circleError);
-    }
+    const circleSplitResult = await safeProcessCircleAutoSplit({
+      userWallet: buyer,
+      amount: usdcAmount,
+      tokenAddress: TOKENS.USDC,
+      decimals: TOKEN_DECIMALS.USDC,
+      description: undefined, // Will default to "Circle: {name}"
+    });
 
     return NextResponse.json({
       success: true,

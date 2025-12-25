@@ -23,6 +23,38 @@ export const TOKENS = {
 } as const;
 
 /**
+ * Token decimal configurations
+ */
+export const TOKEN_DECIMALS = {
+  USDC: 6,
+  CREDIT: 18,
+} as const;
+
+/**
+ * Credit token conversion rates
+ */
+export const CREDIT_CONVERSION = {
+  /** 1 USDC = 10 credits */
+  USDC_TO_CREDITS_RATIO: 10,
+} as const;
+
+/**
+ * Payment request configuration
+ */
+export const PAYMENT_REQUEST_CONFIG = {
+  /** Hours until payment request expires */
+  EXPIRY_HOURS: 24,
+} as const;
+
+/**
+ * Payment signing configuration
+ */
+export const PAYMENT_DEADLINE = {
+  /** Seconds until payment signature expires (1 hour) */
+  SECONDS: 3600,
+} as const;
+
+/**
  * Default token for payments when no specific token is specified
  */
 export const DEFAULT_PAYMENT_TOKEN = TOKENS.USDC;
