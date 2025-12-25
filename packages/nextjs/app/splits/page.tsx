@@ -4,16 +4,18 @@ import { useState } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { motion } from "framer-motion";
 import { Sparkles, Wallet } from "lucide-react";
+import { CircleSection } from "~~/components/circles/CircleSection";
 import { ExpenseModal } from "~~/components/expense/ExpenseModal";
-import { CircleSection } from "~~/components/home/CircleSection";
 import { SettleModal } from "~~/components/settle/SettleModal";
 import { type PaymentParams } from "~~/components/settle/types";
 import { BalancesLiveFeed } from "~~/components/splits/BalancesLiveFeed";
 import { SplitsHero } from "~~/components/splits/SplitsHero";
+import { ANIMATION_DELAYS } from "~~/constants/ui";
 import { useFriendBalancesRealtime } from "~~/hooks/useFriendBalancesRealtime";
 import { usePaymentRequestsRealtime } from "~~/hooks/usePaymentRequestsRealtime";
 import { useUSDCBalance } from "~~/hooks/useUSDCBalance";
 import { type FriendBalance } from "~~/lib/supabase";
+import { canSettle, formatAmount } from "~~/utils/format";
 
 export default function SplitsPage() {
   const { ready, authenticated, user, login } = usePrivy();
@@ -39,18 +41,6 @@ export default function SplitsPage() {
   // Helper to get pending request for a friend (simplified - just checks if any request exists)
   const getRequestForFriend = (friendWallet: string) => {
     return pendingRequests.find(req => req.payer.toLowerCase() === friendWallet.toLowerCase()) || null;
-  };
-
-  const formatAmount = (amount: number): string => {
-    return Math.abs(amount).toFixed(2);
-  };
-
-  const canSettle = (balance: number): boolean => {
-    return balance < 0;
-  };
-
-  const _canRequestPayment = (balance: number): boolean => {
-    return balance > 0;
   };
 
   const handleFriendClick = async (friend: FriendBalance) => {
@@ -95,7 +85,7 @@ export default function SplitsPage() {
         setTimeout(() => {
           setSuccessFriendWallet(null);
           setSelectedFriend(null);
-        }, 1500);
+        }, ANIMATION_DELAYS.SUCCESS_DISPLAY);
         return;
       } else {
         // Create new payment request
@@ -136,7 +126,7 @@ export default function SplitsPage() {
         setTimeout(() => {
           setSuccessFriendWallet(null);
           setSelectedFriend(null);
-        }, 1500);
+        }, ANIMATION_DELAYS.SUCCESS_DISPLAY);
         return;
       }
     } catch (err) {
@@ -209,7 +199,7 @@ export default function SplitsPage() {
       console.log("Settlement recorded successfully");
 
       // Realtime will auto-update, but trigger manual refresh for immediate feedback
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, ANIMATION_DELAYS.SETTLEMENT_REFRESH));
       refreshBalances();
     } catch (err) {
       console.error("Error handling settlement success:", err);

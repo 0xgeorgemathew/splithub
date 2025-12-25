@@ -1,38 +1,29 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { CircleModal } from "./CircleModal";
 import { RadialActionMenu } from "./RadialActionMenu";
 import { usePrivy } from "@privy-io/react-auth";
 import { motion } from "framer-motion";
 import { Check, Eye, Plus, Settings2, Users } from "lucide-react";
+import { UserAvatar } from "~~/components/shared/UserAvatar";
+import { AVATAR_SIZE_RATIOS, CIRCLE_POSITIONS } from "~~/constants/ui";
 import { useCirclesRealtime } from "~~/hooks/useCirclesRealtime";
 import { type CircleWithMembersAndOwnership, type User as UserType } from "~~/lib/supabase";
 import { deleteCircle, setCircleActive } from "~~/services/circleService";
 
-// Avatar component for consistent rendering
+// Avatar component for consistent rendering - uses shared UserAvatar with ring styling
 const MemberAvatar = ({ member, size, className = "" }: { member: UserType; size: number; className?: string }) => (
-  <div
-    className={`rounded-full overflow-hidden ring-2 ring-base-100 ${className}`}
-    style={{ width: size, height: size }}
-  >
-    {member.twitter_profile_url ? (
-      <Image
-        src={member.twitter_profile_url}
-        alt={member.name}
-        width={size}
-        height={size}
-        className="w-full h-full object-cover"
-      />
-    ) : (
-      <div className="w-full h-full bg-gradient-to-br from-primary/40 to-primary/20 flex items-center justify-center">
-        <span className="font-bold text-primary" style={{ fontSize: size * 0.4 }}>
-          {member.name.charAt(0).toUpperCase()}
-        </span>
-      </div>
-    )}
-  </div>
+  <UserAvatar
+    user={{
+      twitter_profile_url: member.twitter_profile_url,
+      name: member.name,
+    }}
+    size={size}
+    showRing
+    ringColor="ring-base-100"
+    className={className}
+  />
 );
 
 // Circle visualization with overlapping avatars
@@ -54,27 +45,19 @@ const CircleCollage = ({ members, size = 80 }: { members: UserType[]; size?: num
   // Single member - full circle
   if (memberCount === 1) {
     return (
-      <div className="rounded-full overflow-hidden" style={{ width: size, height: size }}>
-        {members[0].twitter_profile_url ? (
-          <Image
-            src={members[0].twitter_profile_url}
-            alt={members[0].name}
-            width={size}
-            height={size}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-primary/40 to-primary/20 flex items-center justify-center">
-            <span className="text-2xl font-bold text-primary">{members[0].name.charAt(0).toUpperCase()}</span>
-          </div>
-        )}
-      </div>
+      <UserAvatar
+        user={{
+          twitter_profile_url: members[0].twitter_profile_url,
+          name: members[0].name,
+        }}
+        size={size}
+      />
     );
   }
 
   // 2 members - horizontal centered overlap
   if (memberCount === 2) {
-    const avatarSize = size * 0.55;
+    const avatarSize = size * AVATAR_SIZE_RATIOS.TWO_MEMBERS;
     return (
       <div
         className="rounded-full bg-gradient-to-br from-base-300/40 to-base-300/20 relative flex items-center justify-center"
@@ -92,22 +75,23 @@ const CircleCollage = ({ members, size = 80 }: { members: UserType[]; size?: num
 
   // 3 members - triangle arrangement
   if (memberCount === 3) {
-    const avatarSize = size * 0.48;
+    const avatarSize = size * AVATAR_SIZE_RATIOS.THREE_MEMBERS;
+    const offset = size * CIRCLE_POSITIONS.TRIANGLE_OFFSET;
     return (
       <div
         className="rounded-full bg-gradient-to-br from-base-300/40 to-base-300/20 relative"
         style={{ width: size, height: size }}
       >
         {/* Top center */}
-        <div className="absolute" style={{ top: size * 0.08, left: "50%", transform: "translateX(-50%)" }}>
+        <div className="absolute" style={{ top: offset, left: "50%", transform: "translateX(-50%)" }}>
           <MemberAvatar member={members[0]} size={avatarSize} />
         </div>
         {/* Bottom left */}
-        <div className="absolute" style={{ bottom: size * 0.08, left: size * 0.08 }}>
+        <div className="absolute" style={{ bottom: offset, left: offset }}>
           <MemberAvatar member={members[1]} size={avatarSize} />
         </div>
         {/* Bottom right */}
-        <div className="absolute" style={{ bottom: size * 0.08, right: size * 0.08 }}>
+        <div className="absolute" style={{ bottom: offset, right: offset }}>
           <MemberAvatar member={members[2]} size={avatarSize} />
         </div>
       </div>
@@ -115,7 +99,7 @@ const CircleCollage = ({ members, size = 80 }: { members: UserType[]; size?: num
   }
 
   // 4+ members - stacked fan arrangement
-  const avatarSize = size * 0.45;
+  const avatarSize = size * AVATAR_SIZE_RATIOS.FOUR_PLUS_MEMBERS;
   const displayMembers = members.slice(0, 4);
   const remaining = memberCount - 4;
 
@@ -131,9 +115,9 @@ const CircleCollage = ({ members, size = 80 }: { members: UserType[]; size?: num
             key={member.wallet_address}
             className="absolute"
             style={{
-              left: i * (avatarSize * 0.5),
+              left: i * (avatarSize * CIRCLE_POSITIONS.FAN_OVERLAP),
               zIndex: 3 - i,
-              transform: `rotate(${(i - 1) * 5}deg)`,
+              transform: `rotate(${(i - 1) * CIRCLE_POSITIONS.FAN_ROTATION_DEG}deg)`,
             }}
           >
             <MemberAvatar member={member} size={avatarSize} />
