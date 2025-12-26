@@ -48,3 +48,9 @@ packages/foundry/broadcast/RegisterChip.s.sol/84532/run-1764441901802.json
 /Docs
 packages/foundry/broadcast/DeployCreditToken.s.sol/84532/run-1764539694982.json
 packages/foundry/broadcast/DeployCreditToken.s.sol/84532/run-latest.json
+
+# Local refactoring notes
+refactor-list.md
+refactor-strategy.md
+list.md
+strategy.md
