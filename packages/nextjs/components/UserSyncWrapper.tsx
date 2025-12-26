@@ -1,5 +1,58 @@
 "use client";
 
+/**
+ * UserSyncWrapper - Handles user authentication sync and onboarding flow
+ *
+ * ===========================================================================
+ * ONBOARDING STATE MACHINE
+ * ===========================================================================
+ *
+ *                    ┌─────────────────────────────────────────────────┐
+ *                    │                                                 │
+ *   New User ──────▶ Register Chip ──────▶ Approve Tokens ──────▶ Dashboard
+ *                         │                      │
+ *                         │ skip                 │
+ *                         ▼                      │
+ *                    No Chip Flow                │
+ *                         │                      │
+ *                         └──────────────────────┘
+ *
+ * POSSIBLE STATES (determined by database fields):
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * 1. Needs chip registration:
+ *    - chip_address = null AND chip_registration_status = null
+ *    - Redirect to: /register
+ *
+ * 2. Skipped chip, needs approvals:
+ *    - chip_registration_status = "skipped" AND approval_status = null
+ *    - Redirect to: /approve
+ *
+ * 3. Has chip, needs approvals:
+ *    - chip_address exists AND approval_status = null
+ *    - Redirect to: /approve
+ *
+ * 4. Fully onboarded:
+ *    - (chip_address OR chip_registration_status = "skipped")
+ *      AND approval_status = "completed"
+ *    - No redirect needed, user can access all pages
+ *
+ * IMPORTANT BEHAVIORS:
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * - Sync only runs ONCE per session (tracked by hasSynced ref)
+ * - Prevents infinite loops and API rate limiting on errors
+ * - Prefetches onboarding routes for faster navigation
+ * - Only redirects from "/" or wrong onboarding step
+ * - Users can still manually navigate to later steps
+ *
+ * DATABASE FIELDS USED:
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * users.chip_address - The registered NFC chip's ethereum address
+ * users.chip_registration_status - "pending" | "registered" | "skipped" | null
+ * users.approval_status - "pending" | "completed" | null
+ */
 import { useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
@@ -44,7 +97,20 @@ export const UserSyncWrapper = ({ children }: { children: React.ReactNode }) => 
 
         // Determine the correct page based on onboarding state
         const hasChip = dbUser.chip_address || dbUser.chip_registration_status === "skipped";
-        const hasApprovals = dbUser.approval_status === "completed";
+
+        /**
+         * Check approval status from database OR localStorage fallback.
+         *
+         * The localStorage fallback is set by ApprovalFlow when DB update fails.
+         * This prevents redirect loops if the user completed on-chain approvals
+         * but the database update failed (network issues, etc.).
+         *
+         * See: ApprovalFlow.tsx - updateApprovalStatusWithRetry()
+         */
+        const localStorageApprovalKey = `approval_completed_${user.id}`;
+        const hasLocalStorageApproval =
+          typeof window !== "undefined" && localStorage.getItem(localStorageApprovalKey) === "true";
+        const hasApprovals = dbUser.approval_status === "completed" || hasLocalStorageApproval;
 
         // Define onboarding route based on completion state
         let targetRoute: string | null = null;

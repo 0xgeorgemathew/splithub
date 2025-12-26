@@ -7,6 +7,7 @@ import { usePrivy } from "@privy-io/react-auth";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, ChevronDown, Copy, LogIn, LogOut, Nfc, Wallet } from "lucide-react";
 import { useCurrentUser } from "~~/hooks/useCurrentUser";
+import { copyToClipboard as copyText, truncateAddress } from "~~/utils/addressHelpers";
 
 const dropdownItemVariants = {
   hidden: { opacity: 0, x: -8 },
@@ -50,18 +51,12 @@ export const TopNav = () => {
     window.location.reload();
   };
 
-  const copyToClipboard = async (text: string, field: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
+  const handleCopy = async (text: string, field: string) => {
+    const success = await copyText(text);
+    if (success) {
       setCopiedField(field);
       setTimeout(() => setCopiedField(null), 2000);
-    } catch (err) {
-      console.error("Failed to copy:", err);
     }
-  };
-
-  const truncateAddress = (address: string) => {
-    return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
   return (
@@ -191,7 +186,7 @@ export const TopNav = () => {
                             variants={dropdownItemVariants}
                             initial="hidden"
                             animate="visible"
-                            onClick={() => walletAddress && copyToClipboard(walletAddress, "wallet")}
+                            onClick={() => walletAddress && handleCopy(walletAddress, "wallet")}
                             className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-white/[0.04] transition-colors group"
                           >
                             <Wallet className="w-4 h-4 text-warning/80" />
@@ -212,7 +207,7 @@ export const TopNav = () => {
                             variants={dropdownItemVariants}
                             initial="hidden"
                             animate="visible"
-                            onClick={() => chipAddress && copyToClipboard(chipAddress, "chip")}
+                            onClick={() => chipAddress && handleCopy(chipAddress, "chip")}
                             className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-white/[0.04] transition-colors group"
                           >
                             <Nfc className="w-4 h-4 text-primary/80" />

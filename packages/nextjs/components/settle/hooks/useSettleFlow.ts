@@ -1,11 +1,20 @@
+/**
+ * Settlement flow hook for single-payer NFC payments
+ *
+ * Naming conventions:
+ * - `initiateSettle` - Primary action trigger (follows "initiate*" pattern for action hooks)
+ * - `isProcessing` - Boolean derived from flowState for convenience
+ * - `reset` - Resets hook state to initial values
+ * - `error` - Current error message (empty string when no error)
+ */
 import { useCallback, useMemo, useState } from "react";
 import { ERC20_ABI, FlowState, PaymentParams, SPLIT_HUB_PAYMENTS_ABI } from "../types";
-import { usePrivy } from "@privy-io/react-auth";
 import { createPublicClient, http, parseUnits } from "viem";
 import { useReadContract } from "wagmi";
 import deployedContracts from "~~/contracts/deployedContracts";
 import { useHaloChip } from "~~/hooks/halochip-arx/useHaloChip";
 import { useTargetNetwork } from "~~/hooks/scaffold-eth";
+import { useWalletAddress } from "~~/hooks/useWalletAddress";
 
 interface UseSettleFlowOptions {
   params: PaymentParams;
@@ -15,6 +24,8 @@ interface UseSettleFlowOptions {
 
 interface UseSettleFlowReturn {
   flowState: FlowState;
+  /** Convenience boolean - true when flow is in progress */
+  isProcessing: boolean;
   statusMessage: string;
   error: string;
   txHash: string | null;
@@ -22,17 +33,16 @@ interface UseSettleFlowReturn {
   decimals: number | undefined;
   isConnected: boolean;
   paymentsAddress: `0x${string}` | undefined;
-  handleSettle: () => Promise<void>;
+  /** Primary action - initiates the settlement flow */
+  initiateSettle: () => Promise<void>;
   reset: () => void;
   getCurrentStepIndex: () => number;
 }
 
 export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptions): UseSettleFlowReturn {
-  const { authenticated, user } = usePrivy();
+  const { walletAddress, isConnected } = useWalletAddress();
   const { targetNetwork } = useTargetNetwork();
   const { signTypedData } = useHaloChip();
-
-  const isConnected = authenticated && !!user?.wallet?.address;
 
   const [flowState, setFlowState] = useState<FlowState>("idle");
   const [statusMessage, setStatusMessage] = useState("");
@@ -73,7 +83,7 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
     setError("");
     setTxHash(null);
 
-    if (!isConnected || !user?.wallet?.address) {
+    if (!isConnected || !walletAddress) {
       setError("Please connect your wallet first");
       return;
     }
@@ -88,7 +98,7 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
       return;
     }
 
-    const payerAddress = user.wallet.address as `0x${string}`;
+    const payerAddress = walletAddress;
 
     try {
       // Fetch nonce for the connected wallet
@@ -204,7 +214,7 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
     }
   }, [
     isConnected,
-    user?.wallet?.address,
+    walletAddress,
     paymentsAddress,
     decimals,
     params,
@@ -232,8 +242,12 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
     return stepMap[flowState] ?? -1;
   }, [flowState]);
 
+  // Convenience boolean for checking if flow is in progress
+  const isProcessing = flowState !== "idle" && flowState !== "success" && flowState !== "error";
+
   return {
     flowState,
+    isProcessing,
     statusMessage,
     error,
     txHash,
@@ -241,7 +255,7 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
     decimals,
     isConnected,
     paymentsAddress,
-    handleSettle,
+    initiateSettle: handleSettle,
     reset,
     getCurrentStepIndex,
   };

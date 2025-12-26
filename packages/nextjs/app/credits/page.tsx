@@ -3,10 +3,10 @@
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
+import { POSProvider } from "~~/components/credits/POSContext";
 import { POSFullScreen } from "~~/components/credits/POSFullScreen";
 import { VenueCard } from "~~/components/credits/VenueCard";
-import { Activity, getAllActivities } from "~~/config/activities";
-import { useCreditPurchase } from "~~/hooks/credits";
+import { getAllActivities } from "~~/config/activities";
 import { useTargetNetwork } from "~~/hooks/scaffold-eth";
 
 // Stagger animation for venue cards
@@ -35,63 +35,30 @@ const itemVariants = {
 };
 
 export default function CreditsPage() {
-  const [amount, setAmount] = useState(1);
   const [showPOS, setShowPOS] = useState(false);
-  const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
   const { targetNetwork } = useTargetNetwork();
   const router = useRouter();
   const activities = getAllActivities();
-
-  const { flowState, error, txHash, creditsMinted, newBalance, purchaseCredits, reset } = useCreditPurchase({});
 
   const handleLaunchPOS = useCallback(() => {
     setShowPOS(true);
   }, []);
 
-  const handleSelectActivity = useCallback((activity: Activity) => {
-    setSelectedActivity(activity);
-  }, []);
-
-  const handleActivityBack = useCallback(() => {
-    setSelectedActivity(null);
-  }, []);
-
-  const handleTap = useCallback(() => {
-    purchaseCredits(amount.toString());
-  }, [purchaseCredits, amount]);
-
   const handleClosePOS = useCallback(() => {
-    reset();
     setShowPOS(false);
-  }, [reset]);
+  }, []);
 
   const handleBack = useCallback(() => {
     router.back();
   }, [router]);
 
-  // POS Fullscreen overlay
+  // POS Fullscreen overlay - POSProvider manages all internal state
   if (showPOS) {
     return (
       <AnimatePresence mode="wait">
-        <POSFullScreen
-          key="pos-terminal"
-          isOpen={showPOS}
-          onClose={handleClosePOS}
-          amount={amount}
-          onAmountChange={setAmount}
-          onTap={handleTap}
-          onReset={reset}
-          flowState={flowState}
-          error={error}
-          txHash={txHash}
-          creditsMinted={creditsMinted}
-          newBalance={newBalance}
-          chainId={targetNetwork.id}
-          activities={activities}
-          onSelectActivity={handleSelectActivity}
-          selectedActivity={selectedActivity}
-          onActivityBack={handleActivityBack}
-        />
+        <POSProvider key="pos-terminal" chainId={targetNetwork.id} activities={activities} onClose={handleClosePOS}>
+          <POSFullScreen />
+        </POSProvider>
       </AnimatePresence>
     );
   }

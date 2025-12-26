@@ -5,8 +5,8 @@ import { CircleDollarSign } from "lucide-react";
 import { staggerItem } from "~~/components/shared/animations/common.animations";
 
 interface ExpenseSubmitFooterProps {
-  /** Whether the form is valid for submission */
-  isValid: boolean;
+  /** Whether the form is valid for submission (follows canSubmit naming convention) */
+  canSubmit: boolean;
   /** Whether the user has a wallet connected */
   hasWallet: boolean;
   /** Callback when cancel is clicked */
@@ -18,8 +18,8 @@ interface ExpenseSubmitFooterProps {
 /**
  * Footer with Cancel and Create Expense buttons.
  */
-export const ExpenseSubmitFooter = ({ isValid, hasWallet, onCancel, onSubmit }: ExpenseSubmitFooterProps) => {
-  const canSubmit = isValid && hasWallet;
+export const ExpenseSubmitFooter = ({ canSubmit, hasWallet, onCancel, onSubmit }: ExpenseSubmitFooterProps) => {
+  const canSubmitFinal = canSubmit && hasWallet;
 
   return (
     <motion.div variants={staggerItem} className="px-4 py-2.5 flex gap-2">
@@ -32,10 +32,10 @@ export const ExpenseSubmitFooter = ({ isValid, hasWallet, onCancel, onSubmit }: 
         Cancel
       </motion.button>
       <motion.button
-        whileHover={canSubmit ? { scale: 1.02 } : {}}
-        whileTap={canSubmit ? { scale: 0.98 } : {}}
+        whileHover={canSubmitFinal ? { scale: 1.02 } : {}}
+        whileTap={canSubmitFinal ? { scale: 0.98 } : {}}
         onClick={onSubmit}
-        disabled={!canSubmit}
+        disabled={!canSubmitFinal}
         className="flex-1 h-10 bg-primary hover:bg-primary/90 disabled:bg-base-300 disabled:text-base-content/40 text-primary-content font-semibold text-sm rounded-lg transition-all flex items-center justify-center gap-1.5"
       >
         <CircleDollarSign className="w-4 h-4" />

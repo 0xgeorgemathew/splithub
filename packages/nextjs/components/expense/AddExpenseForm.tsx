@@ -7,7 +7,6 @@ import { FriendPill } from "./FriendPill";
 import { FriendSelector } from "./FriendSelector";
 import { SplitSummary } from "./SplitSummary";
 import { useExpenseForm } from "./hooks/useExpenseForm";
-import { usePrivy } from "@privy-io/react-auth";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   AlertCircle,
@@ -21,14 +20,12 @@ import {
   Wallet,
 } from "lucide-react";
 import { TOKENS } from "~~/config/tokens";
+import { useWalletAddress } from "~~/hooks/useWalletAddress";
 import { createExpense } from "~~/services/expenseService";
 
 export const AddExpenseForm = () => {
   const router = useRouter();
-  const { authenticated, user } = usePrivy();
-  // Use Privy's authentication state instead of wagmi's useAccount
-  const userWallet = user?.wallet?.address as `0x${string}` | undefined;
-  const isConnected = authenticated && !!userWallet;
+  const { walletAddress, isConnected } = useWalletAddress();
   const [isSelectorOpen, setIsSelectorOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -42,23 +39,23 @@ export const AddExpenseForm = () => {
     selectedFriends,
     addFriend,
     removeFriend,
-    isValid,
+    canSubmit,
     participantCount,
   } = useExpenseForm();
 
   const handleSubmit = async () => {
-    if (!isValid || !userWallet) return;
+    if (!canSubmit || !walletAddress) return;
 
     setIsSubmitting(true);
     setError(null);
 
     try {
       // Get all participant wallet addresses (selected friends + user)
-      const participantWallets = [userWallet, ...selectedFriends.map(f => f.address)];
+      const participantWallets = [walletAddress, ...selectedFriends.map(f => f.address)];
 
       // Create expense in database
       await createExpense({
-        creatorWallet: userWallet,
+        creatorWallet: walletAddress,
         description,
         totalAmount: parseFloat(amount),
         tokenAddress: TOKENS.USDC,
@@ -275,7 +272,7 @@ export const AddExpenseForm = () => {
                   transition={{ delay: 0.35 }}
                   whileHover={{ scale: 1.015 }}
                   whileTap={{ scale: 0.985 }}
-                  disabled={!isValid || !userWallet}
+                  disabled={!canSubmit || !walletAddress}
                   onClick={handleSubmit}
                   className="w-full py-4 bg-primary text-primary-content rounded-2xl font-bold text-base shadow-lg shadow-primary/25 flex items-center justify-center gap-2 disabled:opacity-40 disabled:shadow-none transition-all"
                 >

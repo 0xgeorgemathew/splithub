@@ -8,16 +8,62 @@ import { createWalletClient, custom, parseUnits } from "viem";
 import { baseSepolia } from "viem/chains";
 import { useReadContract, useWaitForTransactionReceipt } from "wagmi";
 import { TOKENS } from "~~/config/tokens";
+import {
+  APPROVAL_SUCCESS_REDIRECT_DELAY_MS,
+  DB_UPDATE_MAX_RETRIES,
+  DB_UPDATE_RETRY_DELAY_MS,
+  DEFAULT_APPROVAL_AMOUNT,
+  STATE_RESET_DELAY_MS,
+} from "~~/constants/app.constants";
 import deployedContracts from "~~/contracts/deployedContracts";
 import { useTargetNetwork } from "~~/hooks/scaffold-eth";
+import { useWalletAddress } from "~~/hooks/useWalletAddress";
 import { supabase } from "~~/lib/supabase";
+import { formatWalletError } from "~~/utils/errorFormatting";
 
 // Token address from centralized config
 const DEFAULT_TOKEN_ADDRESS = TOKENS.USDC;
-const DEFAULT_AMOUNT = "1000";
 
-// Approval states
+/**
+ * Approval States for each contract.
+ *
+ * STATE MACHINE (per contract):
+ * ─────────────────────────────────────────────────────────────────────────
+ *   pending ──▶ approving ──▶ approved
+ *      ▲            │
+ *      └────────────┘ (on error)
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * - pending: User has not started approval, button visible
+ * - approving: Transaction submitted, waiting for confirmation
+ * - approved: Transaction confirmed, checkmark shown
+ */
 type ApprovalState = "pending" | "approving" | "approved";
+
+/**
+ * Returns card styling classes based on approval state
+ */
+function getApprovalCardStyle(state: ApprovalState, isBlocked: boolean = false): string {
+  if (state === "approved") {
+    return "bg-success/10 border-success/50 animate-in fade-in slide-in-from-bottom-2";
+  }
+  if (state === "approving") {
+    return "bg-primary/10 border-primary/50";
+  }
+  if (isBlocked) {
+    return "bg-base-200 border-base-300 opacity-50";
+  }
+  return "bg-base-100 border-base-300 hover:border-primary/50";
+}
+
+/**
+ * Returns icon background styling based on approval state
+ */
+function getApprovalIconStyle(state: ApprovalState): string {
+  if (state === "approved") return "bg-success/20";
+  if (state === "approving") return "bg-primary/20";
+  return "bg-base-200";
+}
 
 const ERC20_ABI = [
   {
@@ -46,16 +92,80 @@ const ERC20_ABI = [
   },
 ] as const;
 
+/**
+ * Updates approval status with retry logic and localStorage fallback
+ *
+ * CRITICAL: Prevents onboarding redirect loops when DB update fails.
+ * UserSyncWrapper should check localStorage as fallback.
+ *
+ * Strategy: Set localStorage FIRST as safety net, then retry DB update
+ * with exponential backoff.
+ */
+async function updateApprovalStatusWithRetry(userId: string): Promise<void> {
+  // Set localStorage FIRST as safety net - prevents redirect loop even if all DB attempts fail
+  try {
+    localStorage.setItem(`approval_completed_${userId}`, "true");
+  } catch (err) {
+    console.warn("Failed to set localStorage fallback:", err);
+  }
+
+  // Retry DB update with exponential backoff
+  for (let attempt = 1; attempt <= DB_UPDATE_MAX_RETRIES; attempt++) {
+    try {
+      const { error } = await supabase
+        .from("users")
+        .update({ approval_status: "completed" })
+        .eq("privy_user_id", userId);
+
+      if (error) throw error;
+
+      console.log(`Approval status updated successfully (attempt ${attempt})`);
+      return;
+    } catch (err) {
+      console.error(`DB update attempt ${attempt}/${DB_UPDATE_MAX_RETRIES} failed:`, err);
+
+      if (attempt < DB_UPDATE_MAX_RETRIES) {
+        // Exponential backoff: attempt 1 = 1s, attempt 2 = 2s, etc.
+        await new Promise(resolve => setTimeout(resolve, attempt * DB_UPDATE_RETRY_DELAY_MS));
+      }
+    }
+  }
+
+  console.error("All DB update attempts failed. Relying on localStorage fallback.");
+}
+
+/**
+ * ApprovalFlow - Two-step ERC-20 token approval flow
+ *
+ * ===========================================================================
+ * APPROVAL FLOW STATE MACHINE
+ * ===========================================================================
+ *
+ *   Step 1: Payments           Step 2: Credits           Complete
+ *   ─────────────────────────────────────────────────────────────────
+ *   [Approve Payments] ──▶ [Approve Credits] ──▶ Redirect to /splits
+ *         │                       │
+ *         │                       └──▶ Updates DB: approval_status="completed"
+ *         │
+ *         └─ Blocked until Payments approved
+ *
+ * SIDE EFFECTS:
+ * ─────────────────────────────────────────────────────────────────────────
+ * 1. Database Update: When Credits approval completes, updates users.approval_status
+ *    to "completed" in Supabase (line ~166)
+ * 2. Navigation: Redirects to /splits after brief success display (line ~175)
+ *
+ * DEPENDENCIES:
+ * - Requires wallet connection (Privy embedded wallet)
+ * - Requires deployed contracts (SplitHubPayments, CreditToken)
+ * - Uses centralized error formatting from utils/errorFormatting
+ */
 export function ApprovalFlow() {
   const router = useRouter();
   const { targetNetwork } = useTargetNetwork();
-  const { authenticated, user } = usePrivy();
+  const { user } = usePrivy();
   const { wallets } = useWallets();
-
-  // Use Privy's authentication state instead of wagmi's useAccount
-  // This properly reflects the embedded wallet connection status
-  const address = user?.wallet?.address as `0x${string}` | undefined;
-  const isConnected = authenticated && !!address;
+  const { walletAddress, isConnected } = useWalletAddress();
 
   const [error, setError] = useState("");
   const [paymentsState, setPaymentsState] = useState<ApprovalState>("pending");
@@ -71,19 +181,31 @@ export function ApprovalFlow() {
   const paymentsAddress = chainContracts?.["SplitHubPayments"]?.address as `0x${string}` | undefined;
   const creditsAddress = chainContracts?.["CreditToken"]?.address as `0x${string}` | undefined;
 
-  // Read token decimals
-  const { data: decimals } = useReadContract({
+  // Read token decimals with error handling
+  const {
+    data: decimals,
+    isLoading: decimalsLoading,
+    error: decimalsError,
+  } = useReadContract({
     address: DEFAULT_TOKEN_ADDRESS,
     abi: ERC20_ABI,
     functionName: "decimals",
   });
 
-  // Read token symbol
-  const { data: symbol } = useReadContract({
+  // Read token symbol with error handling
+  const {
+    data: symbol,
+    isLoading: symbolLoading,
+    error: symbolError,
+  } = useReadContract({
     address: DEFAULT_TOKEN_ADDRESS,
     abi: ERC20_ABI,
     functionName: "symbol",
   });
+
+  // Token read loading/error states
+  const tokenReadLoading = decimalsLoading || symbolLoading;
+  const tokenReadError = decimalsError || symbolError;
 
   // Wait for transaction receipt
   const {
@@ -123,39 +245,78 @@ export function ApprovalFlow() {
     setIsPending(false);
   }, []);
 
-  // Handle successful approvals - auto-advance without toasts
+  /**
+   * SIDE EFFECT: Handles successful transaction confirmations.
+   *
+   * This effect watches for transaction success and advances the flow:
+   *
+   * 1. PAYMENTS APPROVAL SUCCESS:
+   *    - Updates paymentsState to "approved"
+   *    - Enables Credits approval button
+   *
+   * 2. CREDITS APPROVAL SUCCESS (final step):
+   *    - Updates creditsState to "approved"
+   *    - SIDE EFFECT: Updates database (users.approval_status = "completed")
+   *    - SIDE EFFECT: Navigates to /splits after delay
+   *
+   * Note: Database update is fire-and-forget (logs error but doesn't block flow)
+   * because navigation should proceed even if DB update fails - the user
+   * completed the blockchain transaction successfully.
+   */
   useEffect(() => {
     if (isSuccess && paymentsState === "approving") {
-      // Immediately update state to show success
+      // Payments approved - advance to Credits step
       setPaymentsState("approved");
-      reset();
       setError("");
+      // Delay reset for smooth exit animation
+      setTimeout(reset, STATE_RESET_DELAY_MS);
     } else if (isSuccess && creditsState === "approving") {
-      // Immediately update state to show success
+      // Credits approved - flow complete
       setCreditsState("approved");
-      reset();
+      // Don't reset - navigation happens shortly
 
-      // Mark approvals as completed in database
-      const updateApprovalStatus = async () => {
-        if (!user?.id) return;
+      /**
+       * SIDE EFFECT: Mark approvals as completed in database.
+       *
+       * Uses retry logic with localStorage fallback to prevent
+       * redirect loops if DB update fails.
+       *
+       * RACE CONDITION FIX: Capture userId before async function to
+       * prevent targeting wrong user if logout happens during execution.
+       */
+      const userId = user?.id;
+      if (userId) {
+        // Fire-and-forget with retry - user completed on-chain approval successfully
+        updateApprovalStatusWithRetry(userId);
+      }
 
-        try {
-          await supabase.from("users").update({ approval_status: "completed" }).eq("privy_user_id", user.id);
-        } catch (err) {
-          console.error("Failed to update approval status:", err);
-        }
-      };
-
-      updateApprovalStatus();
-
-      // Redirect to /splits after brief success display
+      /**
+       * SIDE EFFECT: Redirect to dashboard after success display.
+       *
+       * Brief delay allows user to see the success state before navigating.
+       * Uses router.replace() to prevent back-button returning to /approve.
+       *
+       * RACE CONDITION FIX: Only redirect if user is still authenticated.
+       * Prevents navigation to protected page after logout during delay.
+       */
+      const currentUserId = user?.id;
       setTimeout(() => {
-        router.replace("/splits");
-      }, 600);
+        // Only redirect if user is still authenticated
+        if (currentUserId && user?.id === currentUserId) {
+          router.replace("/splits");
+        } else {
+          console.warn("User logged out during success delay. Skipping redirect.");
+        }
+      }, APPROVAL_SUCCESS_REDIRECT_DELAY_MS);
     }
   }, [isSuccess, paymentsState, creditsState, reset, router, user]);
 
-  // Handle failed approvals - reset state and show error
+  /**
+   * SIDE EFFECT: Handles failed transaction confirmations.
+   *
+   * Resets the approval state back to "pending" so user can retry.
+   * Displays the error message from the transaction failure.
+   */
   useEffect(() => {
     if (txError && paymentsState === "approving") {
       console.error("Payments approval failed:", txErrorDetails);
@@ -173,7 +334,7 @@ export function ApprovalFlow() {
   const handleApprovePayments = async () => {
     setError("");
 
-    if (!isConnected || !address) {
+    if (!isConnected || !walletAddress) {
       setError("Please connect your wallet first");
       return;
     }
@@ -191,7 +352,7 @@ export function ApprovalFlow() {
     try {
       setPaymentsState("approving");
       setIsPending(true);
-      const approvalAmount = parseUnits(DEFAULT_AMOUNT, decimals);
+      const approvalAmount = parseUnits(DEFAULT_APPROVAL_AMOUNT, decimals);
 
       // Use Privy wallet directly instead of wagmi's useWriteContract
       const walletClient = await getWalletClient();
@@ -206,13 +367,7 @@ export function ApprovalFlow() {
       setIsPending(false);
     } catch (err: unknown) {
       console.error("Approval error:", err);
-      const errorMessage =
-        err instanceof Error && err.message.includes("User rejected")
-          ? "Transaction rejected. Please try again when ready."
-          : err instanceof Error
-            ? err.message
-            : "Approval failed";
-      setError(errorMessage);
+      setError(formatWalletError(err));
       setPaymentsState("pending");
       setIsPending(false);
     }
@@ -221,7 +376,7 @@ export function ApprovalFlow() {
   const handleApproveCredits = async () => {
     setError("");
 
-    if (!isConnected || !address) {
+    if (!isConnected || !walletAddress) {
       setError("Please connect your wallet first");
       return;
     }
@@ -239,7 +394,7 @@ export function ApprovalFlow() {
     try {
       setCreditsState("approving");
       setIsPending(true);
-      const approvalAmount = parseUnits(DEFAULT_AMOUNT, decimals);
+      const approvalAmount = parseUnits(DEFAULT_APPROVAL_AMOUNT, decimals);
 
       // Use Privy wallet directly instead of wagmi's useWriteContract
       const walletClient = await getWalletClient();
@@ -254,13 +409,7 @@ export function ApprovalFlow() {
       setIsPending(false);
     } catch (err: unknown) {
       console.error("Approval error:", err);
-      const errorMessage =
-        err instanceof Error && err.message.includes("User rejected")
-          ? "Transaction rejected. Please try again when ready."
-          : err instanceof Error
-            ? err.message
-            : "Approval failed";
-      setError(errorMessage);
+      setError(formatWalletError(err));
       setCreditsState("pending");
       setIsPending(false);
     }
@@ -272,6 +421,31 @@ export function ApprovalFlow() {
 
   // Show processing overlay during transaction
   const showProcessingOverlay = isPending || isConfirming;
+
+  // Loading state for token contract reads
+  if (tokenReadLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center mt-20 space-y-4">
+        <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-base-100 shadow-lg">
+          <Shield className="w-10 h-10 text-base-content/50 animate-pulse" />
+        </div>
+        <p className="text-base-content/60 text-center font-medium">Loading token information...</p>
+      </div>
+    );
+  }
+
+  // Error state for token contract reads
+  if (tokenReadError) {
+    return (
+      <div className="flex flex-col items-center justify-center mt-20 space-y-4">
+        <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-error/10 shadow-lg">
+          <AlertCircle className="w-10 h-10 text-error" />
+        </div>
+        <p className="text-error text-center font-medium">Failed to load token information</p>
+        <p className="text-base-content/60 text-center text-sm">Please refresh the page</p>
+      </div>
+    );
+  }
 
   if (!isConnected) {
     return (
@@ -348,26 +522,12 @@ export function ApprovalFlow() {
       {/* Main Approval UI */}
       <div className="space-y-6">
         {/* Payments Approval Card */}
-        <div
-          className={`card border-2 transition-all duration-500 ${
-            paymentsState === "approved"
-              ? "bg-success/10 border-success/50 animate-in fade-in slide-in-from-bottom-2"
-              : paymentsState === "approving"
-                ? "bg-primary/10 border-primary/50"
-                : "bg-base-100 border-base-300 hover:border-primary/50"
-          }`}
-        >
+        <div className={`card border-2 transition-all duration-500 ${getApprovalCardStyle(paymentsState)}`}>
           <div className="card-body p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div
-                  className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                    paymentsState === "approved"
-                      ? "bg-success/20"
-                      : paymentsState === "approving"
-                        ? "bg-primary/20"
-                        : "bg-base-200"
-                  }`}
+                  className={`w-12 h-12 rounded-full flex items-center justify-center ${getApprovalIconStyle(paymentsState)}`}
                 >
                   {paymentsState === "approved" ? (
                     <Check className="w-6 h-6 text-success" strokeWidth={3} />
@@ -394,7 +554,7 @@ export function ApprovalFlow() {
                 className="w-full py-3 px-6 bg-primary hover:bg-primary/90 text-primary-content font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2"
               >
                 <Shield className="w-5 h-5" />
-                Approve {DEFAULT_AMOUNT} {symbol || "USDT"}
+                Approve {DEFAULT_APPROVAL_AMOUNT} {symbol || "USDT"}
               </button>
             )}
           </div>
@@ -402,27 +562,13 @@ export function ApprovalFlow() {
 
         {/* Credits Approval Card */}
         <div
-          className={`card border-2 transition-all duration-500 ${
-            creditsState === "approved"
-              ? "bg-success/10 border-success/50 animate-in fade-in slide-in-from-bottom-2"
-              : creditsState === "approving"
-                ? "bg-primary/10 border-primary/50"
-                : paymentsState !== "approved"
-                  ? "bg-base-200 border-base-300 opacity-50"
-                  : "bg-base-100 border-base-300 hover:border-primary/50"
-          }`}
+          className={`card border-2 transition-all duration-500 ${getApprovalCardStyle(creditsState, paymentsState !== "approved")}`}
         >
           <div className="card-body p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div
-                  className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                    creditsState === "approved"
-                      ? "bg-success/20"
-                      : creditsState === "approving"
-                        ? "bg-primary/20"
-                        : "bg-base-200"
-                  }`}
+                  className={`w-12 h-12 rounded-full flex items-center justify-center ${getApprovalIconStyle(creditsState)}`}
                 >
                   {creditsState === "approved" ? (
                     <Check className="w-6 h-6 text-success" strokeWidth={3} />
@@ -449,7 +595,7 @@ export function ApprovalFlow() {
                 className="w-full py-3 px-6 bg-primary hover:bg-primary/90 text-primary-content font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2"
               >
                 <Coins className="w-5 h-5" />
-                Approve {DEFAULT_AMOUNT} {symbol || "USDT"}
+                Approve {DEFAULT_APPROVAL_AMOUNT} {symbol || "USDT"}
               </button>
             )}
 

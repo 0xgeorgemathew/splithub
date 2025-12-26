@@ -45,11 +45,6 @@ export const BalancesLiveFeed = ({
 }: BalancesLiveFeedProps) => {
   const { isExpanded, toggle, expand } = useBalanceExpansion();
 
-  // Check if friend has any pending request
-  const hasRequestForFriend = (friendWallet: string): boolean => {
-    return pendingRequests.some(req => req.payer.toLowerCase() === friendWallet.toLowerCase());
-  };
-
   // Don't render while loading
   if (loading) return null;
 
@@ -65,7 +60,7 @@ export const BalancesLiveFeed = ({
       balance={balance}
       isLast={index === total - 1}
       onFriendClick={onFriendClick}
-      hasValidRequest={hasRequestForFriend(balance.friend_wallet)}
+      hasValidRequest={pendingRequests.some(req => req.payer.toLowerCase() === balance.friend_wallet.toLowerCase())}
       onPaymentRequestClick={onPaymentRequestClick}
       isProcessing={processingFriendWallet === balance.friend_wallet}
       isSuccess={successFriendWallet === balance.friend_wallet}

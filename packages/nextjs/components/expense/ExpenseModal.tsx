@@ -51,7 +51,7 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess }: ExpenseModalProps) 
     selectedFriends,
     addFriend,
     removeFriend,
-    isValid,
+    canSubmit,
     participantCount,
     reset,
   } = useExpenseForm();
@@ -111,7 +111,7 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess }: ExpenseModalProps) 
   };
 
   const handleSubmit = async () => {
-    if (!isValid || !userWallet) return;
+    if (!canSubmit || !userWallet) return;
 
     setIsSubmitting(true);
     setError(null);
@@ -256,7 +256,7 @@ export const ExpenseModal = ({ isOpen, onClose, onSuccess }: ExpenseModalProps) 
                   </AnimatePresence>
 
                   <ExpenseSubmitFooter
-                    isValid={isValid}
+                    canSubmit={canSubmit}
                     hasWallet={!!userWallet}
                     onCancel={handleClose}
                     onSubmit={handleSubmit}

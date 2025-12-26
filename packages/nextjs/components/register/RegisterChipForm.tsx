@@ -4,11 +4,38 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle, Nfc } from "lucide-react";
 import { OnboardingFinalizer } from "~~/components/onboarding/OnboardingFinalizer";
+import { BASE_SEPOLIA_CHAIN_ID, NFC_TAP_COOLDOWN_MS, ONBOARDING_MIN_DISPLAY_MS } from "~~/constants/app.constants";
 import { useHaloChip } from "~~/hooks/halochip-arx/useHaloChip";
 import { useDeployedContractInfo } from "~~/hooks/scaffold-eth";
 import { supabase } from "~~/lib/supabase";
+import { formatAPIError, formatNFCError } from "~~/utils/errorFormatting";
 
-type FlowState = "idle" | "tapping" | "registering" | "saving" | "finalizing" | "error";
+/**
+ * Chip Registration Flow States
+ *
+ * STATE MACHINE:
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ *   idle ──▶ tapping ──▶ registering ──▶ finalizing ──▶ [navigate]
+ *     │         │            │               │
+ *     │         └────────────┴───────────────┴──▶ error
+ *     │                                              │
+ *     └──────────────────────────────────────────────┘ (retry)
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * State Descriptions:
+ * - idle: Initial state, waiting for user to tap
+ * - tapping: NFC chip is being read (first tap to get address, second to sign)
+ * - registering: On-chain registration in progress via relayer
+ * - finalizing: Backend finalize API running, full-screen loader shown
+ * - error: Something failed, user can retry
+ *
+ * SIDE EFFECTS:
+ * - Sets sessionStorage.skipLoadingStates before navigation (see finalizeOnboarding)
+ * - Navigates to route returned by /api/onboarding/finalize
+ */
+type FlowState = "idle" | "tapping" | "registering" | "finalizing" | "error";
 
 interface RegisterChipFormProps {
   userId: string;
@@ -36,9 +63,26 @@ export function RegisterChipForm({
   const isFinalizingRef = useRef(false);
 
   /**
-   * Single source of truth for finalizing onboarding.
-   * Calls backend to run all checks and returns the next route.
-   * Prevents race conditions with in-flight flag.
+   * Finalizes the onboarding process by calling the backend API.
+   *
+   * This is the SINGLE SOURCE OF TRUTH for determining what happens next:
+   * - Backend checks all conditions (chip status, approvals, etc.)
+   * - Backend returns the appropriate next route
+   * - This function handles navigation
+   *
+   * SIDE EFFECTS:
+   * ─────────────────────────────────────────────────────────────────────────
+   * 1. API Call: POST /api/onboarding/finalize with action and chip address
+   * 2. SessionStorage: Sets "skipLoadingStates" flag (read by destination page
+   *    to skip redundant loading animations since we just showed a loader)
+   * 3. Navigation: router.replace() to the route returned by backend
+   *
+   * RACE CONDITION PREVENTION:
+   * Uses isFinalizingRef to prevent duplicate calls (e.g., from double-taps
+   * or React strict mode double-renders)
+   *
+   * @param action - "skip" to skip chip registration, "register" to complete it
+   * @param detectedChipAddress - The chip's ethereum address (required for "register")
    */
   const finalizeOnboarding = async (action: "skip" | "register", detectedChipAddress?: string) => {
     // Prevent duplicate calls
@@ -54,7 +98,6 @@ export function RegisterChipForm({
     try {
       // Start minimum display time and API call in parallel
       const startTime = Date.now();
-      const MIN_DISPLAY_TIME = 1200; // Ensure loader shows for at least 1.2s
 
       const response = await fetch("/api/onboarding/finalize", {
         method: "POST",
@@ -74,22 +117,37 @@ export function RegisterChipForm({
 
       // Calculate remaining time to meet minimum display duration
       const elapsed = Date.now() - startTime;
-      const remainingTime = Math.max(0, MIN_DISPLAY_TIME - elapsed);
+      const remainingTime = Math.max(0, ONBOARDING_MIN_DISPLAY_MS - elapsed);
 
       // Wait for remaining time if needed
       if (remainingTime > 0) {
         await new Promise(resolve => setTimeout(resolve, remainingTime));
       }
 
-      // Set flag to skip redundant loading states on destination page
+      /**
+       * SIDE EFFECT: Skip loading states on destination page.
+       *
+       * Set flag BEFORE navigation to ensure it's available when the
+       * destination page mounts. Navigation is async, so setting after
+       * router.replace() creates a race condition.
+       *
+       * The destination page checks for this flag and skips its initial
+       * loading animation if set. This provides a smoother UX since
+       * we just showed a full-screen loader during finalization.
+       *
+       * The destination page should clear this flag after reading it.
+       */
       sessionStorage.setItem("skipLoadingStates", "true");
 
       // Navigate to the route returned by backend
       router.replace(data.nextRoute);
-    } catch (err: any) {
+
+      // Reset ref on success to allow retry if user navigates back
+      isFinalizingRef.current = false;
+    } catch (err: unknown) {
       console.error("Finalize onboarding error:", err);
       setFlowState("error");
-      setError(err.message || "Failed to finalize onboarding");
+      setError(formatAPIError(err));
       isFinalizingRef.current = false;
     }
   };
@@ -117,14 +175,14 @@ export function RegisterChipForm({
       setStatusMessage(`Chip detected`);
 
       // Step 2: Sign registration with EIP-712
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, NFC_TAP_COOLDOWN_MS));
       setStatusMessage("Tap again to authorize...");
 
       const registrationSig = await signTypedData({
         domain: {
           name: "SplitHubRegistry",
           version: "1",
-          chainId: 84532,
+          chainId: BASE_SEPOLIA_CHAIN_ID,
           verifyingContract: registryContract.address,
         },
         types: {
@@ -141,11 +199,18 @@ export function RegisterChipForm({
       });
 
       // Step 3: Check if chip is already registered
-      const { data: existingChip } = await supabase
+      // Use .maybeSingle() instead of .single() - the happy path is 0 rows (chip not registered)
+      // .single() throws when 0 rows found, but we WANT 0 rows
+      // .maybeSingle() returns null if 0 rows, throws only if >1 rows
+      const { data: existingChip, error: chipCheckError } = await supabase
         .from("users")
         .select("chip_address")
         .eq("chip_address", detectedChipAddress.toLowerCase())
-        .single();
+        .maybeSingle();
+
+      if (chipCheckError) {
+        throw new Error(`Database error: ${chipCheckError.message}`);
+      }
 
       if (existingChip) {
         throw new Error("This chip is already registered");
@@ -173,10 +238,10 @@ export function RegisterChipForm({
 
       // Step 5: Finalize onboarding (updates DB, checks approvals, returns next route)
       await finalizeOnboarding("register", detectedChipAddress);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Registration error:", err);
       setFlowState("error");
-      setError(err.message || "Registration failed");
+      setError(formatNFCError(err));
       setStatusMessage("");
     }
   };
@@ -187,7 +252,7 @@ export function RegisterChipForm({
   };
 
   // Determine if we should show processing state
-  const isProcessing = flowState === "tapping" || flowState === "registering" || flowState === "saving";
+  const isProcessing = flowState === "tapping" || flowState === "registering";
 
   return (
     <>
@@ -224,9 +289,7 @@ export function RegisterChipForm({
                 ? "Reading chip..."
                 : flowState === "registering"
                   ? "Registering..."
-                  : flowState === "saving"
-                    ? "Saving..."
-                    : "Processing..."}
+                  : "Processing..."}
           </h1>
           {statusMessage && flowState !== "idle" && (
             <p className="text-sm text-base-content/60 animate-pulse">{statusMessage}</p>

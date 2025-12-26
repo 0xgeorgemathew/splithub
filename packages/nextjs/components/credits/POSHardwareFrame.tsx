@@ -5,6 +5,7 @@ import { LedState, POSLed } from "./POSLed";
 import { motion, useAnimationControls } from "framer-motion";
 import { Gamepad2, Power } from "lucide-react";
 import { Activity } from "~~/config/activities";
+import { SHAKE_ANIMATION, SHAKE_TRANSITION } from "~~/constants/app.constants";
 import { CreditFlowState } from "~~/hooks/credits/useCreditPurchase";
 
 interface POSHardwareFrameProps {
@@ -40,11 +41,6 @@ function mapToLedState(flowState: CreditFlowState): LedState {
       return "idle";
   }
 }
-
-// Shake animation keyframes for error state
-const shakeAnimation = {
-  x: [0, -10, 10, -10, 10, -5, 5, -2, 2, 0],
-};
 
 // Shared spring config for ALL animations - ensures symmetry
 const springConfig = {
@@ -141,8 +137,8 @@ export function POSHardwareFrame({
   useEffect(() => {
     if (flowState === "error") {
       controls.start({
-        ...shakeAnimation,
-        transition: { duration: 0.5, ease: "easeOut" },
+        ...SHAKE_ANIMATION,
+        transition: SHAKE_TRANSITION,
       });
     }
   }, [flowState, controls]);

@@ -1,3 +1,11 @@
+/**
+ * Expense form hook for managing form state and validation
+ *
+ * Naming conventions:
+ * - `canSubmit` - Boolean indicating if form is valid for submission (form hook pattern)
+ * - `reset` - Resets form to initial state
+ * - Field setters follow `set{FieldName}` pattern
+ */
 import { useCallback, useMemo, useState } from "react";
 
 export interface Friend {
@@ -33,7 +41,8 @@ export const useExpenseForm = () => {
     setSelectedFriends(prev => prev.filter(f => f.address !== address));
   }, []);
 
-  const isValid = useMemo(() => {
+  /** Form can be submitted when all required fields are valid */
+  const canSubmit = useMemo(() => {
     const amountNum = parseFloat(amount);
     return description.trim().length > 0 && selectedFriends.length > 0 && !isNaN(amountNum) && amountNum > 0;
   }, [description, amount, selectedFriends]);
@@ -57,7 +66,7 @@ export const useExpenseForm = () => {
     selectedFriends,
     addFriend,
     removeFriend,
-    isValid,
+    canSubmit,
     participantCount,
     reset,
   };

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { createPublicClient, http, parseUnits } from "viem";
 import deployedContracts from "~~/contracts/deployedContracts";
 import { useHaloChip } from "~~/hooks/halochip-arx/useHaloChip";
@@ -54,9 +54,6 @@ export function useCreditPurchase({ onSuccess, onError }: UseCreditPurchaseOptio
   const [ownerAddress, setOwnerAddress] = useState<string | null>(null);
   const [newBalance, setNewBalance] = useState<string | null>(null);
 
-  // Prevent reset during transaction
-  const isInProgress = useRef(false);
-
   // Create public client for contract reads
   const publicClient = useMemo(
     () =>
@@ -88,8 +85,6 @@ export function useCreditPurchase({ onSuccess, onError }: UseCreditPurchaseOptio
       }
 
       try {
-        isInProgress.current = true;
-
         // Step 1: Waiting for first chip tap
         setFlowState("tapping");
 
@@ -260,7 +255,6 @@ export function useCreditPurchase({ onSuccess, onError }: UseCreditPurchaseOptio
 
         // Now transition to success
         setFlowState("success");
-        isInProgress.current = false;
 
         // Call success callback
         if (onSuccess) {
@@ -270,7 +264,6 @@ export function useCreditPurchase({ onSuccess, onError }: UseCreditPurchaseOptio
         setFlowState("error");
         const errorMessage = err instanceof Error ? err.message : "Purchase failed. Please try again.";
         setError(errorMessage);
-        isInProgress.current = false;
 
         // Call error callback
         if (onError && err instanceof Error) {
@@ -282,9 +275,6 @@ export function useCreditPurchase({ onSuccess, onError }: UseCreditPurchaseOptio
   );
 
   const reset = useCallback(() => {
-    // Don't reset if transaction is in progress
-    if (isInProgress.current) return;
-
     setFlowState("idle");
     setError("");
     setTxHash(null);
@@ -292,6 +282,13 @@ export function useCreditPurchase({ onSuccess, onError }: UseCreditPurchaseOptio
     setOwnerAddress(null);
     setNewBalance(null);
   }, []);
+
+  // Derive processing state from flowState - aligns with useSettleFlow pattern
+  // Exposes safe boolean instead of mutable ref for better encapsulation
+  const isProcessing = useMemo(
+    () => flowState !== "idle" && flowState !== "success" && flowState !== "error",
+    [flowState],
+  );
 
   return {
     flowState,
@@ -304,5 +301,7 @@ export function useCreditPurchase({ onSuccess, onError }: UseCreditPurchaseOptio
     creditTokenAddress,
     purchaseCredits,
     reset,
+    // Safe derived boolean for dismiss protection - true when transaction is active
+    isProcessing,
   };
 }

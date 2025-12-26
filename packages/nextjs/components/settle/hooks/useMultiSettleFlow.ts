@@ -1,10 +1,59 @@
+/**
+ * Multi-settle flow hook for batch payments using NFC chips
+ *
+ * ===========================================================================
+ * CRITICAL: TWO-TAP FLOW EXPLANATION
+ * ===========================================================================
+ *
+ * This hook implements a multi-payer batch payment flow where each participant
+ * must tap their NFC chip TWICE:
+ *
+ * TAP 1: Get chip address (preliminary signature with placeholder payer)
+ * ─────────────────────────────────────────────────────────────────────────
+ * Problem: We need to know the payer's wallet address BEFORE they sign the
+ * PaymentAuth, but the chip address is only revealed when we tap the chip.
+ *
+ * Solution: First tap signs a PaymentAuth with payer = 0x000...000 (placeholder).
+ * This gives us the chipAddress, which we use to look up the owner from
+ * SplitHubRegistry on-chain.
+ *
+ * TAP 2: Sign the real PaymentAuth with correct payer address
+ * ─────────────────────────────────────────────────────────────────────────
+ * Now that we know the payer's wallet address (owner of the chip), we can:
+ * 1. Fetch their current nonce from SplitHubPayments contract
+ * 2. Build the correct PaymentAuth message with real payer address
+ * 3. Have them sign it with a second chip tap
+ *
+ * FLOW STATES:
+ * ─────────────────────────────────────────────────────────────────────────
+ * - collecting: Gathering signatures from all participants (TAP 1 + TAP 2 per person)
+ * - submitting: Sending batch transaction to relayer API
+ * - confirming: Waiting for blockchain confirmation
+ * - success: Transaction completed successfully
+ * - error: Something went wrong at any step
+ *
+ * PARTICIPANT STATES (per slot):
+ * ─────────────────────────────────────────────────────────────────────────
+ * - waiting: Not yet started
+ * - signing: Currently doing TAP 1 or TAP 2
+ * - signed: Both taps complete, signature stored
+ * - error: Signing failed
+ *
+ * SECURITY NOTES:
+ * ─────────────────────────────────────────────────────────────────────────
+ * - Each PaymentAuth includes a nonce (prevents replay attacks)
+ * - Each PaymentAuth includes a deadline (~1 hour, prevents stale signatures)
+ * - Contract verifies: registry.ownerOf(signer) == auth.payer
+ * - Same chip must be used for both taps (verified client-side)
+ */
 import { useCallback, useMemo, useState } from "react";
 import { BatchPaymentAuth, ERC20_ABI, Participant, SPLIT_HUB_PAYMENTS_ABI, SPLIT_HUB_REGISTRY_ABI } from "../types";
 import { createPublicClient, http, parseUnits } from "viem";
-import { useAccount, useReadContract } from "wagmi";
+import { useReadContract } from "wagmi";
 import deployedContracts from "~~/contracts/deployedContracts";
 import { useHaloChip } from "~~/hooks/halochip-arx/useHaloChip";
 import { useTargetNetwork } from "~~/hooks/scaffold-eth";
+import { useWalletAddress } from "~~/hooks/useWalletAddress";
 
 type MultiFlowState = "collecting" | "submitting" | "confirming" | "success" | "error";
 
@@ -42,7 +91,7 @@ export function useMultiSettleFlow({
   onSuccess,
   onError,
 }: UseMultiSettleFlowOptions): UseMultiSettleFlowReturn {
-  const { isConnected } = useAccount();
+  const { isConnected } = useWalletAddress();
   const { targetNetwork } = useTargetNetwork();
   const { signTypedData } = useHaloChip();
 

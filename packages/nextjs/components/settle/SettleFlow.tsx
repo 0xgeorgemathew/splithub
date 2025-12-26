@@ -9,7 +9,7 @@ import { useTargetNetwork } from "~~/hooks/scaffold-eth";
 
 export function SettleFlow({ params, onSuccess, onError, onClose }: SettleFlowProps) {
   const { targetNetwork } = useTargetNetwork();
-  const { flowState, error, txHash, symbol, isConnected, paymentsAddress, handleSettle } = useSettleFlow({
+  const { flowState, error, txHash, symbol, isConnected, paymentsAddress, initiateSettle } = useSettleFlow({
     params,
     onSuccess,
     onError,
@@ -134,7 +134,7 @@ export function SettleFlow({ params, onSuccess, onError, onClose }: SettleFlowPr
         <PaymentStatusIndicator
           status={paymentStatus}
           processingText={getProcessingText()}
-          onTap={handleSettle}
+          onTap={initiateSettle}
           disabled={!paymentsAddress}
           size="sm"
         />
