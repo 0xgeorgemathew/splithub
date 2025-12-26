@@ -277,7 +277,7 @@ export default function SplitsPage() {
   // Loading state - fetching data
   if (loading) {
     return (
-      <div className="pb-24 pt-4 px-4 max-w-md mx-auto">
+      <div className="pb-24 pt-4 px-4 md:px-6 lg:px-8 max-w-md md:max-w-lg lg:max-w-xl mx-auto">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -309,7 +309,7 @@ export default function SplitsPage() {
   // Error state
   if (error) {
     return (
-      <div className="pb-24 pt-4 px-4 max-w-md mx-auto">
+      <div className="pb-24 pt-4 px-4 md:px-6 lg:px-8 max-w-md md:max-w-lg lg:max-w-xl mx-auto">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -345,7 +345,7 @@ export default function SplitsPage() {
   }
 
   return (
-    <div className="px-4 py-4 pb-24">
+    <div className="px-4 py-4 pb-24 md:px-6 lg:px-8 max-w-md md:max-w-lg lg:max-w-xl mx-auto">
       {/* Hero Card */}
       <SplitsHero
         walletBalance={walletBalance}

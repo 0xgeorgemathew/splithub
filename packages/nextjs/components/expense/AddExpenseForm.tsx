@@ -76,8 +76,8 @@ export const AddExpenseForm = () => {
   };
 
   return (
-    <div className="min-h-[calc(100vh-64px)] bg-base-200 p-4 pb-32">
-      <div className="w-full max-w-md mx-auto">
+    <div className="min-h-[calc(100vh-64px)] bg-base-200 p-4 md:p-6 lg:p-8 pb-32">
+      <div className="w-full max-w-md md:max-w-lg lg:max-w-xl mx-auto">
         <AnimatePresence mode="wait">
           {!isConnected ? (
             /* Not Connected State */

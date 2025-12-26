@@ -245,7 +245,7 @@ export default function SettlePage() {
 
   return (
     <div className="min-h-[calc(100vh-64px)] bg-base-200 p-4 pb-24">
-      <div className="w-full max-w-md mx-auto">
+      <div className="w-full max-w-md md:max-w-lg lg:max-w-xl mx-auto">
         {!isConnected ? (
           /* Not Connected State */
           <div className="flex flex-col items-center justify-center mt-20">

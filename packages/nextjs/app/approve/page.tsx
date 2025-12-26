@@ -53,7 +53,7 @@ export default function ApprovePage() {
 
   return (
     <div className="min-h-[calc(100vh-64px)] bg-base-300 p-4 pb-24 relative">
-      <div className="w-full max-w-md mx-auto">{!ready ? <LoadingUI /> : <ApprovalFlow />}</div>
+      <div className="w-full max-w-md md:max-w-lg lg:max-w-xl mx-auto">{!ready ? <LoadingUI /> : <ApprovalFlow />}</div>
     </div>
   );
 }

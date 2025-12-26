@@ -45,7 +45,7 @@ export const BottomNav = () => {
       initial={{ y: 100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ type: "spring", stiffness: 260, damping: 25, delay: 0.1 }}
-      className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-md"
+      className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-md md:max-w-lg lg:max-w-xl"
     >
       <motion.div
         className="bg-base-100/95 backdrop-blur-xl rounded-full border border-base-content/10 px-2 py-2"

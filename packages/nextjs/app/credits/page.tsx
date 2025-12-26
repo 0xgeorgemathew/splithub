@@ -65,7 +65,7 @@ export default function CreditsPage() {
 
   // Play Zone Venue Launcher Interface
   return (
-    <div className="px-4 py-4 pb-24">
+    <div className="px-4 py-4 pb-24 md:px-6 lg:px-8 max-w-md md:max-w-lg lg:max-w-xl mx-auto">
       {/* Header */}
       <motion.header
         className="mb-6"

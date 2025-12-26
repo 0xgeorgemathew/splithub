@@ -43,7 +43,7 @@ export default function RegisterPage() {
   return (
     <div className="min-h-[calc(100vh-64px)] flex flex-col bg-base-300 relative">
       <div className="flex-1 flex flex-col items-center justify-center px-4 pb-24 pt-4 relative z-10">
-        <div className="w-full max-w-md space-y-6">
+        <div className="w-full max-w-md md:max-w-lg lg:max-w-xl space-y-6">
           {/* Progress Indicator */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
