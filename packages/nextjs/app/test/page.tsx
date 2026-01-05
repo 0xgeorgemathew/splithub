@@ -182,6 +182,26 @@ export default function TestPage() {
           log("info", `Slot ${slot}: ${addr}`);
         });
 
+        // Check slot 8 (additional key slot)
+        try {
+          log("info", "Checking slot 8...");
+          const slot8Result: any = await execHaloCmdWeb({
+            name: "get_key_info",
+            keyNo: 8,
+          });
+
+          if (slot8Result.publicKey) {
+            // Derive Ethereum address: remove 04 prefix, keccak256 hash, take last 20 bytes
+            const pubKeyNoPrefix = slot8Result.publicKey.slice(2);
+            const hash = keccak256(`0x${pubKeyNoPrefix}`);
+            const slot8Address = `0x${hash.slice(-40)}` as `0x${string}`;
+            log("success", `Slot 8: ${slot8Address}`);
+            setAllChipAddresses(prev => ({ ...prev, "8": slot8Address }));
+          }
+        } catch (slot8Err) {
+          log("info", `Slot 8 not accessible: ${slot8Err instanceof Error ? slot8Err.message : String(slot8Err)}`);
+        }
+
         // Check slot 9 (BurnerOS wallet slot - password protected)
         try {
           log("info", "Checking slot 9 (Burner wallet)...");
