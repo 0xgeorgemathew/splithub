@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { NotificationToggle } from "./NotificationToggle";
 import { usePrivy } from "@privy-io/react-auth";
 import { AnimatePresence, motion } from "framer-motion";
@@ -75,18 +76,30 @@ export const TopNav = () => {
       >
         <div className="flex items-center justify-between">
           {/* Logo - Click to refresh */}
-          <motion.button
-            onClick={handleRefresh}
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.1, duration: 0.4 }}
-            whileTap={{ scale: 0.98 }}
-            className="flex items-center gap-1 cursor-pointer"
-          >
-            <span className="text-2xl font-black tracking-tight">
-              Split<span className="text-primary">Hub</span>
-            </span>
-          </motion.button>
+          <div className="flex items-center gap-4">
+            <motion.button
+              onClick={handleRefresh}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.1, duration: 0.4 }}
+              whileTap={{ scale: 0.98 }}
+              className="flex items-center gap-1 cursor-pointer"
+            >
+              <span className="text-2xl font-black tracking-tight">
+                Split<span className="text-primary">Hub</span>
+              </span>
+            </motion.button>
+
+            {/* About Link */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2, duration: 0.4 }}>
+              <Link
+                href="/about"
+                className="text-sm text-base-content/60 hover:text-base-content transition-colors font-medium"
+              >
+                About
+              </Link>
+            </motion.div>
+          </div>
 
           {/* Auth Section */}
           <AnimatePresence mode="wait">
