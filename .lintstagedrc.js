@@ -1,21 +1,23 @@
 const path = require("path");
 
-const buildNextEslintCommand = (filenames) =>
-  `yarn next:lint --fix --file ${filenames
+const buildNextEslintCommand = (filenames) => {
+  const relativePaths = filenames
     .map((f) => path.relative(path.join("packages", "nextjs"), f))
-    .join(" --file ")}`;
+    .join(" ");
+  return `cd packages/nextjs && yarn lint --fix ${relativePaths}`;
+};
 
 const checkTypesNextCommand = () => "yarn next:check-types";
 
-const buildHardhatEslintCommand = (filenames) =>
-  `yarn hardhat:lint-staged --fix ${filenames
-    .map((f) => path.relative(path.join("packages", "hardhat"), f))
-    .join(" ")}`;
+const buildFoundryFormatCommand = (filenames) => {
+  const relativePaths = filenames.map((f) => path.relative(path.join("packages", "foundry"), f)).join(" ");
+  return `cd packages/foundry && forge fmt ${relativePaths}`;
+};
 
 module.exports = {
   "packages/nextjs/**/*.{ts,tsx}": [
     buildNextEslintCommand,
     checkTypesNextCommand,
   ],
-  "packages/hardhat/**/*.{ts,tsx}": [buildHardhatEslintCommand],
+  "packages/foundry/**/*.sol": [buildFoundryFormatCommand],
 };
