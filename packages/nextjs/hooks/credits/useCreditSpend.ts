@@ -259,7 +259,7 @@ export function useCreditSpend({ onSuccess, onError }: UseCreditSpendOptions = {
         }
       }
     },
-    [creditTokenAddress, registryAddress, targetNetwork.id, signTypedData, publicClient, onSuccess, onError],
+    [creditTokenAddress, registryAddress, targetNetwork, signTypedData, publicClient, onSuccess, onError],
   );
 
   const reset = useCallback(() => {

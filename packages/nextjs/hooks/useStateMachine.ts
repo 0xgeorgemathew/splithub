@@ -149,8 +149,10 @@ export function useStateMachine<
     dispatch({ type: "SET_CONTEXT", newContext });
   }, []);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const is = useCallback((state: TState) => machine.current === state, [machine.current]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const isAnyOf = useCallback((...states: TState[]) => states.includes(machine.current), [machine.current]);
 
   const reset = useCallback(() => {

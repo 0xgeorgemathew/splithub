@@ -11,6 +11,162 @@ interface PhoneMockupProps {
   showBoth?: boolean;
 }
 
+// Phone component to avoid duplication
+function PhoneFrame({
+  type,
+  showHand = false,
+  showTapHand,
+  tapTarget,
+}: {
+  type: "friends" | "venues";
+  showHand?: boolean;
+  showTapHand: boolean;
+  tapTarget: "friends" | "venues";
+}) {
+  const isFriends = type === "friends";
+  return (
+    <div className="relative">
+      {/* Phone bezel */}
+      <div
+        className="relative bg-base-300 rounded-[2.5rem] p-2 shadow-2xl"
+        style={{
+          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255,255,255,0.1)",
+        }}
+      >
+        {/* Screen */}
+        <div className="relative bg-base-100 rounded-[2rem] overflow-hidden w-[180px] sm:w-[200px] h-[340px] sm:h-[380px]">
+          {/* Notch */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-6 bg-base-300 rounded-b-2xl z-20" />
+
+          {/* Status bar */}
+          <div className="absolute top-2 left-4 right-4 flex justify-between items-center z-10 text-[10px] text-base-content/50">
+            <span>9:41</span>
+            <div className="flex items-center gap-1">
+              <div className="w-4 h-2 border border-base-content/30 rounded-sm">
+                <div className="w-3/4 h-full bg-success rounded-sm" />
+              </div>
+            </div>
+          </div>
+
+          {/* App header */}
+          <div className="absolute top-8 left-0 right-0 px-4 z-10">
+            <div className="flex items-center gap-2">
+              <div className={`w-1.5 h-1.5 rounded-full ${isFriends ? "bg-primary" : "bg-success"}`} />
+              <span className="text-xs font-semibold text-base-content/70">
+                {isFriends ? "Split Bills" : "Event Credits"}
+              </span>
+            </div>
+          </div>
+
+          {/* Animation content */}
+          <div className="pt-14 px-2 h-full flex items-start justify-center scale-[0.85] origin-top">
+            {isFriends ? <FriendsAnimation /> : <VenuesAnimation />}
+          </div>
+
+          {/* NFC Connection Line (appears on tap) - Friends only */}
+          {isFriends && (
+            <AnimatePresence>
+              {showHand && showTapHand && tapTarget === "friends" && (
+                <motion.div
+                  initial={{ opacity: 0, scaleX: 0 }}
+                  animate={{ opacity: 1, scaleX: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="absolute bottom-20 left-1/2 -translate-x-1/2 origin-center"
+                >
+                  <svg width="60" height="30" viewBox="0 0 60 30" className="opacity-60">
+                    <motion.path
+                      d="M10 15 Q30 5 50 15"
+                      stroke="url(#nfcGradient)"
+                      strokeWidth="2"
+                      fill="none"
+                      initial={{ pathLength: 0, opacity: 0 }}
+                      animate={{ pathLength: 1, opacity: 1 }}
+                      transition={{ duration: 0.4 }}
+                    />
+                    <motion.path
+                      d="M15 20 Q30 10 45 20"
+                      stroke="url(#nfcGradient)"
+                      strokeWidth="2"
+                      fill="none"
+                      initial={{ pathLength: 0, opacity: 0 }}
+                      animate={{ pathLength: 1, opacity: 0.7 }}
+                      transition={{ duration: 0.4, delay: 0.1 }}
+                    />
+                    <defs>
+                      <linearGradient id="nfcGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="#f2a900" stopOpacity="0" />
+                        <stop offset="50%" stopColor="#f2a900" />
+                        <stop offset="100%" stopColor="#22c55e" stopOpacity="0" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          )}
+        </div>
+
+        {/* Home indicator */}
+        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-24 h-1 bg-base-content/20 rounded-full" />
+      </div>
+
+      {/* Tap Hand Animation - Friends only */}
+      {isFriends && showHand && (
+        <AnimatePresence>
+          {showTapHand && tapTarget === "friends" && (
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.8 }}
+              animate={{
+                opacity: 1,
+                y: [20, 0, 5, 0],
+                scale: [0.8, 1, 0.95, 1],
+              }}
+              exit={{ opacity: 0, y: 10, scale: 0.9 }}
+              transition={{
+                duration: 0.5,
+                times: [0, 0.4, 0.7, 1],
+                ease: "easeOut",
+              }}
+              className="absolute bottom-28 right-0 translate-x-1/2 z-30"
+            >
+              <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                <motion.ellipse
+                  cx="24"
+                  cy="20"
+                  rx="10"
+                  ry="16"
+                  fill="url(#fingerGradient)"
+                  initial={{ scale: 1 }}
+                  animate={{ scale: [1, 0.9, 1] }}
+                  transition={{ duration: 0.3, delay: 0.2 }}
+                />
+                <motion.circle
+                  cx="24"
+                  cy="12"
+                  r="6"
+                  fill="none"
+                  stroke="#f2a900"
+                  strokeWidth="2"
+                  initial={{ scale: 0.5, opacity: 0 }}
+                  animate={{ scale: 2, opacity: [0, 0.8, 0] }}
+                  transition={{ duration: 0.6, delay: 0.2 }}
+                />
+                <defs>
+                  <linearGradient id="fingerGradient" x1="24" y1="4" x2="24" y2="36">
+                    <stop offset="0%" stopColor="#e5c9a8" />
+                    <stop offset="100%" stopColor="#d4a574" />
+                  </linearGradient>
+                </defs>
+              </svg>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      )}
+    </div>
+  );
+}
+
 export function PhoneMockup({ showBoth = true }: PhoneMockupProps) {
   const [showTapHand, setShowTapHand] = useState(false);
   const [tapTarget, setTapTarget] = useState<"friends" | "venues">("friends");
@@ -35,152 +191,6 @@ export function PhoneMockup({ showBoth = true }: PhoneMockupProps) {
       clearInterval(interval);
     };
   }, []);
-
-  // Phone component to avoid duplication
-  const PhoneFrame = ({ type, showHand = false }: { type: "friends" | "venues"; showHand?: boolean }) => {
-    const isFriends = type === "friends";
-    return (
-      <div className="relative">
-        {/* Phone bezel */}
-        <div
-          className="relative bg-base-300 rounded-[2.5rem] p-2 shadow-2xl"
-          style={{
-            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255,255,255,0.1)",
-          }}
-        >
-          {/* Screen */}
-          <div className="relative bg-base-100 rounded-[2rem] overflow-hidden w-[180px] sm:w-[200px] h-[340px] sm:h-[380px]">
-            {/* Notch */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-6 bg-base-300 rounded-b-2xl z-20" />
-
-            {/* Status bar */}
-            <div className="absolute top-2 left-4 right-4 flex justify-between items-center z-10 text-[10px] text-base-content/50">
-              <span>9:41</span>
-              <div className="flex items-center gap-1">
-                <div className="w-4 h-2 border border-base-content/30 rounded-sm">
-                  <div className="w-3/4 h-full bg-success rounded-sm" />
-                </div>
-              </div>
-            </div>
-
-            {/* App header */}
-            <div className="absolute top-8 left-0 right-0 px-4 z-10">
-              <div className="flex items-center gap-2">
-                <div className={`w-1.5 h-1.5 rounded-full ${isFriends ? "bg-primary" : "bg-success"}`} />
-                <span className="text-xs font-semibold text-base-content/70">
-                  {isFriends ? "Split Bills" : "Event Credits"}
-                </span>
-              </div>
-            </div>
-
-            {/* Animation content */}
-            <div className="pt-14 px-2 h-full flex items-start justify-center scale-[0.85] origin-top">
-              {isFriends ? <FriendsAnimation /> : <VenuesAnimation />}
-            </div>
-
-            {/* NFC Connection Line (appears on tap) - Friends only */}
-            {isFriends && (
-              <AnimatePresence>
-                {showHand && showTapHand && tapTarget === "friends" && (
-                  <motion.div
-                    initial={{ opacity: 0, scaleX: 0 }}
-                    animate={{ opacity: 1, scaleX: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="absolute bottom-20 left-1/2 -translate-x-1/2 origin-center"
-                  >
-                    <svg width="60" height="30" viewBox="0 0 60 30" className="opacity-60">
-                      <motion.path
-                        d="M10 15 Q30 5 50 15"
-                        stroke="url(#nfcGradient)"
-                        strokeWidth="2"
-                        fill="none"
-                        initial={{ pathLength: 0, opacity: 0 }}
-                        animate={{ pathLength: 1, opacity: 1 }}
-                        transition={{ duration: 0.4 }}
-                      />
-                      <motion.path
-                        d="M15 20 Q30 10 45 20"
-                        stroke="url(#nfcGradient)"
-                        strokeWidth="2"
-                        fill="none"
-                        initial={{ pathLength: 0, opacity: 0 }}
-                        animate={{ pathLength: 1, opacity: 0.7 }}
-                        transition={{ duration: 0.4, delay: 0.1 }}
-                      />
-                      <defs>
-                        <linearGradient id="nfcGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                          <stop offset="0%" stopColor="#f2a900" stopOpacity="0" />
-                          <stop offset="50%" stopColor="#f2a900" />
-                          <stop offset="100%" stopColor="#22c55e" stopOpacity="0" />
-                        </linearGradient>
-                      </defs>
-                    </svg>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            )}
-          </div>
-
-          {/* Home indicator */}
-          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-24 h-1 bg-base-content/20 rounded-full" />
-        </div>
-
-        {/* Tap Hand Animation - Friends only */}
-        {isFriends && showHand && (
-          <AnimatePresence>
-            {showTapHand && tapTarget === "friends" && (
-              <motion.div
-                initial={{ opacity: 0, y: 20, scale: 0.8 }}
-                animate={{
-                  opacity: 1,
-                  y: [20, 0, 5, 0],
-                  scale: [0.8, 1, 0.95, 1],
-                }}
-                exit={{ opacity: 0, y: 10, scale: 0.9 }}
-                transition={{
-                  duration: 0.5,
-                  times: [0, 0.4, 0.7, 1],
-                  ease: "easeOut",
-                }}
-                className="absolute bottom-28 right-0 translate-x-1/2 z-30"
-              >
-                <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-                  <motion.ellipse
-                    cx="24"
-                    cy="20"
-                    rx="10"
-                    ry="16"
-                    fill="url(#fingerGradient)"
-                    initial={{ scale: 1 }}
-                    animate={{ scale: [1, 0.9, 1] }}
-                    transition={{ duration: 0.3, delay: 0.2 }}
-                  />
-                  <motion.circle
-                    cx="24"
-                    cy="12"
-                    r="6"
-                    fill="none"
-                    stroke="#f2a900"
-                    strokeWidth="2"
-                    initial={{ scale: 0.5, opacity: 0 }}
-                    animate={{ scale: 2, opacity: [0, 0.8, 0] }}
-                    transition={{ duration: 0.6, delay: 0.2 }}
-                  />
-                  <defs>
-                    <linearGradient id="fingerGradient" x1="24" y1="4" x2="24" y2="36">
-                      <stop offset="0%" stopColor="#e5c9a8" />
-                      <stop offset="100%" stopColor="#d4a574" />
-                    </linearGradient>
-                  </defs>
-                </svg>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        )}
-      </div>
-    );
-  };
 
   return (
     <>
@@ -217,7 +227,12 @@ export function PhoneMockup({ showBoth = true }: PhoneMockupProps) {
             exit={{ opacity: 0, x: mobileTab === "friends" ? 20 : -20 }}
             transition={{ duration: 0.3 }}
           >
-            <PhoneFrame type={mobileTab} showHand={mobileTab === "friends"} />
+            <PhoneFrame
+              type={mobileTab}
+              showHand={mobileTab === "friends"}
+              showTapHand={showTapHand}
+              tapTarget={tapTarget}
+            />
           </motion.div>
         </AnimatePresence>
       </div>
@@ -230,7 +245,7 @@ export function PhoneMockup({ showBoth = true }: PhoneMockupProps) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
         >
-          <PhoneFrame type="friends" showHand={true} />
+          <PhoneFrame type="friends" showHand={true} showTapHand={showTapHand} tapTarget={tapTarget} />
         </motion.div>
 
         {/* Phone Frame - Venues */}
@@ -240,7 +255,7 @@ export function PhoneMockup({ showBoth = true }: PhoneMockupProps) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
           >
-            <PhoneFrame type="venues" />
+            <PhoneFrame type="venues" showTapHand={showTapHand} tapTarget={tapTarget} />
           </motion.div>
         )}
 

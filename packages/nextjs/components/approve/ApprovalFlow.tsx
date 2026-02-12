@@ -266,6 +266,7 @@ export function ApprovalFlow() {
   useEffect(() => {
     if (isSuccess && paymentsState === "approving") {
       // Payments approved - advance to Credits step
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPaymentsState("approved");
       setError("");
       // Delay reset for smooth exit animation
@@ -320,6 +321,7 @@ export function ApprovalFlow() {
   useEffect(() => {
     if (txError && paymentsState === "approving") {
       console.error("Payments approval failed:", txErrorDetails);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPaymentsState("pending");
       setError(txErrorDetails?.message || "Transaction failed. Please try again.");
       reset();

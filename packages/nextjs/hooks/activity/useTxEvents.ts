@@ -197,6 +197,7 @@ export function useTxEvents({
   useEffect(() => {
     if (!txHash) {
       // Reset state
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setEvents([]);
       setCurrentPhase("idle");
       setConfirmations(0);
@@ -207,6 +208,7 @@ export function useTxEvents({
     }
 
     // New transaction - add initiated event
+
     setCurrentPhase("initiated");
     addEvent({
       type: "initiated",
@@ -269,6 +271,7 @@ export function useTxEvents({
     // If we have an initial block number, use it directly
     if (initialBlockNumber) {
       hasReceivedRealData.current = true;
+
       setIsUsingFallback(false);
 
       if (fallbackRef.current) {

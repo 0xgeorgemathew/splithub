@@ -296,6 +296,7 @@ export function POSFullScreen() {
                   <motion.div
                     key="amount-entry"
                     className="w-full h-full"
+                    // eslint-disable-next-line react-hooks/refs
                     variants={getVariants()}
                     initial="enter"
                     animate="center"
@@ -309,6 +310,7 @@ export function POSFullScreen() {
                   <motion.div
                     key="card-stack"
                     className="flex items-center justify-center p-4 w-full h-full"
+                    // eslint-disable-next-line react-hooks/refs
                     variants={getVariants()}
                     initial="enter"
                     animate="center"
@@ -332,6 +334,7 @@ export function POSFullScreen() {
                   <motion.div
                     key="activity-panel"
                     className="w-full h-full"
+                    // eslint-disable-next-line react-hooks/refs
                     variants={getVariants()}
                     initial="enter"
                     animate="center"

@@ -234,8 +234,11 @@ export function TransactionStepper({ steps, className = "" }: TransactionStepper
     prevStatusesRef.current = newStatuses;
   }, [steps]);
 
+  const prevStatuses = prevStatusesRef.current;
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={`space-y-0 ${className}`}>
+      {/* eslint-disable-next-line react-hooks/refs */}
       {steps.map((step, index) => (
         <motion.div
           key={step.id}
@@ -243,7 +246,7 @@ export function TransactionStepper({ steps, className = "" }: TransactionStepper
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: index * 0.05, duration: 0.3 }}
         >
-          <StepRow step={step} prevStatus={prevStatusesRef.current[step.id]} />
+          <StepRow step={step} prevStatus={prevStatuses[step.id]} />
 
           {/* Connector line between steps */}
           {index < steps.length - 1 && (

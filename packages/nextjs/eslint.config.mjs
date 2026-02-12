@@ -1,25 +1,17 @@
-import { FlatCompat } from "@eslint/eslintrc";
+import eslintConfigNext from "eslint-config-next";
 import prettierPlugin from "eslint-plugin-prettier";
-import { defineConfig } from "eslint/config";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import tsEslint from "typescript-eslint";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-});
-
-export default defineConfig([
+const eslintConfig = [
   {
-    ignores: ["next-env.d.ts"],
+    ignores: ["**/public/sw.js", "**/public/workbox-*.js"],
   },
+  ...eslintConfigNext,
   {
     plugins: {
       prettier: prettierPlugin,
+      "@typescript-eslint": tsEslint.plugin,
     },
-    extends: compat.extends("next/core-web-vitals", "next/typescript", "prettier"),
-
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/ban-ts-comment": "off",
@@ -28,10 +20,9 @@ export default defineConfig([
         {
           argsIgnorePattern: "^_",
           varsIgnorePattern: "^_",
-          caughtErrorsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^(_.*|e|error|err)$",
         },
       ],
-
       "prettier/prettier": [
         "warn",
         {
@@ -40,4 +31,6 @@ export default defineConfig([
       ],
     },
   },
-]);
+];
+
+export default eslintConfig;

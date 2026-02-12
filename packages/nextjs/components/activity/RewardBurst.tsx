@@ -79,9 +79,16 @@ function BurstParticle({
 
 // Sparkle trail effect
 function SparkleTrail() {
+  const [sparkles] = useState(() =>
+    Array.from({ length: 8 }, (_, i) => ({
+      id: i,
+      height: 30 + Math.random() * 20,
+    })),
+  );
+
   return (
     <>
-      {[...Array(8)].map((_, i) => (
+      {sparkles.map((sparkle, i) => (
         <motion.div
           key={i}
           className="absolute"
@@ -104,7 +111,7 @@ function SparkleTrail() {
           <motion.div
             className="absolute w-1"
             style={{
-              height: 30 + Math.random() * 20,
+              height: sparkle.height,
               transformOrigin: "bottom center",
               marginLeft: -2,
               background: `linear-gradient(to top, ${colors.reward.primary}, transparent)`,
