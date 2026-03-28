@@ -3,7 +3,7 @@
 import { ReactNode } from "react";
 import { HeroAmount } from "./HeroAmount";
 import { colors, effects } from "./styles";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, type Variants, motion } from "framer-motion";
 import { AlertCircle, CheckCircle2, ExternalLink, XCircle } from "lucide-react";
 import { getBlockExplorerTxLink } from "~~/utils/scaffold-eth";
 
@@ -27,7 +27,7 @@ interface TransactionCardProps {
 }
 
 // Card spring animation
-const cardVariants = {
+const cardVariants: Variants = {
   hidden: { opacity: 0, scale: 0.95, y: 20 },
   visible: {
     opacity: 1,

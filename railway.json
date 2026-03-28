@@ -6,7 +6,8 @@
       "packages/nextjs/**",
       "railpack.json",
       "package.json",
-      ".yarnrc.yml",
+      "bun.lock",
+      "bunfig.toml",
       "railway.json"
     ]
   },

@@ -12,8 +12,8 @@ import "../contracts/SplitHubRegistry.sol";
  *      - Includes ScaffoldEthDeployerRunner modifier
  *      - Provides `deployer` variable
  * Example:
- * yarn deploy --file DeploySplitHubRegistry.s.sol  # local anvil chain
- * yarn deploy --file DeploySplitHubRegistry.s.sol --network baseSepolia # live network (requires keystore)
+ * bun run deploy --file DeploySplitHubRegistry.s.sol  # local anvil chain
+ * bun run deploy --file DeploySplitHubRegistry.s.sol --network baseSepolia # live network (requires keystore)
  */
 contract DeploySplitHubRegistry is ScaffoldETHDeploy {
     function run() external ScaffoldEthDeployerRunner {

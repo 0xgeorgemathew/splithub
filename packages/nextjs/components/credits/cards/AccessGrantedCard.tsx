@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { type Variants, motion } from "framer-motion";
 import { ExternalLink, Sparkles } from "lucide-react";
 import { LucideIcon } from "lucide-react";
 import { colors, effects } from "~~/components/activity/styles";
@@ -17,7 +17,7 @@ interface AccessGrantedCardProps {
 }
 
 // Checkmark draw animation
-const checkmarkVariants = {
+const checkmarkVariants: Variants = {
   hidden: { pathLength: 0, opacity: 0 },
   visible: {
     pathLength: 1,

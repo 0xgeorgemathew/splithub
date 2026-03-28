@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, type Variants, motion } from "framer-motion";
 import { Check, Link as LinkIcon, Search, Sparkles, Store, User, X } from "lucide-react";
 import { TOKENS } from "~~/config/tokens";
 import type { CreateStallData, Stall } from "~~/lib/events.types";
@@ -18,7 +18,7 @@ interface StallModalProps {
 }
 
 // Animation variants
-const staggerContainer = {
+const staggerContainer: Variants = {
   hidden: {},
   show: {
     transition: {
@@ -28,12 +28,12 @@ const staggerContainer = {
   },
 };
 
-const staggerItem = {
+const staggerItem: Variants = {
   hidden: { opacity: 0, y: 10 },
   show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 400, damping: 50 } },
 };
 
-const listItemVariants = {
+const listItemVariants: Variants = {
   hidden: { opacity: 0, y: 8, scale: 0.95 },
   show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring", stiffness: 400, damping: 40 } },
   exit: { opacity: 0, scale: 0.9, y: -5, transition: { duration: 0.15 } },

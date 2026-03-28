@@ -18,17 +18,17 @@ let keystoreArg = null;
 // Show help message if --help is provided
 if (args.includes("--help") || args.includes("-h")) {
   console.log(`
-Usage: yarn deploy [options]
+Usage: bun run deploy [options]
 Options:
   --file <filename>     Specify the deployment script file (default: Deploy.s.sol)
   --network <network>   Specify the network (default: localhost)
   --keystore <name>     Specify the keystore account to use (bypasses selection prompt)
   --help, -h           Show this help message
 Examples:
-  yarn deploy --file DeployYourContract.s.sol --network sepolia
-  yarn deploy --network sepolia --keystore my-account
-  yarn deploy --file DeployYourContract.s.sol
-  yarn deploy
+  bun run deploy --file DeployYourContract.s.sol --network sepolia
+  bun run deploy --network sepolia --keystore my-account
+  bun run deploy --file DeployYourContract.s.sol
+  bun run deploy
   `);
   process.exit(0);
 }
@@ -139,7 +139,7 @@ if (selectedKeystore === "scaffold-eth-default" && network !== "localhost") {
 To deploy to ${network}, please follow these steps:
 
 1. If you haven't generated a keystore account yet:
-   $ yarn generate
+   $ bun run generate
 
 2. Run the deployment command again.
 

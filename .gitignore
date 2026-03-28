@@ -1,13 +1,6 @@
 # dependencies
 node_modules
 
-# yarn
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/sdks
-!.yarn/versions
 /Users/george/Workspace/splithub/packages/foundry/broadcast
 /Users/george/Workspace/splithub/packages/foundry/out
 # eslint

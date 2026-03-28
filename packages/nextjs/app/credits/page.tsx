@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, type Variants, motion } from "framer-motion";
 import { POSProvider } from "~~/components/credits/POSContext";
 import { POSFullScreen } from "~~/components/credits/POSFullScreen";
 import { VenueCard } from "~~/components/credits/VenueCard";
@@ -10,7 +10,7 @@ import { getAllActivities } from "~~/config/activities";
 import { useTargetNetwork } from "~~/hooks/scaffold-eth";
 
 // Stagger animation for venue cards
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
@@ -21,7 +21,7 @@ const containerVariants = {
   },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: {
     opacity: 1,

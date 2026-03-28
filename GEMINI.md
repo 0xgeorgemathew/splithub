@@ -103,28 +103,28 @@ Logic primarily in `services/balanceService.ts`.
 
 1.  **Install dependencies:**
     ```bash
-    yarn install
+    bun install
     ```
 2.  **Start local blockchain (Anvil):**
     ```bash
-    yarn chain
+    bun run chain
     ```
 3.  **Deploy smart contracts (Localhost):**
     ```bash
-    yarn deploy
+    bun run deploy
     ```
-    *To deploy to Base Sepolia:* `yarn deploy:base`
+    *To deploy to Base Sepolia:* `bun run deploy:base`
 4.  **Run frontend:**
     ```bash
-    yarn start
+    bun run start
     ```
     The app will be at `http://localhost:3000`.
 
 ## Other useful commands
 
--   `yarn test`: Run Solidity tests.
--   `yarn lint`: Lint Solidity and Next.js code.
--   `yarn format`: Format code in both packages.
+-   `bun run test`: Run Solidity tests.
+-   `bun run lint`: Lint Solidity and Next.js code.
+-   `bun run format`: Format code in both packages.
 
 # Routes
 

@@ -57,7 +57,7 @@ async function createKeystore() {
             "\n💰 Fund the address and re-run the deploy command to use this keystore."
           );
           console.log(
-            `\nTIP: Use \`yarn account\` and select \`${keystoreName}\` keystore to check if the address is funded.`
+            `\nTIP: Use \`bun run account\` and select \`${keystoreName}\` keystore to check if the address is funded.`
           );
           process.exit(0);
         } else {

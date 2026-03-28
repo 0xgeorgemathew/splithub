@@ -4,10 +4,10 @@ const buildNextEslintCommand = (filenames) => {
   const relativePaths = filenames
     .map((f) => path.relative(path.join("packages", "nextjs"), f))
     .join(" ");
-  return `cd packages/nextjs && yarn lint --fix ${relativePaths}`;
+  return `cd packages/nextjs && bun run lint --fix ${relativePaths}`;
 };
 
-const checkTypesNextCommand = () => "yarn next:check-types";
+const checkTypesNextCommand = () => "bun run next:check-types";
 
 const buildFoundryFormatCommand = (filenames) => {
   const relativePaths = filenames.map((f) => path.relative(path.join("packages", "foundry"), f)).join(" ");

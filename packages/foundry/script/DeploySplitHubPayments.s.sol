@@ -10,11 +10,11 @@ import "../contracts/SplitHubPayments.sol";
  * @dev Inherits ScaffoldETHDeploy for deployment utilities
  * @dev Requires SplitHubRegistry to be deployed first
  * Example:
- * yarn deploy --file DeploySplitHubPayments.s.sol  # local anvil chain
- * yarn deploy --file DeploySplitHubPayments.s.sol --network baseSepolia # live network
+ * bun run deploy --file DeploySplitHubPayments.s.sol  # local anvil chain
+ * bun run deploy --file DeploySplitHubPayments.s.sol --network baseSepolia # live network
  *
  * Override registry address with env var:
- * REGISTRY_ADDRESS=0x... yarn deploy --file DeploySplitHubPayments.s.sol
+ * REGISTRY_ADDRESS=0x... bun run deploy --file DeploySplitHubPayments.s.sol
  */
 contract DeploySplitHubPayments is ScaffoldETHDeploy {
     error RegistryNotDeployed();

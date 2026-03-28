@@ -8,7 +8,7 @@ interface StallTapCardProps {
 }
 
 // Smooth easing
-const smoothEase = [0.4, 0, 0.2, 1];
+const smoothEase: [number, number, number, number] = [0.4, 0, 0.2, 1];
 
 // Single ring component with proper lifecycle
 function PulseRing({ delay }: { delay: number }) {

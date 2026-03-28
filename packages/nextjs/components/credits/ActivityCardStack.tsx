@@ -3,7 +3,7 @@
 import { AccessGrantedCard } from "./cards/AccessGrantedCard";
 import { ErrorCard } from "./cards/ErrorCard";
 import { TapCard } from "./cards/TapCard";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, type Variants, motion } from "framer-motion";
 import { LucideIcon } from "lucide-react";
 import { CreditFlowState } from "~~/hooks/credits/useCreditSpend";
 
@@ -71,7 +71,7 @@ function parseBalance(value: string | null): number {
 }
 
 // Card animation variants
-const cardVariants = {
+const cardVariants: Variants = {
   initial: { y: 40, opacity: 0, scale: 0.96 },
   animate: {
     y: 0,

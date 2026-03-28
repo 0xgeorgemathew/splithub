@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, type Variants, motion } from "framer-motion";
 import { Nfc } from "lucide-react";
 
 interface POSAmountEntryProps {
@@ -13,7 +13,7 @@ interface POSAmountEntryProps {
 const PRESET_AMOUNTS = [1, 10, 20, 50];
 
 // Animation variants
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
@@ -24,7 +24,7 @@ const containerVariants = {
   },
 };
 
-const keypadButtonVariants = {
+const keypadButtonVariants: Variants = {
   hidden: { opacity: 0, scale: 0.8, y: 10 },
   visible: {
     opacity: 1,

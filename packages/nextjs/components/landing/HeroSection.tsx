@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { PhoneMockup } from "./PhoneMockup";
-import { motion } from "framer-motion";
+import { type Variants, motion } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 
-const staggerContainer = {
+const staggerContainer: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
@@ -16,7 +16,7 @@ const staggerContainer = {
   },
 };
 
-const textReveal = {
+const textReveal: Variants = {
   hidden: { opacity: 0, y: 30, filter: "blur(10px)" },
   visible: {
     opacity: 1,

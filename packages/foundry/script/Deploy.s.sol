@@ -11,7 +11,7 @@ import "../contracts/CreditToken.sol";
  * @notice Main deployment script for all SplitHub contracts
  * @dev Run this when you want to deploy all contracts at once
  *
- * Example: yarn deploy:base # deploys all contracts to Base Sepolia
+ * Example: bun run deploy:base # deploys all contracts to Base Sepolia
  */
 contract DeployScript is ScaffoldETHDeploy {
     // Known token address (same as settle page uses)

@@ -4,7 +4,7 @@ import { CreditsCard } from "./cards/CreditsCard";
 import { ErrorCard } from "./cards/ErrorCard";
 import { ProcessingCard } from "./cards/ProcessingCard";
 import { TapCard } from "./cards/TapCard";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, type Variants, motion } from "framer-motion";
 import { CreditFlowState } from "~~/hooks/credits/useCreditPurchase";
 
 interface POSCardStackProps {
@@ -97,7 +97,7 @@ function parseBalance(value: string | null, creditsMinted: string | null, fallba
 }
 
 // Card animation variants
-const cardVariants = {
+const cardVariants: Variants = {
   initial: { y: 40, opacity: 0, scale: 0.96 },
   animate: {
     y: 0,

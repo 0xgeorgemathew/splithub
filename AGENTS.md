@@ -97,11 +97,10 @@ packages/foundry/
 ## Commands
 
 ```bash
-bun install         # Install dependencies
-bun run chain       # Local Anvil
-bun run deploy      # Deploy localhost
-bun run deploy:base # Deploy Base Sepolia
-bun run start       # Start frontend
+yarn chain          # Local Anvil
+yarn deploy         # Deploy localhost
+yarn deploy:base    # Deploy Base Sepolia
+yarn start          # Start frontend
 ```
 
 ## Common Errors

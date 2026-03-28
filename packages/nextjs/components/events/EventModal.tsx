@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePrivy } from "@privy-io/react-auth";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, type Variants, motion } from "framer-motion";
 import { Calendar, Check, Link as LinkIcon, Sparkles, X } from "lucide-react";
 import type { CreateEventData, Event } from "~~/lib/events.types";
 
@@ -14,7 +14,7 @@ interface EventModalProps {
 }
 
 // Animation variants
-const staggerContainer = {
+const staggerContainer: Variants = {
   hidden: {},
   show: {
     transition: {
@@ -24,7 +24,7 @@ const staggerContainer = {
   },
 };
 
-const staggerItem = {
+const staggerItem: Variants = {
   hidden: { opacity: 0, y: 10 },
   show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 400, damping: 50 } },
 };

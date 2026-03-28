@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { type Variants, motion } from "framer-motion";
 import { Check, ExternalLink } from "lucide-react";
 import { colors, effects } from "~~/components/activity/styles";
 import { getBlockExplorerTxLink } from "~~/utils/scaffold-eth";
@@ -14,7 +14,7 @@ interface CreditsCardProps {
 }
 
 // Checkmark draw animation
-const checkmarkVariants = {
+const checkmarkVariants: Variants = {
   hidden: { pathLength: 0, opacity: 0 },
   visible: {
     pathLength: 1,

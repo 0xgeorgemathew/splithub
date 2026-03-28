@@ -10,10 +10,10 @@ import "../contracts/CreditToken.sol";
  * @dev Inherits ScaffoldETHDeploy for deployment utilities
  * @dev Requires SplitHubRegistry to be deployed first
  * Example:
- * yarn deploy:credittoken:base  # Deploy to Base Sepolia
+ * bun run deploy --file DeployCreditToken.s.sol --network baseSepolia
  *
  * Override addresses with env vars:
- * REGISTRY_ADDRESS=0x... TOKEN_ADDRESS=0x... yarn deploy --file DeployCreditToken.s.sol
+ * REGISTRY_ADDRESS=0x... TOKEN_ADDRESS=0x... bun run deploy --file DeployCreditToken.s.sol
  */
 contract DeployCreditToken is ScaffoldETHDeploy {
     error RegistryNotDeployed();

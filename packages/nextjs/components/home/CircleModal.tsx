@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { usePrivy } from "@privy-io/react-auth";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, type Variants, motion } from "framer-motion";
 import { Check, Search, Users, X } from "lucide-react";
 import { type CircleWithMembers, type User, supabase } from "~~/lib/supabase";
 import { createCircle, updateCircle } from "~~/services/circleService";
@@ -16,7 +16,7 @@ interface CircleModalProps {
 }
 
 // Animation variants
-const staggerContainer = {
+const staggerContainer: Variants = {
   hidden: {},
   show: {
     transition: {
@@ -26,12 +26,12 @@ const staggerContainer = {
   },
 };
 
-const staggerItem = {
+const staggerItem: Variants = {
   hidden: { opacity: 0, y: 10 },
   show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 400, damping: 50 } },
 };
 
-const listItemVariants = {
+const listItemVariants: Variants = {
   hidden: { opacity: 0, y: 8, scale: 0.95 },
   show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring", stiffness: 400, damping: 40 } },
   exit: { opacity: 0, scale: 0.9, y: -5, transition: { duration: 0.15 } },

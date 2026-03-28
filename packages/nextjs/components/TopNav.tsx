@@ -4,12 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { NotificationToggle } from "./NotificationToggle";
 import { usePrivy } from "@privy-io/react-auth";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, type Variants, motion } from "framer-motion";
 import { Check, ChevronDown, Copy, LogIn, LogOut, Nfc, Wallet } from "lucide-react";
 import { useCurrentUser } from "~~/hooks/useCurrentUser";
 import { copyToClipboard as copyText, truncateAddress } from "~~/utils/addressHelpers";
 
-const dropdownItemVariants = {
+const dropdownItemVariants: Variants = {
   hidden: { opacity: 0, x: -8 },
   visible: (i: number) => ({
     opacity: 1,

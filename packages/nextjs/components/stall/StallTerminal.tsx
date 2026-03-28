@@ -7,7 +7,7 @@ import { StallErrorCard } from "./cards/StallErrorCard";
 import { StallProcessingCard } from "./cards/StallProcessingCard";
 import { StallSuccessCard } from "./cards/StallSuccessCard";
 import { StallTapCard } from "./cards/StallTapCard";
-import { AnimatePresence, motion, useAnimationControls } from "framer-motion";
+import { AnimatePresence, type Variants, motion, useAnimationControls } from "framer-motion";
 import { CalendarDays, Store, User } from "lucide-react";
 import { usePaymentNotification } from "~~/hooks/usePaymentNotification";
 import { type StallPaymentFlowState, useStallPayment } from "~~/hooks/useStallPayment";
@@ -21,7 +21,7 @@ interface StallTerminalProps {
 const CHAIN_ID = 84532;
 
 // Terminal entrance - bouncy 3D entry with perspective
-const terminalVariants = {
+const terminalVariants: Variants = {
   hidden: {
     y: 100,
     opacity: 0,
@@ -45,7 +45,7 @@ const terminalVariants = {
 };
 
 // Header items stagger in
-const headerVariants = {
+const headerVariants: Variants = {
   hidden: { opacity: 0, x: -20 },
   visible: {
     opacity: 1,
@@ -59,7 +59,7 @@ const headerVariants = {
 };
 
 // Card animation variants - bouncier
-const cardVariants = {
+const cardVariants: Variants = {
   initial: { y: 50, opacity: 0, scale: 0.94 },
   animate: {
     y: 0,
