@@ -7,6 +7,9 @@ import { OnboardingFinalizer } from "~~/components/onboarding/OnboardingFinalize
 import { BASE_SEPOLIA_CHAIN_ID, NFC_TAP_COOLDOWN_MS, ONBOARDING_MIN_DISPLAY_MS } from "~~/constants/app.constants";
 import { useHaloChip } from "~~/hooks/halochip-arx/useHaloChip";
 import { useDeployedContractInfo } from "~~/hooks/scaffold-eth";
+import { useEmbeddedWalletClient } from "~~/hooks/useEmbeddedWalletClient";
+import { baseSepolia, createBaseSepoliaPublicClient } from "~~/lib/baseSepolia";
+import { SPLIT_HUB_REGISTRY_ABI } from "~~/lib/contractAbis";
 import { supabase } from "~~/lib/supabase";
 import { formatAPIError, formatNFCError } from "~~/utils/errorFormatting";
 
@@ -27,7 +30,7 @@ import { formatAPIError, formatNFCError } from "~~/utils/errorFormatting";
  * State Descriptions:
  * - idle: Initial state, waiting for user to tap
  * - tapping: NFC chip is being read (first tap to get address, second to sign)
- * - registering: On-chain registration in progress via relayer
+ * - registering: On-chain registration in progress from the embedded wallet
  * - finalizing: Backend finalize API running, full-screen loader shown
  * - error: Something failed, user can retry
  *
@@ -53,6 +56,7 @@ export function RegisterChipForm({
   const router = useRouter();
   const { signMessage, signTypedData } = useHaloChip();
   const { data: registryContract } = useDeployedContractInfo("SplitHubRegistry");
+  const { getWalletClient } = useEmbeddedWalletClient();
 
   const [flowState, setFlowState] = useState<FlowState>("idle");
   const [error, setError] = useState("");
@@ -216,24 +220,25 @@ export function RegisterChipForm({
         throw new Error("This chip is already registered");
       }
 
-      // Step 4: Register chip on-chain via relayer
+      // Step 4: Register chip on-chain directly from the embedded wallet
       setFlowState("registering");
       setStatusMessage("Registering chip on blockchain...");
 
-      const relayResponse = await fetch("/api/relay/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          signer: detectedChipAddress,
-          owner: embeddedWallet,
-          signature: registrationSig.signature,
-        }),
+      const walletClient = await getWalletClient();
+      const publicClient = createBaseSepoliaPublicClient();
+      const txHash = await walletClient.writeContract({
+        account: walletClient.account!,
+        address: registryContract.address as `0x${string}`,
+        abi: SPLIT_HUB_REGISTRY_ABI,
+        chain: baseSepolia,
+        functionName: "register",
+        args: [detectedChipAddress as `0x${string}`, embeddedWallet as `0x${string}`, registrationSig.signature],
       });
 
-      const relayData = await relayResponse.json();
-
-      if (!relayResponse.ok) {
-        throw new Error(relayData.error || "Registration failed");
+      setStatusMessage("Confirming registration...");
+      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+      if (receipt.status !== "success") {
+        throw new Error("Registration transaction failed");
       }
 
       // Step 5: Finalize onboarding (updates DB, checks approvals, returns next route)

@@ -15,6 +15,30 @@ export function useHaloChip() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const getChipAddress = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const result: any = await execHaloCmdWeb({ name: "get_pkeys" });
+      const address = result?.etherAddresses?.["1"] || result?.etherAddress;
+
+      if (!address) {
+        throw new Error("No chip address found");
+      }
+
+      return {
+        address,
+        allAddresses: result?.etherAddresses ?? {},
+      };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "NFC read failed";
+      setError(msg);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const signMessage = async ({
     message,
     digest,
@@ -97,5 +121,38 @@ export function useHaloChip() {
     }
   };
 
-  return { signMessage, signTypedData, isLoading, error };
+  const signDigest = async ({ digest }: { digest: string }) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const normalizedDigest = digest.startsWith("0x") ? digest.slice(2) : digest;
+      const result: any = await execHaloCmdWeb({
+        name: "sign",
+        keyNo: 1,
+        digest: normalizedDigest,
+      });
+
+      if (!result?.signature?.raw || !result?.etherAddress) {
+        throw new Error("Invalid raw signature response from chip");
+      }
+
+      return {
+        address: result.etherAddress,
+        signature: result.signature.ether,
+        rawSignature: {
+          r: result.signature.raw.r,
+          s: result.signature.raw.s,
+          v: result.signature.raw.v,
+        },
+      };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "NFC read failed";
+      setError(msg);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { getChipAddress, signMessage, signTypedData, signDigest, isLoading, error };
 }

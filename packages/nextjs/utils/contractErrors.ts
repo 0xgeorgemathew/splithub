@@ -2,7 +2,7 @@
  * Contract Error Parser
  *
  * Extracts human-readable error messages from contract errors.
- * Used by payment relay routes to provide clear error feedback.
+ * Used by client and server transaction flows to provide clear error feedback.
  */
 
 /**

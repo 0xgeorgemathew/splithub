@@ -78,7 +78,7 @@ export interface MultiSettleFlowProps {
   onError?: (error: Error) => void;
 }
 
-// Batch payment auth for relay
+// Batch payment auth payload for direct multicall submission
 export interface BatchPaymentAuth {
   payer: `0x${string}`;
   recipient: `0x${string}`;

@@ -70,7 +70,7 @@ export function SettleFlow({ params, onSuccess, onError, onClose }: SettleFlowPr
               <div className="flex items-center gap-1.5 px-3 py-1.5 bg-base-300/50 rounded-full">
                 <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
                 <Fuel className="w-3.5 h-3.5 text-base-content/70" />
-                <span className="text-xs font-medium text-base-content">Gasless</span>
+                <span className="text-xs font-medium text-base-content">Direct</span>
               </div>
             </motion.div>
           )}

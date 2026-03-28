@@ -103,7 +103,7 @@ export default function MultiSettlePage() {
 
           <div className="flex items-center gap-1.5 px-3 py-1.5 bg-base-100 border border-base-300 rounded-full">
             <Fuel className="w-3.5 h-3.5 text-success" />
-            <span className="text-xs font-medium text-success">Gasless</span>
+            <span className="text-xs font-medium text-success">Direct</span>
           </div>
         </div>
 

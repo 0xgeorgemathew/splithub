@@ -14,9 +14,9 @@ const serwist = new Serwist({
   clientsClaim: true,
   navigationPreload: true,
   runtimeCaching: [
-    // CRITICAL: Never cache relay/transaction endpoints (prevents nonce issues)
+    // CRITICAL: Never cache transaction endpoints (prevents nonce / stale state issues)
     {
-      matcher: /\/api\/relay\/.*/,
+      matcher: /\/api\/(events\/pay|settlements|circles\/auto-split).*/,
       handler: new NetworkOnly(),
     },
     // CRITICAL: Never cache authentication endpoints

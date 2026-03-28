@@ -33,8 +33,8 @@ export function useCurrentUser() {
   return {
     user: userData,
     isLoading,
-    walletAddress: privyUser?.wallet?.address || null,
-    chipAddress: userData?.chip_address || null,
+    walletAddress: (privyUser?.wallet?.address as `0x${string}` | undefined) ?? null,
+    chipAddress: (userData?.chip_address as `0x${string}` | undefined) ?? null,
     twitterHandle: privyUser?.twitter?.username || null,
     profilePic: privyUser?.twitter?.profilePictureUrl || null,
   };

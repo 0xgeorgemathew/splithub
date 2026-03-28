@@ -1,59 +1,16 @@
-/**
- * Multi-settle flow hook for batch payments using NFC chips
- *
- * ===========================================================================
- * CRITICAL: TWO-TAP FLOW EXPLANATION
- * ===========================================================================
- *
- * This hook implements a multi-payer batch payment flow where each participant
- * must tap their NFC chip TWICE:
- *
- * TAP 1: Get chip address (preliminary signature with placeholder payer)
- * ─────────────────────────────────────────────────────────────────────────
- * Problem: We need to know the payer's wallet address BEFORE they sign the
- * PaymentAuth, but the chip address is only revealed when we tap the chip.
- *
- * Solution: First tap signs a PaymentAuth with payer = 0x000...000 (placeholder).
- * This gives us the chipAddress, which we use to look up the owner from
- * SplitHubRegistry on-chain.
- *
- * TAP 2: Sign the real PaymentAuth with correct payer address
- * ─────────────────────────────────────────────────────────────────────────
- * Now that we know the payer's wallet address (owner of the chip), we can:
- * 1. Fetch their current nonce from SplitHubPayments contract
- * 2. Build the correct PaymentAuth message with real payer address
- * 3. Have them sign it with a second chip tap
- *
- * FLOW STATES:
- * ─────────────────────────────────────────────────────────────────────────
- * - collecting: Gathering signatures from all participants (TAP 1 + TAP 2 per person)
- * - submitting: Sending batch transaction to relayer API
- * - confirming: Waiting for blockchain confirmation
- * - success: Transaction completed successfully
- * - error: Something went wrong at any step
- *
- * PARTICIPANT STATES (per slot):
- * ─────────────────────────────────────────────────────────────────────────
- * - waiting: Not yet started
- * - signing: Currently doing TAP 1 or TAP 2
- * - signed: Both taps complete, signature stored
- * - error: Signing failed
- *
- * SECURITY NOTES:
- * ─────────────────────────────────────────────────────────────────────────
- * - Each PaymentAuth includes a nonce (prevents replay attacks)
- * - Each PaymentAuth includes a deadline (~1 hour, prevents stale signatures)
- * - Contract verifies: registry.ownerOf(signer) == auth.payer
- * - Same chip must be used for both taps (verified client-side)
- */
 import { useCallback, useMemo, useState } from "react";
-import { BatchPaymentAuth, ERC20_ABI, Participant, SPLIT_HUB_PAYMENTS_ABI, SPLIT_HUB_REGISTRY_ABI } from "../types";
-import { createPublicClient, http, parseUnits } from "viem";
+import { BatchPaymentAuth, Participant } from "../types";
+import { encodeFunctionData, parseUnits } from "viem";
 import { useReadContract } from "wagmi";
 import deployedContracts from "~~/contracts/deployedContracts";
 import { useHaloChip } from "~~/hooks/halochip-arx/useHaloChip";
 import { useTargetNetwork } from "~~/hooks/scaffold-eth";
+import { useEmbeddedWalletClient } from "~~/hooks/useEmbeddedWalletClient";
 import { useWalletAddress } from "~~/hooks/useWalletAddress";
+import { BASE_SEPOLIA_MULTICALL3_ADDRESS, baseSepolia, createBaseSepoliaPublicClient } from "~~/lib/baseSepolia";
+import { dispatchClientRefreshEvents } from "~~/lib/clientTransactionUtils";
+import { ERC20_ABI, MULTICALL3_ABI, SPLIT_HUB_PAYMENTS_ABI, SPLIT_HUB_REGISTRY_ABI } from "~~/lib/contractAbis";
+import { parseContractError } from "~~/utils/contractErrors";
 
 type MultiFlowState = "collecting" | "submitting" | "confirming" | "success" | "error";
 
@@ -93,9 +50,9 @@ export function useMultiSettleFlow({
 }: UseMultiSettleFlowOptions): UseMultiSettleFlowReturn {
   const { isConnected } = useWalletAddress();
   const { targetNetwork } = useTargetNetwork();
-  const { signTypedData } = useHaloChip();
+  const { getChipAddress, signTypedData } = useHaloChip();
+  const { getWalletClient } = useEmbeddedWalletClient();
 
-  // Initialize participants from amounts (payers will be auto-detected)
   const [participants, setParticipants] = useState<Participant[]>(() =>
     amounts.map((amount, idx) => ({
       id: `slot-${idx}`,
@@ -103,20 +60,17 @@ export function useMultiSettleFlow({
       status: "waiting" as const,
     })),
   );
-
   const [flowState, setFlowState] = useState<MultiFlowState>("collecting");
   const [currentSigningIndex, setCurrentSigningIndex] = useState<number | null>(null);
   const [error, setError] = useState("");
   const [txHash, setTxHash] = useState<string | null>(null);
 
-  // Get contract addresses
   const chainContracts = deployedContracts[targetNetwork.id as keyof typeof deployedContracts] as
     | Record<string, { address: string }>
     | undefined;
   const paymentsAddress = chainContracts?.SplitHubPayments?.address as `0x${string}` | undefined;
   const registryAddress = chainContracts?.SplitHubRegistry?.address as `0x${string}` | undefined;
 
-  // Read token info
   const { data: decimals } = useReadContract({
     address: token,
     abi: ERC20_ABI,
@@ -129,26 +83,18 @@ export function useMultiSettleFlow({
     functionName: "symbol",
   });
 
-  // Create public client for contract reads
-  const publicClient = useMemo(
-    () =>
-      createPublicClient({
-        chain: targetNetwork,
-        transport: http(),
-      }),
-    [targetNetwork],
-  );
+  const publicClient = useMemo(() => createBaseSepoliaPublicClient(), []);
 
-  // Calculate totals
   const signedCount = participants.filter(p => p.status === "signed").length;
   const totalCount = participants.length;
   const allSigned = signedCount === totalCount;
-  const totalAmount = amounts.reduce((sum, a) => sum + parseFloat(a), 0).toString();
+  const totalAmount = amounts.reduce((sum, amount) => sum + parseFloat(amount || "0"), 0).toString();
 
-  // Sign a slot - auto-detects payer from chip tap
   const signSlot = useCallback(
     async (slotIndex: number) => {
-      if (slotIndex < 0 || slotIndex >= participants.length) return;
+      if (slotIndex < 0 || slotIndex >= participants.length) {
+        return;
+      }
 
       const participant = participants[slotIndex];
 
@@ -167,99 +113,20 @@ export function useMultiSettleFlow({
         return;
       }
 
-      // Update status to signing
       setCurrentSigningIndex(slotIndex);
       setParticipants(prev =>
-        prev.map((p, idx) => (idx === slotIndex ? { ...p, status: "signing" as const, error: undefined } : p)),
+        prev.map((entry, idx) =>
+          idx === slotIndex ? { ...entry, status: "signing" as const, error: undefined } : entry,
+        ),
       );
 
       try {
-        // Step 1: First, we need to do a preliminary tap to get the chip address
-        // We'll create a dummy message to sign just to get the chip address
-        // Then look up the owner, build the real PaymentAuth, and sign again
-
-        // Actually, let's think about this differently:
-        // The chip signs the PaymentAuth which includes `payer`.
-        // But we don't know the payer until we tap!
-        //
-        // Solution: We need to do the chip tap first with a placeholder,
-        // extract the chipAddress from the result, look up owner,
-        // then build the correct PaymentAuth and sign again.
-        //
-        // OR: We can use the chip address as a way to look up owner first,
-        // by doing a simple message sign to get the address.
-
-        // Let's do a simple approach: sign a dummy message first to get chip address
         const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
         const amountInWei = parseUnits(participant.expectedAmount, decimals);
 
-        // First tap: Get chip address (we'll use a preliminary sign)
-        // Actually, looking at the signTypedData, it returns { address, signature }
-        // The address IS the chip address. So we need to sign something first.
+        const discoveredChip = await getChipAddress();
+        const chipAddress = discoveredChip.address as `0x${string}`;
 
-        // For now, let's sign with payer=0x0 just to get the chip address,
-        // then we'll do the real sign with the correct payer
-        // This is a bit hacky but works for the PoC
-
-        // Alternative: Use signMessage to just get the address first
-        // But that requires another tap...
-
-        // Best approach: Sign the PaymentAuth with a placeholder payer,
-        // extract chipAddress, look up owner, verify it matches expectations,
-        // then we already have a valid signature because:
-        // - The signature is made by the chip
-        // - The contract verifies: registry.ownerOf(signer) == auth.payer
-        // - So if we set payer = owner of the chip that signed, it will work!
-
-        // Actually wait - the problem is the payer is INSIDE the message being signed.
-        // So if we sign with wrong payer, the signature is for wrong message.
-
-        // Real solution: We need TWO taps or use signMessage first.
-        // Let's use the simpler approach: sign with a placeholder, get chip,
-        // look up owner, then sign AGAIN with correct payer.
-
-        // For better UX, let's do signMessage first to get chipAddress:
-        // NO - useHaloChip only has signTypedData exposed properly.
-
-        // Let's just do two signs. First with placeholder to get chip address:
-        const placeholderAuth = {
-          payer: "0x0000000000000000000000000000000000000000" as `0x${string}`,
-          recipient,
-          token,
-          amount: amountInWei,
-          nonce: BigInt(0),
-          deadline,
-        };
-
-        const domain = {
-          name: "SplitHubPayments",
-          version: "1",
-          chainId: BigInt(targetNetwork.id),
-          verifyingContract: paymentsAddress,
-        };
-
-        const types = {
-          PaymentAuth: [
-            { name: "payer", type: "address" },
-            { name: "recipient", type: "address" },
-            { name: "token", type: "address" },
-            { name: "amount", type: "uint256" },
-            { name: "nonce", type: "uint256" },
-            { name: "deadline", type: "uint256" },
-          ],
-        };
-
-        // First tap to get chip address
-        const firstTapResult = await signTypedData({
-          domain,
-          types,
-          primaryType: "PaymentAuth",
-          message: placeholderAuth,
-        });
-
-        const chipAddress = firstTapResult.address as `0x${string}`;
-
-        // Look up owner from registry
         const owner = (await publicClient.readContract({
           address: registryAddress,
           abi: SPLIT_HUB_REGISTRY_ABI,
@@ -271,7 +138,6 @@ export function useMultiSettleFlow({
           throw new Error("Chip not registered. Please register your chip first.");
         }
 
-        // Now get the correct nonce for this payer
         const nonce = (await publicClient.readContract({
           address: paymentsAddress,
           abi: SPLIT_HUB_PAYMENTS_ABI,
@@ -279,8 +145,7 @@ export function useMultiSettleFlow({
           args: [owner],
         })) as bigint;
 
-        // Build the REAL PaymentAuth with correct payer
-        const realPaymentAuth = {
+        const paymentAuth = {
           payer: owner,
           recipient,
           token,
@@ -289,46 +154,58 @@ export function useMultiSettleFlow({
           deadline,
         };
 
-        // Second tap to sign the real message
-        const realTapResult = await signTypedData({
-          domain,
-          types,
+        const signResult = await signTypedData({
+          domain: {
+            name: "SplitHubPayments",
+            version: "1",
+            chainId: BigInt(targetNetwork.id),
+            verifyingContract: paymentsAddress,
+          },
+          types: {
+            PaymentAuth: [
+              { name: "payer", type: "address" },
+              { name: "recipient", type: "address" },
+              { name: "token", type: "address" },
+              { name: "amount", type: "uint256" },
+              { name: "nonce", type: "uint256" },
+              { name: "deadline", type: "uint256" },
+            ],
+          },
           primaryType: "PaymentAuth",
-          message: realPaymentAuth,
+          message: paymentAuth,
         });
 
-        // Verify same chip signed
-        if (realTapResult.address !== chipAddress) {
-          throw new Error("Different chip used for second tap. Please use the same chip.");
+        if (signResult.address.toLowerCase() !== chipAddress.toLowerCase()) {
+          throw new Error("Different chip used for signing. Please use the same chip.");
         }
 
-        // Update participant with all the info (including deadline for later submission)
         setParticipants(prev =>
-          prev.map((p, idx) =>
+          prev.map((entry, idx) =>
             idx === slotIndex
               ? {
-                  ...p,
+                  ...entry,
                   status: "signed" as const,
                   chipAddress,
                   payer: owner,
-                  signature: realTapResult.signature,
+                  signature: signResult.signature,
                   nonce,
                   deadline,
                 }
-              : p,
+              : entry,
           ),
         );
-      } catch (err: any) {
+      } catch (err) {
+        const message = parseContractError(err) || "Signing failed";
         console.error("Signing error:", err);
         setParticipants(prev =>
-          prev.map((p, idx) =>
+          prev.map((entry, idx) =>
             idx === slotIndex
               ? {
-                  ...p,
+                  ...entry,
                   status: "error" as const,
-                  error: err.message || "Signing failed",
+                  error: message,
                 }
-              : p,
+              : entry,
           ),
         );
       } finally {
@@ -344,12 +221,12 @@ export function useMultiSettleFlow({
       recipient,
       token,
       targetNetwork.id,
+      getChipAddress,
       signTypedData,
       publicClient,
     ],
   );
 
-  // Submit all signed payments as a batch
   const submitBatch = useCallback(async () => {
     if (!allSigned) {
       setError("Not all participants have signed");
@@ -365,54 +242,77 @@ export function useMultiSettleFlow({
     setError("");
 
     try {
-      // Build batch payload using the deadline that was signed (not a new one!)
-      const batchAuths: BatchPaymentAuth[] = participants.map(p => ({
-        payer: p.payer!,
+      const batchAuths: BatchPaymentAuth[] = participants.map(participant => ({
+        payer: participant.payer!,
         recipient,
         token,
-        amount: parseUnits(p.expectedAmount, decimals).toString(),
-        nonce: p.nonce!.toString(),
-        deadline: p.deadline!.toString(),
-        signature: p.signature!,
+        amount: parseUnits(participant.expectedAmount, decimals).toString(),
+        nonce: participant.nonce!.toString(),
+        deadline: participant.deadline!.toString(),
+        signature: participant.signature!,
       }));
 
-      // Submit to batch relay
-      const response = await fetch("/api/relay/batch-payment", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          payments: batchAuths,
-          contractAddress: paymentsAddress,
+      const calls = batchAuths.map(payment => ({
+        target: paymentsAddress,
+        allowFailure: false,
+        callData: encodeFunctionData({
+          abi: SPLIT_HUB_PAYMENTS_ABI,
+          functionName: "executePayment",
+          args: [
+            {
+              payer: payment.payer,
+              recipient: payment.recipient,
+              token: payment.token,
+              amount: BigInt(payment.amount),
+              nonce: BigInt(payment.nonce),
+              deadline: BigInt(payment.deadline),
+            },
+            payment.signature as `0x${string}`,
+          ],
         }),
+      }));
+
+      const walletClient = await getWalletClient();
+      const hash = await walletClient.writeContract({
+        account: walletClient.account!,
+        address: BASE_SEPOLIA_MULTICALL3_ADDRESS,
+        abi: MULTICALL3_ABI,
+        chain: baseSepolia,
+        functionName: "aggregate3",
+        args: [calls],
       });
 
-      const result = await response.json();
+      setFlowState("confirming");
+      setTxHash(hash);
 
-      if (!response.ok) {
-        throw new Error(result.error || "Batch relay failed");
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      if (receipt.status !== "success") {
+        throw new Error("Batch payment failed on-chain");
       }
 
-      setFlowState("confirming");
-      setTxHash(result.txHash);
-
-      // Brief delay then success
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      dispatchClientRefreshEvents({ balances: true, paymentRequests: true });
 
       setFlowState("success");
-
-      if (onSuccess) {
-        onSuccess(result.txHash);
-      }
-    } catch (err: any) {
+      onSuccess?.(hash);
+    } catch (err) {
       console.error("Batch submit error:", err);
+      const normalizedError = err instanceof Error ? err : new Error(parseContractError(err));
       setFlowState("error");
-      setError(err.message || "Batch submission failed");
-
-      if (onError) {
-        onError(err);
-      }
+      setError(parseContractError(err) || "Batch submission failed");
+      onError?.(normalizedError);
     }
-  }, [allSigned, participants, paymentsAddress, decimals, recipient, token, onSuccess, onError]);
+  }, [
+    allSigned,
+    participants,
+    paymentsAddress,
+    decimals,
+    recipient,
+    token,
+    getWalletClient,
+    publicClient,
+    onSuccess,
+    onError,
+  ]);
 
   const reset = useCallback(() => {
     setParticipants(

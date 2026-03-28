@@ -7,6 +7,11 @@ import { PAYMENT_DEADLINE } from "~~/config/tokens";
 import deployedContracts from "~~/contracts/deployedContracts";
 import { useHaloChip } from "~~/hooks/halochip-arx/useHaloChip";
 import { useTargetNetwork } from "~~/hooks/scaffold-eth";
+import { useEmbeddedWalletClient } from "~~/hooks/useEmbeddedWalletClient";
+import { baseSepolia, createBaseSepoliaPublicClient } from "~~/lib/baseSepolia";
+import { dispatchClientRefreshEvents, triggerCircleAutoSplit } from "~~/lib/clientTransactionUtils";
+import { SPLIT_HUB_PAYMENTS_ABI } from "~~/lib/contractAbis";
+import { parseContractError } from "~~/utils/contractErrors";
 
 /**
  * Payment flow states
@@ -29,26 +34,17 @@ export interface PaymentFlowParams {
   decimals: number;
 }
 
-const SPLIT_HUB_PAYMENTS_ABI = [
-  {
-    name: "nonces",
-    type: "function",
-    inputs: [{ name: "payer", type: "address" }],
-    outputs: [{ type: "uint256" }],
-    stateMutability: "view",
-  },
-] as const;
-
 /**
  * Hook to manage the payment flow state machine
  *
- * Encapsulates EIP-712 signing, relay submission, and state transitions.
+ * Encapsulates EIP-712 signing, direct submission, and state transitions.
  *
  * @param payer - Payer wallet address (optional, can be set later)
  */
 export function usePaymentFlow(payer?: `0x${string}`) {
   const { targetNetwork } = useTargetNetwork();
   const { signTypedData } = useHaloChip();
+  const { getWalletClient } = useEmbeddedWalletClient();
 
   const [flowState, setFlowState] = useState<FlowState>("idle");
   const [error, setError] = useState("");
@@ -72,7 +68,7 @@ export function usePaymentFlow(payer?: `0x${string}`) {
   });
 
   /**
-   * Execute a payment through the NFC chip and relay
+   * Execute a payment through the NFC chip and a direct wallet submission
    */
   const executePayment = useCallback(
     async (params: PaymentFlowParams) => {
@@ -135,56 +131,51 @@ export function usePaymentFlow(payer?: `0x${string}`) {
           message: paymentAuth,
         });
 
-        // Submit to relay
+        // Submit directly from the connected wallet
         setFlowState("submitting");
-        const response = await fetch("/api/relay/payment", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            auth: {
-              payer: paymentAuth.payer,
-              recipient: paymentAuth.recipient,
-              token: paymentAuth.token,
-              amount: paymentAuth.amount.toString(),
-              nonce: paymentAuth.nonce.toString(),
-              deadline: paymentAuth.deadline.toString(),
-            },
-            signature: chipResult.signature,
-            contractAddress: paymentsAddress,
-          }),
+        const walletClient = await getWalletClient();
+        const hash = await walletClient.writeContract({
+          account: walletClient.account!,
+          address: paymentsAddress,
+          abi: SPLIT_HUB_PAYMENTS_ABI,
+          chain: baseSepolia,
+          functionName: "executePayment",
+          args: [paymentAuth, chipResult.signature as `0x${string}`],
         });
-
-        const result = await response.json();
-
-        if (!response.ok) {
-          throw new Error(result.error || "Relay request failed");
-        }
 
         // Confirming state
         setFlowState("confirming");
-        setTxHash(result.txHash);
+        setTxHash(hash);
 
-        // Brief delay for UX
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        const publicClient = createBaseSepoliaPublicClient();
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+        if (receipt.status !== "success") {
+          throw new Error("Payment failed on-chain");
+        }
+
+        await triggerCircleAutoSplit({
+          userWallet: params.payer,
+          amount: amountInWei.toString(),
+          tokenAddress: params.token,
+          decimals: params.decimals,
+        });
 
         // Refetch nonce for next payment
         await refetchNonce();
 
         // Trigger balance refresh
-        if (typeof window !== "undefined") {
-          window.dispatchEvent(new Event("refreshBalances"));
-        }
+        dispatchClientRefreshEvents({ balances: true, paymentRequests: true });
 
         setFlowState("success");
-        return result.txHash;
+        return hash;
       } catch (err: unknown) {
         console.error("Payment error:", err);
         setFlowState("error");
-        setError(err instanceof Error ? err.message : "Payment failed");
+        setError(parseContractError(err) || "Payment failed");
         return null;
       }
     },
-    [paymentsAddress, currentNonce, targetNetwork.id, signTypedData, refetchNonce],
+    [paymentsAddress, currentNonce, targetNetwork.id, signTypedData, getWalletClient, refetchNonce],
   );
 
   /**

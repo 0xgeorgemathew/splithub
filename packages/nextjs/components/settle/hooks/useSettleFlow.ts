@@ -8,13 +8,18 @@
  * - `error` - Current error message (empty string when no error)
  */
 import { useCallback, useMemo, useState } from "react";
-import { ERC20_ABI, FlowState, PaymentParams, SPLIT_HUB_PAYMENTS_ABI } from "../types";
-import { createPublicClient, http, parseUnits } from "viem";
+import { FlowState, PaymentParams } from "../types";
+import { parseUnits } from "viem";
 import { useReadContract } from "wagmi";
 import deployedContracts from "~~/contracts/deployedContracts";
 import { useHaloChip } from "~~/hooks/halochip-arx/useHaloChip";
 import { useTargetNetwork } from "~~/hooks/scaffold-eth";
+import { useEmbeddedWalletClient } from "~~/hooks/useEmbeddedWalletClient";
 import { useWalletAddress } from "~~/hooks/useWalletAddress";
+import { baseSepolia, createBaseSepoliaPublicClient } from "~~/lib/baseSepolia";
+import { dispatchClientRefreshEvents, triggerCircleAutoSplit } from "~~/lib/clientTransactionUtils";
+import { ERC20_ABI, SPLIT_HUB_PAYMENTS_ABI } from "~~/lib/contractAbis";
+import { parseContractError } from "~~/utils/contractErrors";
 
 interface UseSettleFlowOptions {
   params: PaymentParams;
@@ -43,6 +48,7 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
   const { walletAddress, isConnected } = useWalletAddress();
   const { targetNetwork } = useTargetNetwork();
   const { signTypedData } = useHaloChip();
+  const { getWalletClient } = useEmbeddedWalletClient();
 
   const [flowState, setFlowState] = useState<FlowState>("idle");
   const [statusMessage, setStatusMessage] = useState("");
@@ -56,14 +62,7 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
   const paymentsAddress = chainContracts?.SplitHubPayments?.address as `0x${string}` | undefined;
 
   // Create public client for contract reads
-  const publicClient = useMemo(
-    () =>
-      createPublicClient({
-        chain: targetNetwork,
-        transport: http(),
-      }),
-    [targetNetwork],
-  );
+  const publicClient = useMemo(() => createBaseSepoliaPublicClient(), []);
 
   // Read token decimals
   const { data: decimals } = useReadContract({
@@ -163,48 +162,46 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
       setFlowState("submitting");
       setStatusMessage("Sending...");
 
-      // Submit to relay API
-      const response = await fetch("/api/relay/payment", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          auth: {
-            payer: paymentAuth.payer,
-            recipient: paymentAuth.recipient,
-            token: paymentAuth.token,
-            amount: paymentAuth.amount.toString(),
-            nonce: paymentAuth.nonce.toString(),
-            deadline: paymentAuth.deadline.toString(),
-          },
-          signature: chipResult.signature,
-          contractAddress: paymentsAddress,
-        }),
+      const walletClient = await getWalletClient();
+      const hash = await walletClient.writeContract({
+        account: walletClient.account!,
+        address: paymentsAddress,
+        abi: SPLIT_HUB_PAYMENTS_ABI,
+        chain: baseSepolia,
+        functionName: "executePayment",
+        args: [paymentAuth, chipResult.signature as `0x${string}`],
       });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || "Relay request failed");
-      }
 
       // Confirming state
       setFlowState("confirming");
       setStatusMessage("Confirming...");
-      setTxHash(result.txHash);
+      setTxHash(hash);
+
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      if (receipt.status !== "success") {
+        throw new Error("Payment failed on-chain");
+      }
+
+      await triggerCircleAutoSplit({
+        userWallet: payerAddress,
+        amount: amountInWei.toString(),
+        tokenAddress: params.token,
+        decimals,
+      });
+
+      dispatchClientRefreshEvents({ balances: true, paymentRequests: true });
 
       setFlowState("success");
       setStatusMessage("Complete!");
 
       // Call success callback
       if (onSuccess) {
-        onSuccess(result.txHash);
+        onSuccess(hash);
       }
     } catch (err: any) {
       console.error("Settlement error:", err);
       setFlowState("error");
-      setError(err.message || "Settlement failed. Please try again.");
+      setError(parseContractError(err) || "Settlement failed. Please try again.");
       setStatusMessage("");
 
       // Call error callback
@@ -221,6 +218,7 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
     targetNetwork.id,
     publicClient,
     signTypedData,
+    getWalletClient,
     onSuccess,
     onError,
   ]);

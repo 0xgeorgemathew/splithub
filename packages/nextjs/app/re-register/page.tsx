@@ -2,9 +2,12 @@
 
 import { useState } from "react";
 import { AlertCircle, Check, Cpu, Loader2, Nfc, Wallet, Wrench } from "lucide-react";
-import { useAccount } from "wagmi";
 import { useHaloChip } from "~~/hooks/halochip-arx/useHaloChip";
 import { useDeployedContractInfo, useTargetNetwork } from "~~/hooks/scaffold-eth";
+import { useEmbeddedWalletClient } from "~~/hooks/useEmbeddedWalletClient";
+import { useWalletAddress } from "~~/hooks/useWalletAddress";
+import { baseSepolia, createBaseSepoliaPublicClient } from "~~/lib/baseSepolia";
+import { SPLIT_HUB_REGISTRY_ABI } from "~~/lib/contractAbis";
 
 type FlowState = "idle" | "reading" | "signing" | "registering" | "success" | "error";
 
@@ -16,10 +19,11 @@ const FLOW_STEPS = [
 ] as const;
 
 export default function ReRegisterPage() {
-  const { address, isConnected } = useAccount();
+  const { walletAddress: address, isConnected } = useWalletAddress();
   const { signMessage, signTypedData } = useHaloChip();
   const { data: registryContract } = useDeployedContractInfo("SplitHubRegistry");
   const { targetNetwork } = useTargetNetwork();
+  const { getWalletClient } = useEmbeddedWalletClient();
 
   const [flowState, setFlowState] = useState<FlowState>("idle");
   const [error, setError] = useState("");
@@ -78,27 +82,27 @@ export default function ReRegisterPage() {
         },
       });
 
-      // Step 3: Register chip on-chain via relayer (gasless)
+      // Step 3: Register chip on-chain from the connected wallet
       setFlowState("registering");
       setStatusMessage("Registering...");
 
-      const relayResponse = await fetch("/api/relay/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          signer: detectedChipAddress,
-          owner: address,
-          signature: registrationSig.signature,
-        }),
+      const walletClient = await getWalletClient();
+      const publicClient = createBaseSepoliaPublicClient();
+      const hash = await walletClient.writeContract({
+        account: walletClient.account!,
+        address: registryContract.address as `0x${string}`,
+        abi: SPLIT_HUB_REGISTRY_ABI,
+        chain: baseSepolia,
+        functionName: "register",
+        args: [detectedChipAddress as `0x${string}`, address, registrationSig.signature],
       });
 
-      const relayData = await relayResponse.json();
-
-      if (!relayResponse.ok) {
-        throw new Error(relayData.error || "Registration failed");
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      if (receipt.status !== "success") {
+        throw new Error("Registration transaction failed");
       }
 
-      setTxHash(relayData.txHash);
+      setTxHash(hash);
       setFlowState("success");
       setStatusMessage("Complete!");
     } catch (err: any) {

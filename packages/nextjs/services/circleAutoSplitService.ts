@@ -100,7 +100,7 @@ export async function processCircleAutoSplit(params: CircleSplitParams): Promise
  * Safely processes Circle auto-split, catching and logging errors
  *
  * Use this when Circle split is non-critical and should not fail
- * the main operation (e.g., payment relay).
+ * the main operation (e.g., a confirmed payment submission).
  *
  * @param params - Split parameters
  * @returns Split result if successful, null on any error

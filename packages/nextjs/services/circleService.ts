@@ -21,7 +21,7 @@ export async function getCirclesByCreator(creatorWallet: string): Promise<Circle
 }
 
 /**
- * Get the active circle for a user (used by relayer for auto-split)
+ * Get the active circle for a user (used by post-transaction auto-split)
  */
 export async function getActiveCircle(creatorWallet: string): Promise<Circle | null> {
   const normalizedWallet = creatorWallet.toLowerCase();

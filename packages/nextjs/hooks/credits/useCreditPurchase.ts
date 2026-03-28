@@ -1,40 +1,24 @@
 import { useCallback, useMemo, useState } from "react";
-import { createPublicClient, http, parseUnits } from "viem";
+import { parseUnits } from "viem";
+import { TOKENS } from "~~/config/tokens";
 import deployedContracts from "~~/contracts/deployedContracts";
 import { useHaloChip } from "~~/hooks/halochip-arx/useHaloChip";
 import { useTargetNetwork } from "~~/hooks/scaffold-eth";
+import { useEmbeddedWalletClient } from "~~/hooks/useEmbeddedWalletClient";
+import { baseSepolia, createBaseSepoliaPublicClient, createFreshBaseSepoliaPublicClient } from "~~/lib/baseSepolia";
+import { dispatchClientRefreshEvents, triggerCircleAutoSplit } from "~~/lib/clientTransactionUtils";
+import { CREDIT_TOKEN_ABI, SPLIT_HUB_REGISTRY_ABI } from "~~/lib/contractAbis";
+import { parseContractError } from "~~/utils/contractErrors";
+import { calculateCreditsMinted } from "~~/utils/creditCalculations";
 
-// Registry ABI for owner lookup
-const SPLIT_HUB_REGISTRY_ABI = [
-  {
-    name: "ownerOf",
-    type: "function",
-    inputs: [{ name: "signer", type: "address" }],
-    outputs: [{ type: "address" }],
-    stateMutability: "view",
-  },
-] as const;
-
-// CreditToken ABI for nonces
-const CREDIT_TOKEN_ABI = [
-  {
-    name: "nonces",
-    type: "function",
-    inputs: [{ name: "user", type: "address" }],
-    outputs: [{ type: "uint256" }],
-    stateMutability: "view",
-  },
-] as const;
-
-// Flow states - granular for better UI feedback
 export type CreditFlowState =
   | "idle"
-  | "tapping" // Waiting for first chip tap
-  | "signing" // First signature in progress
-  | "preparing" // Fetching owner/nonce from contracts
-  | "confirming_signature" // Waiting for second chip tap
-  | "submitting" // Sending to relay API
-  | "confirming" // Waiting for tx confirmation
+  | "tapping"
+  | "signing"
+  | "preparing"
+  | "confirming_signature"
+  | "submitting"
+  | "confirming"
   | "success"
   | "error";
 
@@ -45,7 +29,8 @@ interface UseCreditPurchaseOptions {
 
 export function useCreditPurchase({ onSuccess, onError }: UseCreditPurchaseOptions = {}) {
   const { targetNetwork } = useTargetNetwork();
-  const { signTypedData } = useHaloChip();
+  const { getChipAddress, signTypedData } = useHaloChip();
+  const { getWalletClient } = useEmbeddedWalletClient();
 
   const [flowState, setFlowState] = useState<CreditFlowState>("idle");
   const [error, setError] = useState("");
@@ -54,17 +39,8 @@ export function useCreditPurchase({ onSuccess, onError }: UseCreditPurchaseOptio
   const [ownerAddress, setOwnerAddress] = useState<string | null>(null);
   const [newBalance, setNewBalance] = useState<string | null>(null);
 
-  // Create public client for contract reads
-  const publicClient = useMemo(
-    () =>
-      createPublicClient({
-        chain: targetNetwork,
-        transport: http(),
-      }),
-    [targetNetwork],
-  );
+  const publicClient = useMemo(() => createBaseSepoliaPublicClient(), []);
 
-  // Get contract addresses
   const chainContracts = deployedContracts[targetNetwork.id as keyof typeof deployedContracts] as
     | Record<string, { address: string }>
     | undefined;
@@ -85,54 +61,16 @@ export function useCreditPurchase({ onSuccess, onError }: UseCreditPurchaseOptio
       }
 
       try {
-        // Step 1: Waiting for first chip tap
         setFlowState("tapping");
 
-        // USDC has 6 decimals
         const amountInWei = parseUnits(usdcAmount, 6);
-        const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600); // 1 hour from now
+        const minted = calculateCreditsMinted(amountInWei).toString();
+        const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
 
-        // EIP-712 domain and types matching CreditToken.sol
-        const domain = {
-          name: "CreditToken",
-          version: "1",
-          chainId: BigInt(targetNetwork.id),
-          verifyingContract: creditTokenAddress,
-        };
-
-        const types = {
-          CreditPurchase: [
-            { name: "buyer", type: "address" },
-            { name: "usdcAmount", type: "uint256" },
-            { name: "nonce", type: "uint256" },
-            { name: "deadline", type: "uint256" },
-          ],
-        };
-
-        // Step 2: First signature in progress
-        setFlowState("signing");
-
-        // We need to do a preliminary sign to get the chip address first
-        // Then lookup owner and nonce, then sign the actual message
-        const chipResult = await signTypedData({
-          domain,
-          types,
-          primaryType: "CreditPurchase",
-          // Placeholder message - we'll use the chip address to get real values
-          message: {
-            buyer: "0x0000000000000000000000000000000000000000" as `0x${string}`,
-            usdcAmount: amountInWei,
-            nonce: BigInt(0),
-            deadline: deadline,
-          },
-        });
-
-        const chipAddress = chipResult.address as `0x${string}`;
-
-        // Step 3: Fetching owner/nonce from contracts
         setFlowState("preparing");
+        const chip = await getChipAddress();
+        const chipAddress = chip.address as `0x${string}`;
 
-        // Lookup owner from registry
         const owner = (await publicClient.readContract({
           address: registryAddress,
           abi: SPLIT_HUB_REGISTRY_ABI,
@@ -146,7 +84,6 @@ export function useCreditPurchase({ onSuccess, onError }: UseCreditPurchaseOptio
 
         setOwnerAddress(owner);
 
-        // Get the nonce for this owner
         const nonce = (await publicClient.readContract({
           address: creditTokenAddress,
           abi: CREDIT_TOKEN_ABI,
@@ -154,124 +91,105 @@ export function useCreditPurchase({ onSuccess, onError }: UseCreditPurchaseOptio
           args: [owner],
         })) as bigint;
 
-        // Build the real CreditPurchase struct with correct buyer and nonce
         const creditPurchase = {
           buyer: owner,
           usdcAmount: amountInWei,
-          nonce: nonce,
-          deadline: deadline,
+          nonce,
+          deadline,
         };
 
-        // Step 4: Waiting for second chip tap (final signature)
         setFlowState("confirming_signature");
 
-        // Sign the real message with correct values
-        const finalChipResult = await signTypedData({
-          domain,
-          types,
+        const signature = await signTypedData({
+          domain: {
+            name: "CreditToken",
+            version: "1",
+            chainId: BigInt(targetNetwork.id),
+            verifyingContract: creditTokenAddress,
+          },
+          types: {
+            CreditPurchase: [
+              { name: "buyer", type: "address" },
+              { name: "usdcAmount", type: "uint256" },
+              { name: "nonce", type: "uint256" },
+              { name: "deadline", type: "uint256" },
+            ],
+          },
           primaryType: "CreditPurchase",
           message: creditPurchase,
         });
 
-        // Submitting state
+        if (signature.address.toLowerCase() !== chipAddress.toLowerCase()) {
+          throw new Error("Different chip used for signing. Please use the same chip.");
+        }
+
         setFlowState("submitting");
 
-        // Submit to relay API
-        const response = await fetch("/api/relay/credit-purchase", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            purchase: {
-              buyer: creditPurchase.buyer,
-              usdcAmount: creditPurchase.usdcAmount.toString(),
-              nonce: creditPurchase.nonce.toString(),
-              deadline: creditPurchase.deadline.toString(),
-            },
-            signature: finalChipResult.signature,
-            contractAddress: creditTokenAddress,
-          }),
+        const walletClient = await getWalletClient();
+        const hash = await walletClient.writeContract({
+          account: walletClient.account!,
+          address: creditTokenAddress,
+          abi: CREDIT_TOKEN_ABI,
+          chain: baseSepolia,
+          functionName: "purchaseCredits",
+          args: [creditPurchase, signature.signature as `0x${string}`],
         });
 
-        const result = await response.json();
+        setTxHash(hash);
+        setCreditsMinted(minted);
 
-        if (!response.ok) {
-          throw new Error(result.error || "Relay request failed");
-        }
-
-        // Set transaction data
-        setTxHash(result.txHash);
-        setCreditsMinted(result.creditsMinted);
-
-        // Wait for transaction confirmation
         setFlowState("confirming");
 
-        let receiptBlockNumber: bigint | undefined;
-        try {
-          const receipt = await publicClient.waitForTransactionReceipt({ hash: result.txHash as `0x${string}` });
-          receiptBlockNumber = receipt.blockNumber;
-        } catch {
-          // Receipt fetch failed, continue anyway
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+        if (receipt.status !== "success") {
+          throw new Error("Credit purchase failed on-chain");
         }
 
-        // Fetch chip owner's credit token balance
-        // Note: CreditToken uses 18 decimals, balance is raw bigint string
         try {
-          // Create a fresh client with cache disabled to get accurate post-tx balance
-          const freshClient = createPublicClient({
-            chain: targetNetwork,
-            transport: http(undefined, {
-              fetchOptions: { cache: "no-store" },
-            }),
-          });
-
-          // Fetch chip owner's balance AFTER confirmation
-          // The `owner` is the chip owner from registry (whoever tapped the chip)
+          const freshClient = createFreshBaseSepoliaPublicClient();
           const balance = (await freshClient.readContract({
             address: creditTokenAddress,
-            abi: [
-              {
-                name: "balanceOf",
-                type: "function",
-                inputs: [{ name: "account", type: "address" }],
-                outputs: [{ type: "uint256" }],
-                stateMutability: "view",
-              },
-            ] as const,
+            abi: CREDIT_TOKEN_ABI,
             functionName: "balanceOf",
             args: [owner],
-            ...(receiptBlockNumber ? { blockNumber: receiptBlockNumber } : {}),
+            blockNumber: receipt.blockNumber,
           })) as bigint;
 
-          // Store raw bigint as string (18 decimals) - UI will parse
           setNewBalance(balance.toString());
         } catch (balanceError) {
-          console.error("Failed to fetch balance:", balanceError);
-          // Use creditsMinted as fallback - this is the minimum they should have
-          // creditsMinted is already in 18 decimals from the API
-          setNewBalance(result.creditsMinted || "0");
+          console.error("Failed to fetch purchased credit balance:", balanceError);
+          setNewBalance(minted);
         }
 
-        // Now transition to success
+        await triggerCircleAutoSplit({
+          userWallet: owner,
+          amount: amountInWei.toString(),
+          tokenAddress: TOKENS.USDC,
+          decimals: 6,
+        });
+
+        dispatchClientRefreshEvents({ balances: true });
+
         setFlowState("success");
-
-        // Call success callback
-        if (onSuccess) {
-          onSuccess(result.txHash, result.creditsMinted, owner);
-        }
-      } catch (err: unknown) {
+        onSuccess?.(hash, minted, owner);
+      } catch (err) {
+        const normalizedError = err instanceof Error ? err : new Error(parseContractError(err));
         setFlowState("error");
-        const errorMessage = err instanceof Error ? err.message : "Purchase failed. Please try again.";
-        setError(errorMessage);
-
-        // Call error callback
-        if (onError && err instanceof Error) {
-          onError(err);
-        }
+        setError(parseContractError(err) || "Purchase failed. Please try again.");
+        onError?.(normalizedError);
       }
     },
-    [creditTokenAddress, registryAddress, targetNetwork, signTypedData, publicClient, onSuccess, onError],
+    [
+      creditTokenAddress,
+      registryAddress,
+      targetNetwork.id,
+      getChipAddress,
+      signTypedData,
+      getWalletClient,
+      publicClient,
+      onSuccess,
+      onError,
+    ],
   );
 
   const reset = useCallback(() => {
@@ -283,8 +201,6 @@ export function useCreditPurchase({ onSuccess, onError }: UseCreditPurchaseOptio
     setNewBalance(null);
   }, []);
 
-  // Derive processing state from flowState - aligns with useSettleFlow pattern
-  // Exposes safe boolean instead of mutable ref for better encapsulation
   const isProcessing = useMemo(
     () => flowState !== "idle" && flowState !== "success" && flowState !== "error",
     [flowState],
@@ -301,7 +217,6 @@ export function useCreditPurchase({ onSuccess, onError }: UseCreditPurchaseOptio
     creditTokenAddress,
     purchaseCredits,
     reset,
-    // Safe derived boolean for dismiss protection - true when transaction is active
     isProcessing,
   };
 }

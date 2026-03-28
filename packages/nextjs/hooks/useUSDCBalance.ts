@@ -2,41 +2,17 @@ import { useEffect } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { useAccount, useReadContract } from "wagmi";
 import { TOKENS } from "~~/config/tokens";
+import { ERC20_ABI } from "~~/lib/contractAbis";
 
 // USDC token address from centralized config
 const USDC_ADDRESS = TOKENS.USDC;
 
-// ERC20 ABI for balance and decimals
-const ERC20_ABI = [
-  {
-    type: "function",
-    name: "balanceOf",
-    inputs: [{ name: "account", type: "address" }],
-    outputs: [{ name: "", type: "uint256" }],
-    stateMutability: "view",
-  },
-  {
-    type: "function",
-    name: "decimals",
-    inputs: [],
-    outputs: [{ name: "", type: "uint8" }],
-    stateMutability: "view",
-  },
-  {
-    type: "function",
-    name: "symbol",
-    inputs: [],
-    outputs: [{ name: "", type: "string" }],
-    stateMutability: "view",
-  },
-] as const;
-
-export function useUSDCBalance() {
+export function useUSDCBalance(addressOverride?: `0x${string}` | null) {
   const { address: wagmiAddress, isConnected } = useAccount();
   const { user } = usePrivy();
 
   // Use Privy wallet address if available, fallback to wagmi address
-  const address = (user?.wallet?.address as `0x${string}` | undefined) ?? wagmiAddress;
+  const address = addressOverride ?? ((user?.wallet?.address as `0x${string}` | undefined) ?? wagmiAddress);
 
   // Read USDC balance
   const {

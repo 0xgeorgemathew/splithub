@@ -11,38 +11,16 @@ import { TOKENS } from "~~/config/tokens";
 import deployedContracts from "~~/contracts/deployedContracts";
 import { useHaloChip } from "~~/hooks/halochip-arx/useHaloChip";
 import { useTargetNetwork } from "~~/hooks/scaffold-eth";
+import { useEmbeddedWalletClient } from "~~/hooks/useEmbeddedWalletClient";
+import { baseSepolia, createBaseSepoliaPublicClient } from "~~/lib/baseSepolia";
+import { dispatchClientRefreshEvents, triggerCircleAutoSplit } from "~~/lib/clientTransactionUtils";
+import { ERC20_ABI, SPLIT_HUB_PAYMENTS_ABI } from "~~/lib/contractAbis";
+import { parseContractError } from "~~/utils/contractErrors";
 
 // Hardcoded values
 const RECIPIENT_ADDRESS = "0x09a6f8C0194246c365bB42122E872626460F8a71" as const;
 const DEFAULT_TOKEN_ADDRESS = TOKENS.USDC;
 const DEFAULT_AMOUNT = "1";
-
-const ERC20_ABI = [
-  {
-    name: "decimals",
-    type: "function",
-    inputs: [],
-    outputs: [{ type: "uint8" }],
-    stateMutability: "view",
-  },
-  {
-    name: "symbol",
-    type: "function",
-    inputs: [],
-    outputs: [{ type: "string" }],
-    stateMutability: "view",
-  },
-] as const;
-
-const SPLIT_HUB_PAYMENTS_ABI = [
-  {
-    name: "nonces",
-    type: "function",
-    inputs: [{ name: "payer", type: "address" }],
-    outputs: [{ type: "uint256" }],
-    stateMutability: "view",
-  },
-] as const;
 
 type FlowState = "idle" | "tapping" | "signing" | "submitting" | "confirming" | "success" | "error";
 
@@ -50,6 +28,7 @@ export default function SettlePage() {
   const { authenticated, user } = usePrivy();
   const { targetNetwork } = useTargetNetwork();
   const { signTypedData } = useHaloChip();
+  const { getWalletClient } = useEmbeddedWalletClient();
 
   // Use Privy's authentication state instead of wagmi's useAccount
   // This properly reflects the embedded wallet connection status
@@ -164,50 +143,44 @@ export default function SettlePage() {
       // Submitting state
       setFlowState("submitting");
 
-      // Submit to relay API
-      const response = await fetch("/api/relay/payment", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          auth: {
-            payer: paymentAuth.payer,
-            recipient: paymentAuth.recipient,
-            token: paymentAuth.token,
-            amount: paymentAuth.amount.toString(),
-            nonce: paymentAuth.nonce.toString(),
-            deadline: paymentAuth.deadline.toString(),
-          },
-          signature: chipResult.signature,
-          contractAddress: paymentsAddress,
-        }),
+      const walletClient = await getWalletClient();
+      const hash = await walletClient.writeContract({
+        account: walletClient.account!,
+        address: paymentsAddress,
+        abi: SPLIT_HUB_PAYMENTS_ABI,
+        chain: baseSepolia,
+        functionName: "executePayment",
+        args: [paymentAuth, chipResult.signature as `0x${string}`],
       });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || "Relay request failed");
-      }
 
       // Confirming state
       setFlowState("confirming");
-      setTxHash(result.txHash);
+      setTxHash(hash);
 
-      // Brief delay to show confirming state
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const publicClient = createBaseSepoliaPublicClient();
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      if (receipt.status !== "success") {
+        throw new Error("Settlement failed on-chain");
+      }
+
+      await triggerCircleAutoSplit({
+        userWallet: address,
+        amount: amountInWei.toString(),
+        tokenAddress: DEFAULT_TOKEN_ADDRESS,
+        decimals,
+      });
 
       // Refetch nonce for next payment
       await refetchNonce();
 
       // Trigger balance refresh across the app
-      window.dispatchEvent(new Event("refreshBalances"));
+      dispatchClientRefreshEvents({ balances: true, paymentRequests: true });
 
       setFlowState("success");
     } catch (err: any) {
       console.error("Settlement error:", err);
       setFlowState("error");
-      setError(err.message || "Settlement failed. Please try again.");
+      setError(parseContractError(err) || "Settlement failed. Please try again.");
     }
   };
 
@@ -280,10 +253,10 @@ export default function SettlePage() {
                     <span className="w-1.5 h-1.5 bg-success rounded-full" />
                   </div>
 
-                  {/* Gasless Pill */}
+                  {/* Direct submission pill */}
                   <div className="flex items-center gap-1.5 px-3 py-1.5 bg-base-100 border border-base-300 rounded-full">
                     <Fuel className="w-3.5 h-3.5 text-success" />
-                    <span className="text-xs font-medium text-success">Gasless</span>
+                    <span className="text-xs font-medium text-success">Direct</span>
                   </div>
                 </motion.div>
               )}

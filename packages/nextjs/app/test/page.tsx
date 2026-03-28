@@ -2,15 +2,15 @@
 
 /**
  * =============================================================================
- * TEST PAGE - Direct Chip-to-Chain Transactions (No Relayer)
+ * TEST PAGE - Direct Chip-to-Chain Transactions
  * =============================================================================
  *
  * PURPOSE:
  * This page tests sending ETH and ERC-20 tokens directly from a Halo NFC chip
- * WITHOUT using the app's gasless relayer system. The chip itself pays for gas.
+ * WITHOUT using the app's normal direct wallet submission flow. The chip itself pays for gas.
  *
  * WHY THIS EXISTS:
- * The main SplitHub app uses a relayer pattern where:
+ * The main SplitHub app now uses direct wallet submission where:
  *   1. User signs EIP-712 typed data with their chip
  *   2. Relayer receives the signature and submits the TX (paying gas)
  *   3. Smart contract verifies signature and executes transfer
@@ -22,7 +22,7 @@
  *   4. App broadcasts the signed TX directly to the network
  *
  * KEY DIFFERENCES FROM MAIN APP:
- * - No relayer API calls
+ * - No wallet-submitted contract write
  * - No EIP-712 typed data (raw digest signing)
  * - Chip address pays gas fees (must have ETH)
  * - No SplitHub smart contracts involved
@@ -53,17 +53,9 @@ import {
   StatusCard,
 } from "./_components";
 import { execHaloCmdWeb } from "@arx-research/libhalo/api/web";
-import {
-  createPublicClient,
-  encodeFunctionData,
-  formatEther,
-  http,
-  keccak256,
-  parseEther,
-  parseUnits,
-  serializeTransaction,
-} from "viem";
+import { createPublicClient, formatEther, http, keccak256, parseEther, serializeTransaction } from "viem";
 import { baseSepolia } from "viem/chains";
+import { broadcastRawChipTokenTransfer } from "~~/lib/chipTransactions";
 
 export default function TestPage() {
   // =========================================================================
@@ -420,8 +412,6 @@ export default function TestPage() {
     log("info", `Amount: ${tokenAmount}`);
 
     try {
-      // Step 1: Get token decimals (needed to format amount correctly)
-      // e.g., USDC has 6 decimals, so 1 USDC = 1000000 in raw units
       log("info", "Fetching token decimals...");
       const decimals = await publicClient.readContract({
         address: tokenAddress as `0x${string}`,
@@ -430,93 +420,47 @@ export default function TestPage() {
       });
       log("data", `Token decimals: ${decimals}`);
 
-      // Step 2: Encode the transfer function call
-      // This creates the calldata for: transfer(recipient, amount)
-      log("info", "Encoding transfer function data...");
-      const data = encodeFunctionData({
-        abi: ERC20_ABI,
-        functionName: "transfer",
-        args: [tokenTo as `0x${string}`, parseUnits(tokenAmount, decimals)],
-      });
-      log("data", `Calldata: ${data.slice(0, 50)}...`);
-
-      // Step 3: Estimate gas for the token transfer
-      // Unlike ETH transfers, this varies based on token contract complexity
-      log("info", "Estimating gas...");
-      const gasEstimate = await publicClient.estimateGas({
-        account: chipAddress,
-        to: tokenAddress as `0x${string}`,
-        data,
-      });
-      log("data", `Gas estimate: ${gasEstimate}`);
-
-      // Step 4: Fetch nonce and gas prices
-      log("info", "Fetching nonce...");
-      const nonce = await publicClient.getTransactionCount({ address: chipAddress });
-      log("data", `Nonce: ${nonce}`);
-
-      log("info", "Estimating gas fees...");
-      const feeData = await publicClient.estimateFeesPerGas();
-      log("data", `maxFeePerGas: ${feeData.maxFeePerGas}`);
-
-      // Step 5: Build unsigned transaction
-      // Note: value is 0n (not sending ETH), data contains the transfer call
-      const tx = {
-        type: "eip1559" as const,
-        nonce,
-        to: tokenAddress as `0x${string}`, // Token contract address
-        value: 0n, // No ETH being sent
-        data, // The encoded transfer(to, amount) call
-        gas: gasEstimate,
-        maxFeePerGas: feeData.maxFeePerGas ?? 1000000000n,
-        maxPriorityFeePerGas: feeData.maxPriorityFeePerGas ?? 1000000n,
-        chainId: baseSepolia.id,
-      };
-
-      // Step 6: Serialize and hash
-      log("info", "Serializing transaction...");
-      const serialized = serializeTransaction(tx);
-      const hash = keccak256(serialized);
-      log("data", `TX Hash to sign: ${hash}`);
-
-      // Step 7: Request chip signature
       setStatus("signing");
-      log("info", "Requesting chip signature...");
-
-      const sigResult: any = await execHaloCmdWeb({
-        name: "sign",
-        keyNo: 1,
-        digest: hash.slice(2),
-      });
-
-      log("success", "Got signature from chip");
-      log("data", `Signature result keys: ${Object.keys(sigResult).join(", ")}`);
-
-      if (!sigResult.signature?.raw) {
-        throw new Error("Invalid signature response from chip - no raw signature");
-      }
-
-      // Step 8: Serialize signed transaction
-      const { r, s, v } = sigResult.signature.raw;
-      log("data", `r=${r?.slice(0, 16)}..., s=${s?.slice(0, 16)}..., v=${v}`);
-
-      log("info", "Serializing signed transaction...");
-      const signedTx = serializeTransaction(tx, {
-        r: `0x${r}`,
-        s: `0x${s}`,
-        v: BigInt(v),
-      });
-
-      // Step 9: Broadcast
       setStatus("broadcasting");
-      log("info", "Broadcasting transaction...");
+      log("info", "Signing and broadcasting direct token transfer...");
 
-      const txHashResult = await publicClient.sendRawTransaction({
-        serializedTransaction: signedTx,
+      const result = await broadcastRawChipTokenTransfer({
+        publicClient,
+        chipAddress,
+        tokenAddress: tokenAddress as `0x${string}`,
+        recipient: tokenTo as `0x${string}`,
+        amount: tokenAmount,
+        decimals,
+        signDigest: async ({ digest }) => {
+          log("data", `TX Hash to sign: ${digest}`);
+
+          const sigResult: any = await execHaloCmdWeb({
+            name: "sign",
+            keyNo: 1,
+            digest: digest.slice(2),
+          });
+
+          if (!sigResult.signature?.raw) {
+            throw new Error("Invalid signature response from chip - no raw signature");
+          }
+
+          const { r, s, v } = sigResult.signature.raw;
+          log("data", `r=${r?.slice(0, 16)}..., s=${s?.slice(0, 16)}..., v=${v}`);
+
+          return {
+            address: sigResult.etherAddress as `0x${string}`,
+            signature: sigResult.signature.ether as `0x${string}`,
+            rawSignature: {
+              r,
+              s,
+              v,
+            },
+          };
+        },
       });
 
-      log("success", `Transaction sent! Hash: ${txHashResult}`);
-      setTxHash(txHashResult);
+      log("success", `Transaction sent! Hash: ${result.txHash}`);
+      setTxHash(result.txHash);
       setStatus("success");
 
       await refreshBalance(chipAddress);
@@ -556,7 +500,7 @@ export default function TestPage() {
         {/* Header */}
         <div className="text-center py-4">
           <h1 className="text-2xl font-bold">Test Transactions</h1>
-          <p className="text-sm text-base-content/60 mt-1">Direct chip signing (no relayer)</p>
+          <p className="text-sm text-base-content/60 mt-1">Direct chip signing</p>
         </div>
 
         {/* Chip wallet connection card */}
