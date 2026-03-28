@@ -1,26 +1,48 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { motion } from "framer-motion";
 import { Sparkles, Wallet } from "lucide-react";
-import { CircleSection } from "~~/components/circles/CircleSection";
+import { parseUnits } from "viem";
 import { ExpenseModal } from "~~/components/expense/ExpenseModal";
 import { SettleModal } from "~~/components/settle/SettleModal";
 import { type PaymentParams } from "~~/components/settle/types";
+import { BalanceTransferModal } from "~~/components/splits/BalanceTransferModal";
 import { BalancesLiveFeed } from "~~/components/splits/BalancesLiveFeed";
+import { ChipBalanceCard } from "~~/components/splits/ChipBalanceCard";
 import { SplitsHero } from "~~/components/splits/SplitsHero";
+import { TOKENS, TOKEN_DECIMALS } from "~~/config/tokens";
 import { ANIMATION_DELAYS } from "~~/constants/ui";
+import { useHaloChip } from "~~/hooks/halochip-arx/useHaloChip";
+import { useCurrentUser } from "~~/hooks/useCurrentUser";
+import { useEmbeddedWalletClient } from "~~/hooks/useEmbeddedWalletClient";
 import { useFriendBalancesRealtime } from "~~/hooks/useFriendBalancesRealtime";
 import { usePaymentRequestsRealtime } from "~~/hooks/usePaymentRequestsRealtime";
 import { useUSDCBalance } from "~~/hooks/useUSDCBalance";
+import { baseSepolia, createBaseSepoliaPublicClient } from "~~/lib/baseSepolia";
+import { broadcastRawChipTokenTransfer } from "~~/lib/chipTransactions";
+import { dispatchClientRefreshEvents } from "~~/lib/clientTransactionUtils";
+import { ERC20_ABI } from "~~/lib/contractAbis";
 import { type FriendBalance } from "~~/lib/supabase";
 import { canSettle, formatAmount } from "~~/utils/format";
 
 export default function SplitsPage() {
   const { ready, authenticated, user, login } = usePrivy();
   const { balances, overallBalance, loading, error, refresh: refreshBalances } = useFriendBalancesRealtime();
-  const { formattedBalance: walletBalance, isLoading: isWalletBalanceLoading } = useUSDCBalance();
+  const { chipAddress, isLoading: isCurrentUserLoading } = useCurrentUser();
+  const { signDigest, isLoading: isHaloChipLoading } = useHaloChip();
+  const { getWalletClient } = useEmbeddedWalletClient();
+  const {
+    formattedBalance: walletBalance,
+    isLoading: isWalletBalanceLoading,
+    refetchBalance: refetchWalletBalance,
+  } = useUSDCBalance();
+  const {
+    formattedBalance: cardBalance,
+    isLoading: isCardBalanceLoading,
+    refetchBalance: refetchCardBalance,
+  } = useUSDCBalance(chipAddress);
   // Use realtime hook for payment requests - updates automatically when DB changes
   const { requests: outgoingRequests, refresh: refreshRequests } = usePaymentRequestsRealtime("outgoing");
 
@@ -32,8 +54,11 @@ export default function SplitsPage() {
   const [processingFriendWallet, setProcessingFriendWallet] = useState<string | null>(null);
   const [successFriendWallet, setSuccessFriendWallet] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+  const [transferDirection, setTransferDirection] = useState<"cardToWallet" | "walletToCard">("walletToCard");
 
   const walletAddress = user?.wallet?.address;
+  const publicClient = useMemo(() => createBaseSepoliaPublicClient(), []);
 
   // Get pending requests only - filtered from realtime data
   const pendingRequests = outgoingRequests.filter(req => req.status === "pending");
@@ -214,6 +239,87 @@ export default function SplitsPage() {
     setSettlementParams(null);
   };
 
+  const refreshAppState = useCallback(async () => {
+    dispatchClientRefreshEvents({ balances: true, paymentRequests: true });
+
+    await Promise.allSettled([
+      refetchWalletBalance(),
+      chipAddress ? refetchCardBalance() : Promise.resolve(),
+      Promise.resolve(refreshBalances()),
+      Promise.resolve(refreshRequests()),
+    ]);
+  }, [refetchWalletBalance, chipAddress, refetchCardBalance, refreshBalances, refreshRequests]);
+
+  const openWalletToCardModal = useCallback(() => {
+    setTransferDirection("walletToCard");
+    setIsTransferModalOpen(true);
+  }, []);
+
+  const openCardToWalletModal = useCallback(() => {
+    setTransferDirection("cardToWallet");
+    setIsTransferModalOpen(true);
+  }, []);
+
+  const handleWalletToCard = useCallback(
+    async (amount: string) => {
+      if (!chipAddress) {
+        throw new Error("Register your card first.");
+      }
+
+      const walletClient = await getWalletClient();
+      const hash = await walletClient.writeContract({
+        account: walletClient.account!,
+        address: TOKENS.USDC,
+        abi: ERC20_ABI,
+        chain: baseSepolia,
+        functionName: "transfer",
+        args: [chipAddress, parseUnits(amount, TOKEN_DECIMALS.USDC)],
+      });
+
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      if (receipt.status !== "success") {
+        throw new Error("Wallet to card transfer failed on-chain.");
+      }
+
+      await refreshAppState();
+      return { txHash: hash };
+    },
+    [chipAddress, getWalletClient, publicClient, refreshAppState],
+  );
+
+  const handleCardToWallet = useCallback(
+    async (amount: string) => {
+      if (!chipAddress || !walletAddress) {
+        throw new Error("Wallet and card must both be available.");
+      }
+
+      const result = await broadcastRawChipTokenTransfer({
+        publicClient,
+        chipAddress,
+        tokenAddress: TOKENS.USDC,
+        recipient: walletAddress as `0x${string}`,
+        amount,
+        decimals: TOKEN_DECIMALS.USDC,
+        signDigest,
+      });
+
+      await refreshAppState();
+      return { txHash: result.txHash };
+    },
+    [chipAddress, walletAddress, publicClient, signDigest, refreshAppState],
+  );
+
+  const handleTransferConfirm = useCallback(
+    async (amount: string) => {
+      if (transferDirection === "cardToWallet") {
+        return handleCardToWallet(amount);
+      }
+
+      return handleWalletToCard(amount);
+    },
+    [transferDirection, handleCardToWallet, handleWalletToCard],
+  );
+
   // Loading state - Privy not ready
   if (!ready) {
     return (
@@ -355,8 +461,13 @@ export default function SplitsPage() {
         onAddExpense={() => setIsExpenseModalOpen(true)}
       />
 
-      {/* Circles Section */}
-      <CircleSection />
+      <ChipBalanceCard
+        chipAddress={chipAddress}
+        chipBalance={cardBalance}
+        isLoading={isCurrentUserLoading || (!!chipAddress && isCardBalanceLoading)}
+        onMoveToCard={openWalletToCardModal}
+        onMoveToWallet={openCardToWalletModal}
+      />
 
       {/* Balances Live Feed */}
       <BalancesLiveFeed
@@ -389,6 +500,15 @@ export default function SplitsPage() {
           onSuccess={handleSettlementSuccess}
         />
       )}
+
+      <BalanceTransferModal
+        isOpen={isTransferModalOpen}
+        direction={transferDirection}
+        maxBalance={transferDirection === "cardToWallet" ? cardBalance : walletBalance}
+        isNfcSigning={transferDirection === "cardToWallet" && isHaloChipLoading}
+        onClose={() => setIsTransferModalOpen(false)}
+        onConfirm={handleTransferConfirm}
+      />
 
       {/* Error Toast */}
       {actionError && (
