@@ -15,7 +15,7 @@ export function LandingPage() {
       {/* 2. Core Use Cases - Two distinct cards with hover interactions */}
       <UseCaseCards />
 
-      {/* 3. How It Works (Ease) - Gasless, Instant, USDC */}
+      {/* 3. How It Works (Ease) - Direct, Instant, USDC */}
       <HowItWorksEase />
 
       {/* 4. Security Deep Dive - HaLo Chip + Onboarding */}

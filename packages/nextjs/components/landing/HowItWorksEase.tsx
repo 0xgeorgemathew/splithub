@@ -7,9 +7,10 @@ import { Coins, Fuel, Zap } from "lucide-react";
 const features = [
   {
     icon: Fuel,
-    title: "Gasless",
-    subtitle: "Zero Transaction Fees",
-    description: "Our relayer covers all gas costs. You pay nothing for transactions, just the value you're sending.",
+    title: "Direct",
+    subtitle: "No Relay Layer",
+    description:
+      "Transactions submit straight from your embedded wallet or Halo card to Base Sepolia, without a relay in the middle.",
     color: "text-cyan-400",
     bgColor: "bg-cyan-500/10",
     borderColor: "border-cyan-500/20",

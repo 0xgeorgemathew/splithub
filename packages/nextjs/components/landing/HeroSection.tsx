@@ -102,7 +102,7 @@ export function HeroSection() {
       >
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
-          <span>Gasless Transactions</span>
+          <span>Direct Submission</span>
         </div>
         <div className="hidden sm:block w-px h-4 bg-base-content/20" />
         <div className="flex items-center gap-2">

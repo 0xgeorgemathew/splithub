@@ -63,7 +63,7 @@ const HeroCard = ({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="mb-6 rounded-3xl p-6 relative overflow-hidden border border-white/[0.05]"
+      className="mb-6 rounded-2xl p-6 relative overflow-hidden border border-white/[0.05]"
       style={{
         background: "linear-gradient(145deg, #1a1a1a 0%, #0d0d0d 100%)",
         boxShadow: "0 4px 20px -5px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.03)",

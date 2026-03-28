@@ -86,7 +86,7 @@ export const BalancesLiveFeed = ({
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-2xl p-4 relative overflow-hidden border border-white/[0.05]"
+          className="rounded-xl p-4 relative overflow-hidden border border-white/[0.05]"
           style={cardBackground}
         >
           <div className="absolute inset-0 opacity-30" style={gradientOverlay} />
@@ -116,7 +116,7 @@ export const BalancesLiveFeed = ({
             transition={{ duration: 0.3, ease: "easeInOut" }}
             className="overflow-hidden"
           >
-            <div className="rounded-2xl p-4 relative overflow-hidden border border-white/[0.05]" style={cardBackground}>
+            <div className="rounded-xl p-4 relative overflow-hidden border border-white/[0.05]" style={cardBackground}>
               <div className="absolute inset-0 opacity-30" style={gradientOverlay} />
               <div className="relative max-h-[400px] overflow-y-auto scrollbar-hide">
                 {balances.map((balance, index) => renderBalanceItem(balance, index, balances.length))}

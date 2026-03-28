@@ -10,7 +10,7 @@ export const BalanceEmptyState = () => {
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-2xl p-6 relative overflow-hidden border border-white/[0.05]"
+      className="rounded-xl p-6 relative overflow-hidden border border-white/[0.05]"
       style={{
         background: "linear-gradient(145deg, #1a1a1a 0%, #0d0d0d 100%)",
       }}
