@@ -1,8 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { StoreActivityLogCard } from "./StoreActivityLogCard";
+import { StoreAgentGuardrailsCard } from "./StoreAgentGuardrailsCard";
+import { StoreCatalogGrid } from "./StoreCatalogGrid";
+import { StoreCheckoutPanel } from "./StoreCheckoutPanel";
+import { StoreHero } from "./StoreHero";
+import { StoreManagerControls } from "./StoreManagerControls";
+import type { AgentFeedback, CheckoutLog, ItemFormState } from "./checkout/shared";
 import { usePrivy } from "@privy-io/react-auth";
-import { Bot, Minus, Plus, Receipt, ShieldCheck, ShoppingCart, Sparkles, Store } from "lucide-react";
 import { createPublicClient, http } from "viem";
 import { baseSepolia } from "viem/chains";
 import deployedContracts from "~~/contracts/deployedContracts";
@@ -42,21 +48,6 @@ const PAYMENTS_ABI = [
   },
 ] as const;
 
-const formatUsd = (value: number) => `$${value.toFixed(2)}`;
-
-type CheckoutLog = {
-  time: string;
-  message: string;
-  tone: "info" | "success" | "error";
-};
-
-type AgentFeedback = {
-  state: string;
-  summary: string;
-  actionCount: number;
-  validationStatus?: string;
-};
-
 export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
   const { authenticated, login, user } = usePrivy();
   const wallet = user?.wallet?.address;
@@ -69,7 +60,7 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
   const [managerBusy, setManagerBusy] = useState(false);
   const [managerError, setManagerError] = useState<string | null>(null);
   const [agentFeedback, setAgentFeedback] = useState<AgentFeedback | null>(null);
-  const [itemForm, setItemForm] = useState({
+  const [itemForm, setItemForm] = useState<ItemFormState>({
     sku: "",
     name: "",
     price: "",
@@ -375,287 +366,39 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-4 pb-24 md:px-6 lg:px-8">
-      <div className="rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.18),transparent_30%),linear-gradient(145deg,#171717_0%,#0b0b0b_100%)] p-6 shadow-2xl">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-emerald-400">
-              <Store className="h-3.5 w-3.5" />
-              {store.network?.event_name || "Retail Network"}
-            </div>
-            <h1 className="mt-4 text-4xl font-black text-white">{store.stall_name}</h1>
-            <p className="mt-3 max-w-2xl text-white/70">
-              {store.stall_description || "Split checkout between store manager and admin."}
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
-              <div className="text-xs uppercase tracking-[0.2em] text-white/50">Manager Split</div>
-              <div className="mt-2 text-2xl font-black text-white">{store.split_percentage}%</div>
-            </div>
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
-              <div className="text-xs uppercase tracking-[0.2em] text-white/50">Items</div>
-              <div className="mt-2 text-2xl font-black text-white">{store.items.length}</div>
-            </div>
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
-              <div className="text-xs uppercase tracking-[0.2em] text-white/50">Agent</div>
-              <div className="mt-2 text-xl font-black capitalize text-white">
-                {store.manager_agent?.status || "missing"}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <StoreHero store={store} />
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
         <div>
-          <div className="mb-4 flex items-center gap-2">
-            <ShoppingCart className="h-5 w-5 text-primary" />
-            <h2 className="text-xl font-bold">Catalog</h2>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            {store.items.map(item => {
-              const stock = item.inventory?.current_stock ?? 0;
-              const selected = quantities[item.id] || 0;
-              const disabled = item.status !== "active";
-              return (
-                <div key={item.id} className="rounded-3xl border border-white/10 bg-base-200/50 p-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <div className="text-xs uppercase tracking-[0.2em] text-base-content/50">{item.sku}</div>
-                      <h3 className="mt-2 text-lg font-bold">{item.name}</h3>
-                      <p className="mt-1 text-sm text-base-content/60">{item.description || "Store item"}</p>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-lg font-black text-primary">{formatUsd(Number(item.price))}</div>
-                      <div className="text-xs capitalize text-base-content/50">{item.status.replaceAll("_", " ")}</div>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex items-center justify-between rounded-2xl bg-base-100/80 px-4 py-3">
-                    <div>
-                      <div className="text-xs text-base-content/50">Current stock</div>
-                      <div className="font-semibold">{stock}</div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        className="btn btn-circle btn-sm btn-ghost"
-                        onClick={() => updateQuantity(item.id, selected - 1)}
-                        disabled={selected === 0 || disabled}
-                      >
-                        <Minus className="h-4 w-4" />
-                      </button>
-                      <span className="w-8 text-center text-sm font-semibold">{selected}</span>
-                      <button
-                        className="btn btn-circle btn-sm btn-ghost"
-                        onClick={() => updateQuantity(item.id, selected + 1)}
-                        disabled={disabled || selected >= stock}
-                      >
-                        <Plus className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
+          <StoreCatalogGrid items={store.items} quantities={quantities} onUpdateQuantity={updateQuantity} />
           {canManage && (
-            <div className="mt-8 rounded-3xl border border-white/10 bg-base-200/50 p-5">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="h-5 w-5 text-primary" />
-                <h2 className="text-xl font-bold">Manager Controls</h2>
-              </div>
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <label className="flex flex-col gap-2">
-                  <span className="text-sm text-base-content/60">SKU</span>
-                  <input
-                    value={itemForm.sku}
-                    onChange={e => setItemForm(prev => ({ ...prev, sku: e.target.value }))}
-                    className="input input-bordered"
-                  />
-                </label>
-                <label className="flex flex-col gap-2">
-                  <span className="text-sm text-base-content/60">Name</span>
-                  <input
-                    value={itemForm.name}
-                    onChange={e => setItemForm(prev => ({ ...prev, name: e.target.value }))}
-                    className="input input-bordered"
-                  />
-                </label>
-                <label className="flex flex-col gap-2">
-                  <span className="text-sm text-base-content/60">Price</span>
-                  <input
-                    value={itemForm.price}
-                    onChange={e => setItemForm(prev => ({ ...prev, price: e.target.value }))}
-                    className="input input-bordered"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                  />
-                </label>
-                <label className="flex flex-col gap-2">
-                  <span className="text-sm text-base-content/60">Starting Stock</span>
-                  <input
-                    value={itemForm.stock}
-                    onChange={e => setItemForm(prev => ({ ...prev, stock: e.target.value }))}
-                    className="input input-bordered"
-                    type="number"
-                    min="0"
-                  />
-                </label>
-              </div>
-              <div className="mt-4 flex flex-wrap gap-3">
-                <button className="btn btn-primary" onClick={handleAddItem} disabled={managerBusy}>
-                  Add Item
-                </button>
-                {!store.manager_agent ? (
-                  <button className="btn btn-outline" onClick={handleCreateAgent} disabled={managerBusy}>
-                    Add Agent
-                  </button>
-                ) : (
-                  <>
-                    <button className="btn btn-outline" onClick={handleAgentRun} disabled={managerBusy}>
-                      Run Agent
-                    </button>
-                    {store.manager_agent.status === "paused" ? (
-                      <button
-                        className="btn btn-outline"
-                        onClick={() => handleAgentPause("active")}
-                        disabled={managerBusy}
-                      >
-                        Resume Agent
-                      </button>
-                    ) : (
-                      <button
-                        className="btn btn-outline"
-                        onClick={() => handleAgentPause("paused")}
-                        disabled={managerBusy}
-                      >
-                        Pause Agent
-                      </button>
-                    )}
-                  </>
-                )}
-              </div>
-              {managerError && <div className="mt-3 text-sm text-error">{managerError}</div>}
-              {agentFeedback && (
-                <div className="mt-4 rounded-2xl border border-success/25 bg-success/10 px-4 py-4 text-sm">
-                  <div className="font-semibold text-success">Agent run completed</div>
-                  <div className="mt-2 capitalize text-base-content/70">State: {agentFeedback.state}</div>
-                  <div className="mt-1 text-base-content/70">{agentFeedback.summary}</div>
-                  <div className="mt-2 text-base-content/60">Actions executed: {agentFeedback.actionCount}</div>
-                  {agentFeedback.validationStatus && (
-                    <div className="mt-1 text-base-content/50">Validation record: {agentFeedback.validationStatus}</div>
-                  )}
-                </div>
-              )}
-            </div>
+            <StoreManagerControls
+              store={store}
+              itemForm={itemForm}
+              onItemFormChange={setItemForm}
+              managerBusy={managerBusy}
+              managerError={managerError}
+              agentFeedback={agentFeedback}
+              onAddItem={handleAddItem}
+              onCreateAgent={handleCreateAgent}
+              onAgentRun={handleAgentRun}
+              onAgentPause={handleAgentPause}
+            />
           )}
         </div>
 
         <div className="space-y-6">
-          <div className="rounded-3xl border border-white/10 bg-base-200/60 p-5">
-            <div className="flex items-center gap-2">
-              <Receipt className="h-5 w-5 text-primary" />
-              <h2 className="text-xl font-bold">Checkout</h2>
-            </div>
-
-            <div className="mt-4 space-y-3">
-              {cart.length ? (
-                cart.map(line => (
-                  <div
-                    key={line.itemId}
-                    className="flex items-center justify-between rounded-2xl bg-base-100/80 px-4 py-3"
-                  >
-                    <div>
-                      <div className="font-semibold">{line.item.name}</div>
-                      <div className="text-xs text-base-content/50">
-                        {line.quantity} × {formatUsd(Number(line.item.price))}
-                      </div>
-                    </div>
-                    <div className="font-semibold">{formatUsd(Number(line.item.price) * line.quantity)}</div>
-                  </div>
-                ))
-              ) : (
-                <div className="rounded-2xl border border-dashed border-white/10 px-4 py-5 text-sm text-base-content/55">
-                  Select one or more items to build a cart.
-                </div>
-              )}
-            </div>
-
-            <div className="mt-4 rounded-2xl bg-primary/10 px-4 py-4">
-              <div className="flex items-center justify-between text-sm">
-                <span>Total</span>
-                <span className="text-xl font-black text-primary">{formatUsd(cartTotal)}</span>
-              </div>
-              <div className="mt-2 text-xs text-base-content/60">
-                Current contract flow requires 3 taps: discover chip, sign manager payout, sign admin payout.
-              </div>
-            </div>
-
-            <button
-              className="btn btn-primary mt-4 w-full"
-              onClick={handleCheckout}
-              disabled={checkoutBusy || cart.length === 0}
-            >
-              {checkoutBusy ? "Processing checkout..." : authenticated ? "Tap to Checkout" : "Login to Checkout"}
-            </button>
-
-            {checkoutError && <div className="mt-3 text-sm text-error">{checkoutError}</div>}
-            {receipt && (
-              <div className="mt-4 rounded-2xl border border-success/30 bg-success/10 px-4 py-4 text-sm">
-                <div className="font-semibold text-success">Checkout complete</div>
-                <div className="mt-2 text-base-content/70">Order #{receipt.orderId}</div>
-                <div className="mt-1 break-all text-xs text-base-content/60">{receipt.txHash}</div>
-              </div>
-            )}
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-base-200/60 p-5">
-            <div className="flex items-center gap-2">
-              <Bot className="h-5 w-5 text-primary" />
-              <h2 className="text-xl font-bold">Agent Guardrails</h2>
-            </div>
-            <ul className="mt-4 space-y-3 text-sm text-base-content/65">
-              <li>Daily call budget: {store.manager_agent?.budget_daily_calls ?? 0}</li>
-              <li>Daily token budget: {store.manager_agent?.budget_daily_tokens ?? 0}</li>
-              <li>Max restock value: {formatUsd(Number(store.manager_agent?.max_restock_value ?? 0))}</li>
-              <li>Max price change: {store.manager_agent?.max_price_change_pct ?? 0}%</li>
-              <li>Minimum confidence: {store.manager_agent?.min_confidence ?? 0}</li>
-            </ul>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-base-200/60 p-5">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              <h2 className="text-xl font-bold">Checkout Log</h2>
-            </div>
-            <div className="mt-4 space-y-3 font-mono text-xs">
-              {logs.length ? (
-                logs.map((log, index) => (
-                  <div key={`${log.time}-${index}`} className="rounded-2xl bg-base-100/80 px-4 py-3">
-                    <div className="text-base-content/40">{log.time}</div>
-                    <div
-                      className={
-                        log.tone === "success"
-                          ? "text-success"
-                          : log.tone === "error"
-                            ? "text-error"
-                            : "text-base-content/80"
-                      }
-                    >
-                      {log.message}
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="rounded-2xl border border-dashed border-white/10 px-4 py-5 text-sm text-base-content/55">
-                  Structured checkout logs appear here as the flow executes.
-                </div>
-              )}
-            </div>
-          </div>
+          <StoreCheckoutPanel
+            cart={cart}
+            cartTotal={cartTotal}
+            authenticated={authenticated}
+            checkoutBusy={checkoutBusy}
+            checkoutError={checkoutError}
+            receipt={receipt}
+            onCheckout={handleCheckout}
+          />
+          <StoreAgentGuardrailsCard store={store} />
+          <StoreActivityLogCard logs={logs} />
         </div>
       </div>
     </div>
