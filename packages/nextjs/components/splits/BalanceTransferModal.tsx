@@ -197,25 +197,9 @@ export function BalanceTransferModal({
                   </div>
 
                   {isCardToWallet && (
-                    <div className="mb-4 rounded-2xl border border-amber-400/15 bg-amber-400/8 p-3 text-sm text-amber-100/80">
-                      <p>Card to wallet transfers require Base Sepolia ETH on the card for gas.</p>
-                      <p className="mt-2 text-amber-100/70">
-                        After you confirm, keep the Halo card near your phone so NFC signing can complete.
-                      </p>
-                    </div>
-                  )}
-
-                  {state === "transferring" && isCardToWallet && (
-                    <div className="mb-4 flex items-start gap-3 rounded-2xl border border-sky-300/15 bg-sky-300/10 p-3">
-                      <Nfc className="mt-0.5 h-4 w-4 shrink-0 text-sky-300" />
-                      <div className="text-sm text-sky-100/85">
-                        <p className="font-medium">{isNfcSigning ? "Waiting for NFC tap" : "Preparing transfer"}</p>
-                        <p className="mt-1 text-sky-100/70">
-                          {isNfcSigning
-                            ? "Hold the card near your phone to sign the transfer."
-                            : "Building the transfer request before the NFC signing step."}
-                        </p>
-                      </div>
+                    <div className="mb-4 flex items-center gap-2 rounded-2xl border border-amber-400/15 bg-amber-400/8 px-3 py-2 text-xs text-amber-100/70">
+                      <Nfc className="h-3.5 w-3.5 shrink-0" />
+                      <span>Keep your Halo card nearby to sign via NFC</span>
                     </div>
                   )}
 
@@ -261,12 +245,12 @@ export function BalanceTransferModal({
                       {state === "transferring" ? (
                         <>
                           <Loader2 className="h-4 w-4 animate-spin" />
-                          {isCardToWallet ? (isNfcSigning ? "Awaiting NFC" : "Preparing") : "Confirming"}
+                          {isNfcSigning ? "Awaiting NFC" : "Confirming"}
                         </>
                       ) : (
                         <>
                           {isCardToWallet ? <Nfc className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
-                          {isCardToWallet ? "Tap Card to Sign" : title}
+                          {title}
                         </>
                       )}
                     </button>
