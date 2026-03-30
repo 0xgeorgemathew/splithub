@@ -5,16 +5,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
 import { AnimatePresence, motion } from "framer-motion";
-import { Bell, CalendarDays, Coins, FlaskConical, Home, Split } from "lucide-react";
+import { Bell, CalendarDays, Coins, Home, Split, Store } from "lucide-react";
 import { useRequestNotifications } from "~~/hooks/useRequestNotifications";
 
 const mainNavItems = [
   { label: "Home", href: "/", icon: Home },
   { label: "Splits", href: "/splits", icon: Split },
+  { label: "Store", href: "/store", icon: Store },
   { label: "Events", href: "/events", icon: CalendarDays },
   { label: "Credits", href: "/credits", icon: Coins },
   { label: "Requests", href: "/requests", icon: Bell },
-  { label: "Test", href: "/test", icon: FlaskConical },
 ];
 
 export const BottomNav = () => {
