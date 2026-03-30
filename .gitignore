@@ -60,3 +60,6 @@ strategy.md
 logs/security/
 
 #Test
+
+# Trigger.dev local development
+.trigger
