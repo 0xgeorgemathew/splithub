@@ -70,5 +70,11 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.86.0",
     "framer-motion": "^12.23.25"
+  },
+  "overrides": {
+    "axios": "1.14.0"
+  },
+  "resolutions": {
+    "axios": "1.14.0"
   }
 }
