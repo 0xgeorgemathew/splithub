@@ -8,11 +8,6 @@ const nextConfig: NextConfig = {
   turbopack: {},
   allowedDevOrigins: ["dev.splithub.space", "*.dev.splithub.space", "splithub.space", "*.splithub.space"],
   serverExternalPackages: [
-    "@lit-protocol/vincent-app-sdk",
-    "@lit-protocol/vincent-contracts-sdk",
-    "@lit-protocol/vincent-ability-erc20-approval",
-    "@lit-protocol/vincent-ability-erc20-transfer",
-    "@lit-protocol/vincent-ability-evm-transaction-signer",
     "ethers",
   ],
   typescript: {
