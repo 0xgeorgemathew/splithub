@@ -69,3 +69,6 @@ logs/security/
 .mcp.json
 .mcp.json
 /Users/george/Workspace/splithub/.mcp.json
+
+# Trigger.dev local development
+.trigger
