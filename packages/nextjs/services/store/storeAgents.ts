@@ -239,6 +239,23 @@ export async function executeAutonomousStoreRun(
   actions: Record<string, any>[];
   analytics: StoreAnalytics;
 }> {
+  if (process.env.OPENAI_API_KEY) {
+    const { executeOpenAIStoreAgentRun } = await import("./storeAgentRuntime");
+    return executeOpenAIStoreAgentRun(stallId, triggerSource);
+  }
+
+  return executeRuleBasedStoreRun(stallId, triggerSource);
+}
+
+export async function executeRuleBasedStoreRun(
+  stallId: number,
+  triggerSource: string,
+): Promise<{
+  agent: ManagerAgent;
+  run: AgentRun;
+  actions: Record<string, any>[];
+  analytics: StoreAnalytics;
+}> {
   const agent = await getManagerAgentByStore(stallId);
   if (!agent) {
     throw new Error("Store agent not configured");
