@@ -4,6 +4,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { type Address } from "viem";
 import { useReadContract } from "wagmi";
+import { type JitFundingSource } from "../jitUiCopy";
 import { FlowState, PaymentParams } from "../types";
 import { useHaloChip } from "~~/hooks/halochip-arx/useHaloChip";
 import { useCurrentUser } from "~~/hooks/useCurrentUser";
@@ -24,6 +25,9 @@ interface UseSettleFlowReturn {
   flowState: FlowState;
   isProcessing: boolean;
   statusMessage: string;
+  jitReasoning: string;
+  jitReasoningSource: "llm" | "fallback" | null;
+  jitFundingSource: JitFundingSource | null;
   error: string;
   txHash: string | null;
   symbol: string | undefined;
@@ -42,6 +46,9 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
 
   const [flowState, setFlowState] = useState<FlowState>("idle");
   const [statusMessage, setStatusMessage] = useState("");
+  const [jitReasoning, setJitReasoning] = useState("");
+  const [jitReasoningSource, setJitReasoningSource] = useState<"llm" | "fallback" | null>(null);
+  const [jitFundingSource, setJitFundingSource] = useState<JitFundingSource | null>(null);
   const [error, setError] = useState("");
   const [txHash, setTxHash] = useState<string | null>(null);
 
@@ -61,6 +68,9 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
 
   const handleSettle = useCallback(async () => {
     setError("");
+    setJitReasoning("");
+    setJitReasoningSource(null);
+    setJitFundingSource(null);
     setTxHash(null);
 
     if (!isConnected || !walletAddress) {
@@ -80,7 +90,7 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
 
     try {
       setFlowState("tapping");
-      setStatusMessage("Tap your chip to sign this payment.");
+      setStatusMessage("Tap chip");
 
       const prepared = await prepareRawChipTokenTransfer({
         publicClient,
@@ -94,7 +104,7 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
       const signed = await signDigest({ digest: prepared.digest });
 
       setFlowState("preparing");
-      setStatusMessage("Checking chip balance and Vincent backing.");
+      setStatusMessage("AI checks route");
 
       const prepareRes = await fetch("/api/vincent/prepare-payment", {
         method: "POST",
@@ -112,6 +122,9 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
       const prepareData = (await prepareRes.json().catch(() => null)) as
         | {
             shortfallUsd?: string;
+            fundingSource?: "chip_balance" | "agent_liquid" | "aave_withdraw" | "insufficient_backing";
+            reasoning?: string;
+            reasoningSource?: "llm" | "fallback";
             withdrewFromAave?: boolean;
             transferredToFundedWallet?: boolean;
             error?: string;
@@ -122,16 +135,20 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
         throw new Error(prepareData?.error || "Failed to prepare chip wallet");
       }
 
+      setJitReasoning(prepareData?.reasoning || "");
+      setJitReasoningSource(prepareData?.reasoningSource || null);
+      setJitFundingSource(prepareData?.fundingSource || null);
+
       if (prepareData?.withdrewFromAave && prepareData?.transferredToFundedWallet) {
-        setStatusMessage(`Withdrawing from Aave and funding your chip wallet with ${prepareData.shortfallUsd}.`);
+        setStatusMessage("Aave tops up chip");
       } else if (prepareData?.transferredToFundedWallet) {
-        setStatusMessage(`Funding your chip wallet with ${prepareData.shortfallUsd}.`);
+        setStatusMessage("Funding chip");
       } else {
-        setStatusMessage("Chip wallet already has enough balance.");
+        setStatusMessage("No top-up needed");
       }
 
       setFlowState("submitting");
-      setStatusMessage("Sending payment from your chip wallet.");
+      setStatusMessage("Paying now");
 
       const result = await broadcastSignedChipTransaction({
         publicClient,
@@ -141,13 +158,13 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
       });
 
       setFlowState("confirming");
-      setStatusMessage("Waiting for onchain confirmation.");
+      setStatusMessage("Confirming");
       setTxHash(result.txHash);
 
       dispatchClientRefreshEvents({ balances: true, paymentRequests: true });
 
       setFlowState("success");
-      setStatusMessage("Payment complete.");
+      setStatusMessage("Sent");
 
       onSuccess?.(result.txHash);
     } catch (err) {
@@ -163,6 +180,9 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
     setFlowState("idle");
     setError("");
     setStatusMessage("");
+    setJitReasoning("");
+    setJitReasoningSource(null);
+    setJitFundingSource(null);
     setTxHash(null);
   }, []);
 
@@ -182,6 +202,9 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
     flowState,
     isProcessing,
     statusMessage,
+    jitReasoning,
+    jitReasoningSource,
+    jitFundingSource,
     error,
     txHash,
     symbol,

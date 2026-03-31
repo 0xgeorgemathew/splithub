@@ -39,30 +39,46 @@ export function useVincentWallets(walletAddress: string | undefined) {
   });
 
   const refresh = useCallback(async () => {
-    if (!walletAddress) return;
+    if (!walletAddress) {
+      setState({
+        snapshot: null,
+        spendSignals: null,
+        loading: false,
+        error: null,
+      });
+      return;
+    }
 
     setState(prev => ({ ...prev, loading: true, error: null }));
 
     try {
-      const res = await fetch(`/api/vincent/wallets?walletAddress=${walletAddress}`);
+      const searchParams = new URLSearchParams({
+        walletAddress,
+        t: Date.now().toString(),
+      });
+      const res = await fetch(`/api/vincent/wallets?${searchParams.toString()}`, {
+        cache: "no-store",
+      });
       if (!res.ok) {
-        const data = await res.json();
+        const data = await res.json().catch(() => null);
         throw new Error(data.error || "Failed to fetch");
       }
 
       const { snapshot, spendSignals } = await res.json();
       setState({ snapshot, spendSignals, loading: false, error: null });
+      return { snapshot, spendSignals };
     } catch (err) {
       setState(prev => ({
         ...prev,
         loading: false,
         error: err instanceof Error ? err.message : "Fetch failed",
       }));
+      return null;
     }
   }, [walletAddress]);
 
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
 
   return { ...state, refresh };

@@ -1,5 +1,6 @@
 "use client";
 
+import { getJitUiCopy } from "./jitUiCopy";
 import { PaymentStatus, PaymentStatusIndicator } from "./PaymentStatusIndicator";
 import { useSettleFlow } from "./hooks/useSettleFlow";
 import { SettleFlowProps } from "./types";
@@ -9,11 +10,24 @@ import { useTargetNetwork } from "~~/hooks/scaffold-eth";
 
 export function SettleFlow({ params, onSuccess, onError, onClose }: SettleFlowProps) {
   const { targetNetwork } = useTargetNetwork();
-  const { flowState, statusMessage, error, txHash, symbol, isConnected, canInitiate, initiateSettle } = useSettleFlow({
+  const {
+    flowState,
+    statusMessage,
+    jitReasoning,
+    jitReasoningSource,
+    jitFundingSource,
+    error,
+    txHash,
+    symbol,
+    isConnected,
+    canInitiate,
+    initiateSettle,
+  } = useSettleFlow({
     params,
     onSuccess,
     onError,
   });
+  const jitUiCopy = getJitUiCopy(jitFundingSource);
 
   // Map flowState to PaymentStatus for the indicator
   const getPaymentStatus = (): PaymentStatus => {
@@ -161,6 +175,39 @@ export function SettleFlow({ params, onSuccess, onError, onClose }: SettleFlowPr
           )}
         </AnimatePresence>
       </div>
+
+      <AnimatePresence>
+        {jitUiCopy && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            className="mt-3 w-full rounded-2xl border border-base-300 bg-base-100/60 p-3 text-left"
+          >
+            <p className="text-xs font-semibold uppercase tracking-wide text-base-content/50">AI Route</p>
+            <p className="mt-1 text-base font-semibold text-base-content">{jitUiCopy.title}</p>
+            <p className="mt-1 text-sm text-base-content/70">{jitUiCopy.detail}</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {jitUiCopy.badges.map((badge, index) => (
+                <motion.span
+                  key={badge}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="rounded-full border border-base-300 bg-base-200 px-2.5 py-1 text-[11px] font-medium text-base-content/70"
+                >
+                  {badge}
+                </motion.span>
+              ))}
+            </div>
+            {jitReasoning && (
+              <p className="mt-2 text-xs text-base-content/45">
+                {jitReasoningSource === "llm" ? "AI verified the route live." : "Fallback route used."}
+              </p>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

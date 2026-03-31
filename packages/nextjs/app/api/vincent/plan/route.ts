@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { formatUnits } from "viem";
+import { TOKEN_DECIMALS } from "~~/config/tokens";
+import { requireVincentAppUser } from "~~/lib/vincent";
 import { type PlannerSnapshot, getCapitalAllocationPlan } from "~~/services/agentPlannerService";
+import { getMockDefiVenueCandidates } from "~~/services/defiVenueService";
 import { getSpendSignals } from "~~/services/spendSignalService";
 import { getWalletSnapshot } from "~~/services/vincentWalletService";
 
@@ -23,11 +27,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing walletAddress" }, { status: 400 });
     }
 
+    const vincentUser = await requireVincentAppUser(request);
     // Build snapshot in parallel
     const [walletSnapshot, spendSignals] = await Promise.all([
-      getWalletSnapshot(walletAddress),
+      getWalletSnapshot({
+        observedWalletAddress: walletAddress,
+        vincentWalletAddress: vincentUser.pkpAddress,
+        agentAddress: vincentUser.agentAddress,
+      }),
       getSpendSignals(walletAddress),
     ]);
+    const totalDeployableRaw = BigInt(walletSnapshot.privyUsdcRaw) + BigInt(walletSnapshot.agentLiquidUsdcRaw);
+    const maxDailyDeploymentUsd = formatUnits(totalDeployableRaw, TOKEN_DECIMALS.USDC);
 
     // Compute deterministic bounds
     const plannerSnapshot: PlannerSnapshot = {
@@ -40,6 +51,7 @@ export async function POST(request: NextRequest) {
           },
         ],
       },
+      candidateVenues: getMockDefiVenueCandidates(),
       agentWallet: {
         liquidUsdc: walletSnapshot.agentLiquidUsdc,
         aaveSuppliedUsdc: walletSnapshot.agentAaveSuppliedUsdc,
@@ -52,7 +64,7 @@ export async function POST(request: NextRequest) {
       },
       policyBounds: {
         minReserveUsd: "0.00",
-        maxDailyDeploymentUsd: "200.00",
+        maxDailyDeploymentUsd,
         supportedAssets: ["USDC"],
       },
     };

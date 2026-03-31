@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getVincentAgentAccount, getVincentConfigFromEnv } from "~~/lib/vincent";
+import { VincentAuthenticationError, getOptionalVincentConfigFromEnv, requireVincentAppUser } from "~~/lib/vincent";
 
 /**
  * GET /api/vincent/secret
@@ -10,22 +10,18 @@ import { getVincentAgentAccount, getVincentConfigFromEnv } from "~~/lib/vincent"
  */
 export async function GET() {
   try {
-    let config;
-    try {
-      config = getVincentConfigFromEnv();
-    } catch {
+    const config = getOptionalVincentConfigFromEnv();
+    if (!config) {
       return NextResponse.json({
         status: "not_configured",
-        message: "VINCENT_API_KEY not set",
+        message: "Vincent delegatee key not set",
       });
     }
 
-    const account = await getVincentAgentAccount(config);
-
     return NextResponse.json({
       status: "configured",
-      eoaAddress: account.eoaAddress,
-      smartAccountAddress: account.smartAccountAddress,
+      delegateeAddress: config.delegateeAddress,
+      appId: config.appId,
     });
   } catch (error) {
     console.error("Vincent secret status error:", error);
@@ -44,24 +40,20 @@ export async function GET() {
  */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { apiKey } = body as { apiKey?: string };
-
-    if (!apiKey || !apiKey.startsWith("ssk_")) {
-      return NextResponse.json({ error: "Invalid API key format — expected ssk_xxx" }, { status: 400 });
-    }
-
-    const account = await getVincentAgentAccount({ apiKey });
+    const vincentUser = await requireVincentAppUser(request);
 
     return NextResponse.json({
       status: "validated",
-      eoaAddress: account.eoaAddress,
-      smartAccountAddress: account.smartAccountAddress,
+      eoaAddress: vincentUser.pkpAddress,
+      smartAccountAddress: vincentUser.agentAddress,
     });
   } catch (error) {
+    if (error instanceof VincentAuthenticationError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
     console.error("Vincent secret validation error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Key validation failed" },
+      { error: error instanceof Error ? error.message : "Session validation failed" },
       { status: 500 },
     );
   }

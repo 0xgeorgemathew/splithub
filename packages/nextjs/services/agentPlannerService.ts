@@ -23,6 +23,15 @@ export interface PlannerSnapshot {
   privyWallet: {
     tokens: { symbol: string; balance: string; usdValue: string }[];
   };
+  candidateVenues?: Array<{
+    id: string;
+    label: string;
+    mockedApyPct: string;
+    mockedOutlook: "good" | "bad";
+    liquidityProfile: "high" | "medium" | "low";
+    executionStatus: "supported_now" | "mocked_only";
+    notes: string;
+  }>;
   agentWallet: {
     liquidUsdc: string;
     aaveSuppliedUsdc: string;
@@ -69,6 +78,12 @@ For the "Open Position" flow:
 - you may return both fund_agent_wallet and aave_supply,
 - fund only what you intend to deploy,
 - if deployable capital exists in the Vincent wallet or Privy wallet, prefer deploying it instead of returning no_action.
+
+When candidateVenues are present:
+- Aave is the currently executable venue.
+- Morpho Blue, Compound V3, and Balancer may appear as mocked alternatives.
+- If those mocked venues have bad outlook or inferior mocked APY, explain why you are rejecting them.
+- Do not invent actions for unsupported venues; only use them in reasoning and comparison.
 
 For reasoning text:
 - refer to "liquid reserve", "agent wallet", and "Aave position",
@@ -148,7 +163,8 @@ export function deterministicPlan(snapshot: PlannerSnapshot): ValidatedPlan {
   return {
     targetReserveUsd: reserveFloor.toFixed(2),
     actions,
-    reasoning: "Deterministic fallback: no standing Vincent reserve, idle balance deployed to Aave.",
+    reasoning:
+      "Deterministic fallback: Aave remains the preferred reserve venue, while the mocked alternatives are unattractive and the idle Vincent balance should stay deployed there.",
   };
 }
 

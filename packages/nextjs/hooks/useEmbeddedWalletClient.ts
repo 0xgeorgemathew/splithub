@@ -2,9 +2,15 @@
 
 import { useCallback } from "react";
 import { useWallets } from "@privy-io/react-auth";
-import { type Address, type WalletClient, createWalletClient, custom } from "viem";
+import { type Address, type Hex, type WalletClient, createWalletClient, custom, toHex } from "viem";
 import { useWalletClient } from "wagmi";
 import { baseSepolia } from "~~/lib/baseSepolia";
+
+interface SendTransactionParams {
+  to: `0x${string}`;
+  data?: `0x${string}`;
+  value?: bigint;
+}
 
 export function useEmbeddedWalletClient() {
   const { wallets } = useWallets();
@@ -35,5 +41,49 @@ export function useEmbeddedWalletClient() {
     throw new Error("No connected wallet available");
   }, [wallets, wagmiWalletClient]);
 
-  return { getWalletClient };
+  const sendTransaction = useCallback(
+    async (params: SendTransactionParams): Promise<Hex> => {
+      const embeddedWallet = wallets.find(wallet => wallet.walletClientType === "privy");
+
+      if (embeddedWallet) {
+        await embeddedWallet.switchChain(baseSepolia.id);
+        const provider = await embeddedWallet.getEthereumProvider();
+        const hash = await provider.request({
+          method: "eth_sendTransaction",
+          params: [
+            {
+              from: embeddedWallet.address,
+              to: params.to,
+              data: params.data ?? "0x",
+              value: toHex(params.value ?? 0n),
+            },
+          ],
+        });
+
+        return hash as Hex;
+      }
+
+      const walletClient = await getWalletClient();
+      if (!walletClient.account) {
+        throw new Error("No connected wallet account available");
+      }
+
+      const hash = await walletClient.request({
+        method: "eth_sendTransaction",
+        params: [
+          {
+            from: walletClient.account.address,
+            to: params.to,
+            data: params.data ?? "0x",
+            value: toHex(params.value ?? 0n),
+          },
+        ],
+      });
+
+      return hash as Hex;
+    },
+    [getWalletClient, wallets],
+  );
+
+  return { getWalletClient, sendTransaction };
 }

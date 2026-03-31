@@ -1,37 +1,66 @@
 import { NextRequest, NextResponse } from "next/server";
+import { formatUnits } from "viem";
+import { requireVincentAppUser } from "~~/lib/vincent";
+import { TOKEN_DECIMALS } from "~~/config/tokens";
 import { type PlannerSnapshot, getCapitalAllocationPlan } from "~~/services/agentPlannerService";
+import { getMockDefiVenueCandidates } from "~~/services/defiVenueService";
 import { getSpendSignals } from "~~/services/spendSignalService";
-import { executeAaveSupply } from "~~/services/vincentExecutionService";
-import { getWalletSnapshot } from "~~/services/vincentWalletService";
+import { executeAaveSupplyRaw, waitForConfirmedBaseTransaction } from "~~/services/vincentExecutionService";
+import { getUsdcBalanceRaw, getWalletSnapshot } from "~~/services/vincentWalletService";
+
+async function waitForUsdcBalance(walletAddress: string, minBalanceRaw: bigint, attempts = 8, delayMs = 750) {
+  let latestBalance = 0n;
+
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    latestBalance = await getUsdcBalanceRaw(walletAddress);
+    if (latestBalance >= minBalanceRaw) {
+      return latestBalance;
+    }
+
+    await new Promise(resolve => setTimeout(resolve, delayMs));
+  }
+
+  return latestBalance;
+}
 
 /**
  * POST /api/vincent/open-position
  *
  * One-click open Aave position:
  * 1. Generate fresh planner recommendation
- * 2. If funding is required, return it for client-side Privy execution
- * 3. Otherwise execute aave_supply through Vincent
+ * 2. Move Privy USDC into Vincent when needed
+ * 3. Execute aave_supply for the full liquid balance already in Vincent
  *
  * Body: { walletAddress: string }
  */
 export async function POST(request: NextRequest) {
   try {
-    const { walletAddress } = (await request.json()) as { walletAddress?: string };
+    const { walletAddress, skipFunding } = (await request.json()) as { walletAddress?: string; skipFunding?: boolean };
 
     if (!walletAddress) {
       return NextResponse.json({ error: "Missing walletAddress" }, { status: 400 });
     }
 
+    const vincentUser = await requireVincentAppUser(request);
     // 1. Build fresh snapshot
     const [walletSnapshot, spendSignals] = await Promise.all([
-      getWalletSnapshot(walletAddress),
+      getWalletSnapshot({
+        observedWalletAddress: walletAddress,
+        vincentWalletAddress: vincentUser.pkpAddress,
+        agentAddress: vincentUser.agentAddress,
+      }),
       getSpendSignals(walletAddress),
     ]);
+    const privyUsdcRaw = BigInt(walletSnapshot.privyUsdcRaw);
+    const agentLiquidUsdcRaw = BigInt(walletSnapshot.agentLiquidUsdcRaw);
+    const totalDeployableRaw = privyUsdcRaw + agentLiquidUsdcRaw;
+    const maxDailyDeploymentUsd = formatUnits(totalDeployableRaw, TOKEN_DECIMALS.USDC);
 
     const plannerSnapshot: PlannerSnapshot = {
       privyWallet: {
         tokens: [{ symbol: "USDC", balance: walletSnapshot.privyUsdc, usdValue: walletSnapshot.privyUsdc }],
       },
+      candidateVenues: getMockDefiVenueCandidates(),
       agentWallet: {
         liquidUsdc: walletSnapshot.agentLiquidUsdc,
         aaveSuppliedUsdc: walletSnapshot.agentAaveSuppliedUsdc,
@@ -44,7 +73,7 @@ export async function POST(request: NextRequest) {
       },
       policyBounds: {
         minReserveUsd: "0.00",
-        maxDailyDeploymentUsd: "200.00",
+        maxDailyDeploymentUsd,
         supportedAssets: ["USDC"],
       },
     };
@@ -52,8 +81,6 @@ export async function POST(request: NextRequest) {
     // 2. Get plan
     const { plan, source } = await getCapitalAllocationPlan(plannerSnapshot);
 
-    // 3. Check if plan includes fund_agent_wallet (must happen client-side first)
-    const fundAction = plan.actions.find(a => a.type === "fund_agent_wallet");
     const supplyAction = plan.actions.find(a => a.type === "aave_supply");
 
     const executionResults: Array<{
@@ -64,19 +91,32 @@ export async function POST(request: NextRequest) {
       error?: string;
     }> = [];
 
-    if (fundAction) {
+    if (!skipFunding && privyUsdcRaw > 0n) {
+      const fundAmount = formatUnits(privyUsdcRaw, TOKEN_DECIMALS.USDC);
       return NextResponse.json({
-        plan,
+        plan: {
+          targetReserveUsd: "0.00",
+          actions: [
+            { type: "fund_agent_wallet", asset: "USDC", amount: fundAmount },
+            { type: "aave_supply", asset: "USDC", amount: formatUnits(totalDeployableRaw, TOKEN_DECIMALS.USDC) },
+          ],
+          reasoning:
+            "The Privy wallet holds deployable USDC, so the flow first moves that USDC into the agent wallet and then deploys the full agent wallet balance into the Aave position. The mocked Morpho Blue, Compound V3, and Balancer venues are intentionally rejected because their mocked outlook is worse than Aave.",
+        },
         source,
         fundRequired: true,
-        fundAmount: fundAction.amount,
+        fundAmount,
+        fundSteps: [{ asset: "USDC", amount: fundAmount, reason: "agent_liquidity" }],
         executionResults,
         plannedAt: new Date().toISOString(),
       });
     }
 
-    if (supplyAction?.amount) {
-      const result = await executeAaveSupply(supplyAction.amount);
+    const deployAmountRaw = skipFunding
+      ? await waitForUsdcBalance(vincentUser.pkpAddress, 1n)
+      : agentLiquidUsdcRaw;
+    if (deployAmountRaw > 0n) {
+      const result = await executeAaveSupplyRaw(vincentUser, deployAmountRaw);
       executionResults.push({
         action: "aave_supply",
         success: result.success,
@@ -84,13 +124,49 @@ export async function POST(request: NextRequest) {
         vincentStatus: result.vincentStatus,
         error: result.error,
       });
+
+      if (!result.success || !result.txHash) {
+        return NextResponse.json(
+          {
+            error: result.error || "Failed to deploy idle balance into Aave",
+            plan,
+            source,
+            fundRequired: false,
+            fundAmount: null,
+            executionResults,
+            plannedAt: new Date().toISOString(),
+          },
+          { status: 502 },
+        );
+      }
+
+      await waitForConfirmedBaseTransaction(result.txHash);
+
+      return NextResponse.json({
+        plan: {
+          ...plan,
+          actions: [{ type: "aave_supply", asset: "USDC", amount: formatUnits(deployAmountRaw, TOKEN_DECIMALS.USDC) }],
+        },
+        source,
+        fundRequired: false,
+        fundAmount: null,
+        fundSteps: [],
+        executionResults,
+        plannedAt: new Date().toISOString(),
+      });
     }
 
     return NextResponse.json({
-      plan,
+        plan: {
+          targetReserveUsd: "0.00",
+          actions: [{ type: "no_action", asset: "USDC", amount: "0" }],
+          reasoning:
+            "No liquid reserve is currently sitting in the Vincent wallet, so there is nothing to deploy. Aave remains the preferred venue and the mocked Morpho Blue, Compound V3, and Balancer options are not attractive enough to use.",
+        },
       source,
       fundRequired: false,
       fundAmount: null,
+      fundSteps: [],
       executionResults,
       plannedAt: new Date().toISOString(),
     });

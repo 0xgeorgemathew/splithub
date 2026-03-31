@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireVincentAppUser } from "~~/lib/vincent";
 import { buildFundAgentTransaction } from "~~/services/internalTreasuryService";
 
 /**
@@ -14,13 +15,18 @@ import { buildFundAgentTransaction } from "~~/services/internalTreasuryService";
  */
 export async function POST(request: NextRequest) {
   try {
-    const { amount } = (await request.json()) as { amount?: string };
+    const { amount, asset } = (await request.json()) as { amount?: string; asset?: "USDC" | "ETH" };
 
     if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
       return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
     }
 
-    const tx = await buildFundAgentTransaction({ amount });
+    const vincentUser = await requireVincentAppUser(request);
+    const tx = await buildFundAgentTransaction({
+      amount,
+      asset: asset ?? "USDC",
+      targetWalletAddress: vincentUser.pkpAddress,
+    });
 
     return NextResponse.json({
       tx: {
@@ -28,7 +34,9 @@ export async function POST(request: NextRequest) {
         data: tx.data,
         value: tx.value.toString(),
       },
-      targetSmartAccount: tx.targetSmartAccount,
+      targetSmartAccount: vincentUser.agentAddress,
+      targetVincentWallet: tx.targetVincentWallet,
+      asset: tx.asset,
       amount,
     });
   } catch (error) {

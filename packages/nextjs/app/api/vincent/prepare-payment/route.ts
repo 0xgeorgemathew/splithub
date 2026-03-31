@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireVincentAppUser } from "~~/lib/vincent";
 import { prepareJitTapPayment } from "~~/services/jitPaymentService";
 
 /**
@@ -13,24 +14,27 @@ import { prepareJitTapPayment } from "~~/services/jitPaymentService";
  */
 export async function POST(request: NextRequest) {
   try {
-    const { payerWallet, tokenAddress, amount, decimals, limitWallet, fundingTargetWallet } = (await request.json()) as {
-      payerWallet?: string;
-      tokenAddress?: string;
-      amount?: string;
-      decimals?: number;
-      limitWallet?: string;
-      fundingTargetWallet?: string;
-    };
+    const { payerWallet, tokenAddress, amount, decimals, limitWallet, fundingTargetWallet } =
+      (await request.json()) as {
+        payerWallet?: string;
+        tokenAddress?: string;
+        amount?: string;
+        decimals?: number;
+        limitWallet?: string;
+        fundingTargetWallet?: string;
+      };
 
     if (!payerWallet || !tokenAddress || !amount || typeof decimals !== "number") {
       return NextResponse.json({ error: "Missing payerWallet, tokenAddress, amount, or decimals" }, { status: 400 });
     }
 
+    const vincentUser = await requireVincentAppUser(request);
     const result = await prepareJitTapPayment({
       payerWallet,
       tokenAddress,
       amount,
       decimals,
+      vincentContext: vincentUser,
       limitWallet,
       fundingTargetWallet,
     });

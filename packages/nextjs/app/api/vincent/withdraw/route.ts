@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireVincentAppUser } from "~~/lib/vincent";
 import { executeAaveWithdraw } from "~~/services/vincentExecutionService";
 
 /**
@@ -16,7 +17,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
     }
 
-    const result = await executeAaveWithdraw(amount);
+    const vincentUser = await requireVincentAppUser(request);
+    const result = await executeAaveWithdraw(vincentUser, amount);
 
     return NextResponse.json(result);
   } catch (error) {

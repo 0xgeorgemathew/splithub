@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePrivy } from "@privy-io/react-auth";
 import { LoaderCircle } from "lucide-react";
 import { DEFAULT_AGENT_PAY_TEST_RECIPIENT } from "~~/constants/agentPay";
-import { useVincentSecret } from "~~/hooks/useVincentSecret";
+import { useVincentSession } from "~~/hooks/useVincentSession";
 
 interface Readiness {
   canCoverTap: boolean;
@@ -69,7 +69,7 @@ function getStatusCopy(readiness: Readiness | null, loading: boolean) {
 export default function AgentsPayPage() {
   const { user } = usePrivy();
   const walletAddress = user?.wallet?.address;
-  const { status: vincentStatus } = useVincentSecret();
+  const { status: vincentStatus, authenticated, connect, error: vincentError } = useVincentSession();
 
   const [readiness, setReadiness] = useState<Readiness | null>(null);
   const [tapLimitInput, setTapLimitInput] = useState("50.00");
@@ -78,7 +78,7 @@ export default function AgentsPayPage() {
   const [error, setError] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
-  const isVincentReady = vincentStatus === "configured";
+  const isVincentReady = authenticated;
   const statusCopy = getStatusCopy(readiness, loading);
 
   const fetchState = useCallback(async () => {
@@ -169,9 +169,13 @@ export default function AgentsPayPage() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-sm font-semibold text-base-content">JIT status</p>
-              <p className="text-xs text-base-content/60">{statusCopy.title}</p>
+              <p className="text-xs text-base-content/60">
+                {authenticated ? statusCopy.title : "Connect Vincent to evaluate chip top-up readiness."}
+              </p>
             </div>
-            <span className={`badge ${statusCopy.badgeClass}`}>{statusCopy.badge}</span>
+            <span className={`badge ${authenticated ? statusCopy.badgeClass : "badge-ghost"}`}>
+              {authenticated ? statusCopy.badge : "Connect"}
+            </span>
           </div>
         </div>
 
@@ -207,6 +211,11 @@ export default function AgentsPayPage() {
 
         <div className="rounded-2xl border border-base-300 bg-base-100 p-4 space-y-3">
           <p className="text-sm font-semibold text-base-content">Tap limit</p>
+          {!authenticated && vincentStatus === "needs_connect" && (
+            <button type="button" onClick={() => connect("/agents-pay")} className="btn btn-secondary w-full">
+              Connect Vincent
+            </button>
+          )}
           <label className="form-control">
             <span className="label-text text-xs text-base-content/60">Max amount Vincent can top up for a tap</span>
             <input
@@ -242,9 +251,15 @@ export default function AgentsPayPage() {
             </p>
           )}
           {!walletAddress && <p className="text-xs text-warning">Connect Privy wallet first.</p>}
-          {!isVincentReady && vincentStatus !== "unknown" && (
-            <p className="text-xs text-warning">Set `VINCENT_API_KEY` correctly or JIT funding stays disabled.</p>
+          {vincentStatus === "not_configured" && (
+            <p className="text-xs text-warning">
+              Set `VINCENT_DELEGATEE_PRIVATE_KEY` or `RELAYER_PRIVATE_KEY` for Vincent funding.
+            </p>
           )}
+          {vincentStatus === "needs_connect" && (
+            <p className="text-xs text-warning">Authorize SplitHub in Vincent before JIT funding can run.</p>
+          )}
+          {vincentError && <p className="text-xs text-error">{vincentError}</p>}
           {error && <p className="text-xs text-error">{error}</p>}
           {saveMessage && <p className="text-xs text-success">{saveMessage}</p>}
         </div>

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireVincentAppUser } from "~~/lib/vincent";
 import { getPaymentReadiness } from "~~/services/paymentReadinessService";
 
 /**
@@ -17,7 +18,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Missing walletAddress parameter" }, { status: 400 });
     }
 
-    const readiness = await getPaymentReadiness(walletAddress);
+    const vincentUser = await requireVincentAppUser(request);
+    const readiness = await getPaymentReadiness(walletAddress, vincentUser);
 
     return NextResponse.json(readiness);
   } catch (error) {

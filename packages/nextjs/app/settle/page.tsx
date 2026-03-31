@@ -7,6 +7,7 @@ import { AlertCircle, Coins, RefreshCw, User, Wallet } from "lucide-react";
 import { type Address } from "viem";
 import { useReadContract } from "wagmi";
 import { PaymentStatus, PaymentStatusIndicator } from "~~/components/settle/PaymentStatusIndicator";
+import { getJitUiCopy, type JitFundingSource } from "~~/components/settle/jitUiCopy";
 import { TOKENS } from "~~/config/tokens";
 import { DEFAULT_AGENT_PAY_TEST_RECIPIENT } from "~~/constants/agentPay";
 import { useHaloChip } from "~~/hooks/halochip-arx/useHaloChip";
@@ -40,8 +41,12 @@ export default function SettlePage() {
   const isConnected = authenticated && !!address;
 
   const [flowState, setFlowState] = useState<FlowState>("idle");
+  const [jitReasoning, setJitReasoning] = useState("");
+  const [jitReasoningSource, setJitReasoningSource] = useState<"llm" | "fallback" | null>(null);
+  const [jitFundingSource, setJitFundingSource] = useState<JitFundingSource | null>(null);
   const [error, setError] = useState("");
   const [txHash, setTxHash] = useState<string | null>(null);
+  const jitUiCopy = getJitUiCopy(jitFundingSource);
 
   // Read token decimals
   const { data: decimals } = useReadContract({
@@ -59,6 +64,9 @@ export default function SettlePage() {
 
   const handleSettle = async () => {
     setError("");
+    setJitReasoning("");
+    setJitReasoningSource(null);
+    setJitFundingSource(null);
     setTxHash(null);
 
     if (!isConnected || !address) {
@@ -113,6 +121,18 @@ export default function SettlePage() {
         throw new Error(data?.error || "Failed to prepare wallet for tap");
       }
 
+      const prepareData = (await prepareRes.json().catch(() => null)) as
+        | {
+            fundingSource?: JitFundingSource;
+            reasoning?: string;
+            reasoningSource?: "llm" | "fallback";
+          }
+        | null;
+
+      setJitReasoning(prepareData?.reasoning || "");
+      setJitReasoningSource(prepareData?.reasoningSource || null);
+      setJitFundingSource(prepareData?.fundingSource || null);
+
       setFlowState("submitting");
 
       const result = await broadcastSignedChipTransaction({
@@ -146,13 +166,17 @@ export default function SettlePage() {
   const getProcessingText = (): string => {
     switch (flowState) {
       case "tapping":
-        return "Tap chip once";
+        return "Tap chip";
       case "preparing":
-        return "Preparing payment";
+        return "AI checks route";
       case "submitting":
-        return "Sending from chip";
+        return jitFundingSource === "aave_withdraw"
+          ? "Aave tops up chip"
+          : jitFundingSource === "agent_liquid"
+            ? "Funding chip"
+            : "Paying now";
       case "confirming":
-        return "Waiting for confirmation";
+        return "Confirming";
       default:
         return "Processing...";
     }
@@ -162,6 +186,9 @@ export default function SettlePage() {
   const handleReset = () => {
     setFlowState("idle");
     setError("");
+    setJitReasoning("");
+    setJitReasoningSource(null);
+    setJitFundingSource(null);
     setTxHash(null);
   };
 
@@ -174,9 +201,9 @@ export default function SettlePage() {
       : flowState === "tapping"
       ? "Hold the registered chip to the phone now."
       : flowState === "preparing"
-      ? "SplitHub is topping up the chip if needed."
+      ? "SplitHub is checking the best safe route for this tap."
       : flowState === "submitting"
-      ? "Broadcasting the chip-signed payment."
+      ? "SplitHub is moving funds if needed and sending the chip-signed payment."
       : flowState === "confirming"
       ? "Waiting for the transaction receipt."
       : flowState === "success"
@@ -236,6 +263,39 @@ export default function SettlePage() {
                 />
 
                 <p className="text-center text-sm text-base-content/60">{statusCopy}</p>
+
+                <AnimatePresence>
+                  {jitUiCopy && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className="rounded-2xl border border-base-300 bg-base-200/40 p-3 text-left"
+                    >
+                      <p className="text-xs font-semibold uppercase tracking-wide text-base-content/50">AI Route</p>
+                      <p className="mt-1 text-base font-semibold text-base-content">{jitUiCopy.title}</p>
+                      <p className="mt-1 text-sm text-base-content/70">{jitUiCopy.detail}</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {jitUiCopy.badges.map((badge, index) => (
+                          <motion.span
+                            key={badge}
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.05 }}
+                            className="rounded-full border border-base-300 bg-base-100 px-2.5 py-1 text-[11px] font-medium text-base-content/70"
+                          >
+                            {badge}
+                          </motion.span>
+                        ))}
+                      </div>
+                      {jitReasoning && (
+                        <p className="mt-2 text-xs text-base-content/45">
+                          {jitReasoningSource === "llm" ? "AI verified the route live." : "Fallback route used."}
+                        </p>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
 

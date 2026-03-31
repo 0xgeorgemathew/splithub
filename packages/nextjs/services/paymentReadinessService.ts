@@ -1,3 +1,4 @@
+import type { VincentAppUserContext } from "~~/lib/vincent";
 import { getSpendSignals } from "~~/services/spendSignalService";
 import { getUserByWallet, getUserTapLimit } from "~~/services/userService";
 import { getWalletSnapshot } from "~~/services/vincentWalletService";
@@ -25,12 +26,19 @@ export interface PaymentReadiness {
  * Evaluate payment readiness for a user.
  * Determines whether the CHIP payment path is in a ready-to-spend state.
  */
-export async function getPaymentReadiness(userWallet: string): Promise<PaymentReadiness> {
+export async function getPaymentReadiness(
+  userWallet: string,
+  vincentContext: Pick<VincentAppUserContext, "pkpAddress" | "agentAddress">,
+): Promise<PaymentReadiness> {
   const user = await getUserByWallet(userWallet);
   const chipWallet = user?.chip_address || userWallet;
 
   const [snapshot, spendSignals, tapLimitUsd] = await Promise.all([
-    getWalletSnapshot(chipWallet),
+    getWalletSnapshot({
+      observedWalletAddress: chipWallet,
+      vincentWalletAddress: vincentContext.pkpAddress,
+      agentAddress: vincentContext.agentAddress,
+    }),
     getSpendSignals(userWallet),
     getUserTapLimit(userWallet),
   ]);

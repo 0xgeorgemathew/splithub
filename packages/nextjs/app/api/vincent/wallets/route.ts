@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireVincentAppUser } from "~~/lib/vincent";
 import { getSpendSignals } from "~~/services/spendSignalService";
 import { getWalletSnapshot } from "~~/services/vincentWalletService";
 
@@ -20,8 +21,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Missing walletAddress parameter" }, { status: 400 });
     }
 
+    const vincentUser = await requireVincentAppUser(request);
     const [snapshot, spendSignals] = await Promise.all([
-      getWalletSnapshot(walletAddress),
+      getWalletSnapshot({
+        observedWalletAddress: walletAddress,
+        vincentWalletAddress: vincentUser.pkpAddress,
+        agentAddress: vincentUser.agentAddress,
+      }),
       getSpendSignals(walletAddress),
     ]);
 
