@@ -35,8 +35,8 @@ export async function POST(request: NextRequest) {
       typeof tapLimitUsd === "string"
         ? Number.parseFloat(tapLimitUsd)
         : typeof tapLimitUsd === "number"
-        ? tapLimitUsd
-        : NaN;
+          ? tapLimitUsd
+          : NaN;
 
     if (!Number.isFinite(numericLimit) || numericLimit <= 0) {
       return NextResponse.json({ error: "tapLimitUsd must be greater than 0" }, { status: 400 });

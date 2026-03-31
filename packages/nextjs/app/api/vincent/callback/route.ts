@@ -3,8 +3,8 @@ import {
   VINCENT_CONNECT_JWT_QUERY_PARAM,
   clearVincentSession,
   getRequestOrigin,
-  getVincentStoredReturnTo,
   getVincentAppOrigin,
+  getVincentStoredReturnTo,
   setVincentSessionCookie,
   verifyVincentJwtForRequest,
 } from "~~/lib/vincent";

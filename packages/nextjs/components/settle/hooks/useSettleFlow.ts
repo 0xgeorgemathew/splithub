@@ -2,16 +2,16 @@
  * Settlement flow hook for single-payer NFC payments
  */
 import { useCallback, useMemo, useState } from "react";
-import { type Address } from "viem";
-import { useReadContract } from "wagmi";
 import { type JitFundingSource } from "../jitUiCopy";
 import { FlowState, PaymentParams } from "../types";
+import { type Address } from "viem";
+import { useReadContract } from "wagmi";
 import { useHaloChip } from "~~/hooks/halochip-arx/useHaloChip";
 import { useCurrentUser } from "~~/hooks/useCurrentUser";
 import { useWalletAddress } from "~~/hooks/useWalletAddress";
 import { createBaseSepoliaPublicClient } from "~~/lib/baseSepolia";
-import { dispatchClientRefreshEvents } from "~~/lib/clientTransactionUtils";
 import { broadcastSignedChipTransaction, prepareRawChipTokenTransfer } from "~~/lib/chipTransactions";
+import { dispatchClientRefreshEvents } from "~~/lib/clientTransactionUtils";
 import { ERC20_ABI } from "~~/lib/contractAbis";
 import { parseContractError } from "~~/utils/contractErrors";
 
@@ -119,17 +119,15 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
         }),
       });
 
-      const prepareData = (await prepareRes.json().catch(() => null)) as
-        | {
-            shortfallUsd?: string;
-            fundingSource?: "chip_balance" | "agent_liquid" | "aave_withdraw" | "insufficient_backing";
-            reasoning?: string;
-            reasoningSource?: "llm" | "fallback";
-            withdrewFromAave?: boolean;
-            transferredToFundedWallet?: boolean;
-            error?: string;
-          }
-        | null;
+      const prepareData = (await prepareRes.json().catch(() => null)) as {
+        shortfallUsd?: string;
+        fundingSource?: "chip_balance" | "agent_liquid" | "aave_withdraw" | "insufficient_backing";
+        reasoning?: string;
+        reasoningSource?: "llm" | "fallback";
+        withdrewFromAave?: boolean;
+        transferredToFundedWallet?: boolean;
+        error?: string;
+      } | null;
 
       if (!prepareRes.ok) {
         throw new Error(prepareData?.error || "Failed to prepare chip wallet");

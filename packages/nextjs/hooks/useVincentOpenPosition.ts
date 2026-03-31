@@ -72,8 +72,8 @@ export function useVincentOpenPosition() {
             typeof data === "string"
               ? data
               : data && typeof data === "object" && "error" in data && typeof data.error === "string"
-              ? data.error
-              : "Open position failed";
+                ? data.error
+                : "Open position failed";
           throw new Error(message);
         }
 
@@ -81,7 +81,9 @@ export function useVincentOpenPosition() {
 
         if (data.fundRequired && (data.fundSteps?.length || data.fundAmount)) {
           setState("funding");
-          const fundSteps = data.fundSteps?.length ? data.fundSteps : [{ asset: "USDC" as const, amount: data.fundAmount! }];
+          const fundSteps = data.fundSteps?.length
+            ? data.fundSteps
+            : [{ asset: "USDC" as const, amount: data.fundAmount! }];
           const { hashes } = await fund(fundSteps);
 
           if (!publicClient) {
@@ -105,11 +107,11 @@ export function useVincentOpenPosition() {
               typeof retryData === "string"
                 ? retryData
                 : retryData &&
-                  typeof retryData === "object" &&
-                  "error" in retryData &&
-                  typeof retryData.error === "string"
-                ? retryData.error
-                : "Open position failed after funding";
+                    typeof retryData === "object" &&
+                    "error" in retryData &&
+                    typeof retryData.error === "string"
+                  ? retryData.error
+                  : "Open position failed after funding";
             throw new Error(message);
           }
 

@@ -151,7 +151,9 @@ async function signAndBroadcastTransaction(params: {
       const message = toExecutionError(error, "Transaction broadcast failed");
       if (
         signedTransactionHash &&
-        (message.includes("already known") || message.includes("nonce too low") || message.includes("replacement transaction underpriced"))
+        (message.includes("already known") ||
+          message.includes("nonce too low") ||
+          message.includes("replacement transaction underpriced"))
       ) {
         return {
           success: true,
@@ -249,7 +251,10 @@ export async function executeAaveSupply(context: VincentExecutionContext, amount
   }
 }
 
-export async function executeAaveSupplyRaw(context: VincentExecutionContext, amountWei: bigint): Promise<ExecutionResult> {
+export async function executeAaveSupplyRaw(
+  context: VincentExecutionContext,
+  amountWei: bigint,
+): Promise<ExecutionResult> {
   return executeAaveSupply(context, formatUnits(amountWei, TOKEN_DECIMALS.USDC));
 }
 

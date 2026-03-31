@@ -77,7 +77,7 @@ export async function getUsdcBalanceRaw(walletAddress: string): Promise<bigint> 
   })) as bigint;
 }
 
-async function getUsdcBalance(walletAddress: string): Promise<string> {
+async function _getUsdcBalance(walletAddress: string): Promise<string> {
   return formatUnits(await getUsdcBalanceRaw(walletAddress), TOKEN_DECIMALS.USDC);
 }
 

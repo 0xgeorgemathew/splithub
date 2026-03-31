@@ -27,7 +27,13 @@ export interface JitPaymentPreparation {
   transferTxHash?: string;
 }
 
-async function waitForUsdcBalance(walletAddress: string, minBalanceUsd: number, decimals: number, attempts = 8, delayMs = 750) {
+async function waitForUsdcBalance(
+  walletAddress: string,
+  minBalanceUsd: number,
+  decimals: number,
+  attempts = 8,
+  delayMs = 750,
+) {
   let latestBalance = 0;
 
   for (let attempt = 0; attempt < attempts; attempt += 1) {

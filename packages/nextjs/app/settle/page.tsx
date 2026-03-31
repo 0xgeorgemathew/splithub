@@ -7,14 +7,14 @@ import { AlertCircle, Coins, RefreshCw, User, Wallet } from "lucide-react";
 import { type Address } from "viem";
 import { useReadContract } from "wagmi";
 import { PaymentStatus, PaymentStatusIndicator } from "~~/components/settle/PaymentStatusIndicator";
-import { getJitUiCopy, type JitFundingSource } from "~~/components/settle/jitUiCopy";
+import { type JitFundingSource, getJitUiCopy } from "~~/components/settle/jitUiCopy";
 import { TOKENS } from "~~/config/tokens";
 import { DEFAULT_AGENT_PAY_TEST_RECIPIENT } from "~~/constants/agentPay";
 import { useHaloChip } from "~~/hooks/halochip-arx/useHaloChip";
 import { useCurrentUser } from "~~/hooks/useCurrentUser";
 import { baseSepolia, createBaseSepoliaPublicClient } from "~~/lib/baseSepolia";
-import { dispatchClientRefreshEvents } from "~~/lib/clientTransactionUtils";
 import { broadcastSignedChipTransaction, prepareRawChipTokenTransfer } from "~~/lib/chipTransactions";
+import { dispatchClientRefreshEvents } from "~~/lib/clientTransactionUtils";
 import { ERC20_ABI } from "~~/lib/contractAbis";
 import { parseContractError } from "~~/utils/contractErrors";
 
@@ -121,13 +121,11 @@ export default function SettlePage() {
         throw new Error(data?.error || "Failed to prepare wallet for tap");
       }
 
-      const prepareData = (await prepareRes.json().catch(() => null)) as
-        | {
-            fundingSource?: JitFundingSource;
-            reasoning?: string;
-            reasoningSource?: "llm" | "fallback";
-          }
-        | null;
+      const prepareData = (await prepareRes.json().catch(() => null)) as {
+        fundingSource?: JitFundingSource;
+        reasoning?: string;
+        reasoningSource?: "llm" | "fallback";
+      } | null;
 
       setJitReasoning(prepareData?.reasoning || "");
       setJitReasoningSource(prepareData?.reasoningSource || null);
@@ -199,16 +197,16 @@ export default function SettlePage() {
     flowState === "idle"
       ? "Tap once to trigger the chip prompt. SplitHub will handle the rest on this page."
       : flowState === "tapping"
-      ? "Hold the registered chip to the phone now."
-      : flowState === "preparing"
-      ? "SplitHub is checking the best safe route for this tap."
-      : flowState === "submitting"
-      ? "SplitHub is moving funds if needed and sending the chip-signed payment."
-      : flowState === "confirming"
-      ? "Waiting for the transaction receipt."
-      : flowState === "success"
-      ? `${DEFAULT_AMOUNT} ${symbol || "tokens"} sent from the chip wallet.`
-      : "Payment failed. Try again.";
+        ? "Hold the registered chip to the phone now."
+        : flowState === "preparing"
+          ? "SplitHub is checking the best safe route for this tap."
+          : flowState === "submitting"
+            ? "SplitHub is moving funds if needed and sending the chip-signed payment."
+            : flowState === "confirming"
+              ? "Waiting for the transaction receipt."
+              : flowState === "success"
+                ? `${DEFAULT_AMOUNT} ${symbol || "tokens"} sent from the chip wallet.`
+                : "Payment failed. Try again.";
 
   return (
     <div className="min-h-[calc(100vh-64px)] bg-base-200 p-4">

@@ -17,7 +17,8 @@ export function getMockDefiVenueCandidates(): DefiVenueCandidate[] {
       mockedOutlook: "good",
       liquidityProfile: "high",
       executionStatus: "supported_now",
-      notes: "Preferred reserve venue for this prototype. It has the best mocked yield and the cleanest JIT liquidity path.",
+      notes:
+        "Preferred reserve venue for this prototype. It has the best mocked yield and the cleanest JIT liquidity path.",
     },
     {
       id: "morpho_blue",

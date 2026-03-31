@@ -1,8 +1,8 @@
 "use client";
 
-import { getJitUiCopy } from "./jitUiCopy";
 import { PaymentStatus, PaymentStatusIndicator } from "./PaymentStatusIndicator";
 import { useSettleFlow } from "./hooks/useSettleFlow";
+import { getJitUiCopy } from "./jitUiCopy";
 import { SettleFlowProps } from "./types";
 import { AnimatePresence, motion } from "framer-motion";
 import { AlertCircle, Coins, Fuel, Wallet, X } from "lucide-react";

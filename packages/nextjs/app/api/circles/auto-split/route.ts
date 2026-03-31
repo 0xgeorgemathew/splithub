@@ -16,10 +16,7 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as AutoSplitRequest;
 
     if (!body.userWallet || !body.amount || !body.tokenAddress) {
-      return NextResponse.json(
-        { error: "Missing required fields: userWallet, amount, tokenAddress" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Missing required fields: userWallet, amount, tokenAddress" }, { status: 400 });
     }
 
     const result = await safeProcessCircleAutoSplit({

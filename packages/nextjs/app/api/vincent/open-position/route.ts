@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { formatUnits } from "viem";
-import { requireVincentAppUser } from "~~/lib/vincent";
 import { TOKEN_DECIMALS } from "~~/config/tokens";
+import { requireVincentAppUser } from "~~/lib/vincent";
 import { type PlannerSnapshot, getCapitalAllocationPlan } from "~~/services/agentPlannerService";
 import { getMockDefiVenueCandidates } from "~~/services/defiVenueService";
 import { getSpendSignals } from "~~/services/spendSignalService";
@@ -112,9 +112,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const deployAmountRaw = skipFunding
-      ? await waitForUsdcBalance(vincentUser.pkpAddress, 1n)
-      : agentLiquidUsdcRaw;
+    const deployAmountRaw = skipFunding ? await waitForUsdcBalance(vincentUser.pkpAddress, 1n) : agentLiquidUsdcRaw;
     if (deployAmountRaw > 0n) {
       const result = await executeAaveSupplyRaw(vincentUser, deployAmountRaw);
       executionResults.push({
@@ -157,12 +155,12 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({
-        plan: {
-          targetReserveUsd: "0.00",
-          actions: [{ type: "no_action", asset: "USDC", amount: "0" }],
-          reasoning:
-            "No liquid reserve is currently sitting in the Vincent wallet, so there is nothing to deploy. Aave remains the preferred venue and the mocked Morpho Blue, Compound V3, and Balancer options are not attractive enough to use.",
-        },
+      plan: {
+        targetReserveUsd: "0.00",
+        actions: [{ type: "no_action", asset: "USDC", amount: "0" }],
+        reasoning:
+          "No liquid reserve is currently sitting in the Vincent wallet, so there is nothing to deploy. Aave remains the preferred venue and the mocked Morpho Blue, Compound V3, and Balancer options are not attractive enough to use.",
+      },
       source,
       fundRequired: false,
       fundAmount: null,

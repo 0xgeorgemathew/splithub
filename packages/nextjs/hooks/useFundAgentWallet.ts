@@ -33,7 +33,8 @@ export function useFundAgentWallet() {
       try {
         const fundingSteps = typeof steps === "string" ? [{ asset: "USDC" as const, amount: steps }] : steps;
         const hashes: `0x${string}`[] = [];
-        let lastResponse: { hash: `0x${string}`; targetSmartAccount: string; targetVincentWallet: string } | null = null;
+        let lastResponse: { hash: `0x${string}`; targetSmartAccount: string; targetVincentWallet: string } | null =
+          null;
 
         for (const step of fundingSteps) {
           // 1. Get unsigned tx from backend

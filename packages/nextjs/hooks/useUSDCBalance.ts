@@ -12,7 +12,7 @@ export function useUSDCBalance(addressOverride?: `0x${string}` | null) {
   const { user } = usePrivy();
 
   // Use Privy wallet address if available, fallback to wagmi address
-  const address = addressOverride ?? ((user?.wallet?.address as `0x${string}` | undefined) ?? wagmiAddress);
+  const address = addressOverride ?? (user?.wallet?.address as `0x${string}` | undefined) ?? wagmiAddress;
 
   // Read USDC balance
   const {

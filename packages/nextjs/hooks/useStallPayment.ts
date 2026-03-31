@@ -198,8 +198,8 @@ export function useStallPayment({ stall, onSuccess, onError }: UseStallPaymentOp
                 10,
               )}...), but the stall record could not be finalized.`
             : err instanceof Error
-            ? err.message
-            : "Payment failed";
+              ? err.message
+              : "Payment failed";
 
         setError(message);
         setFlowState("error");

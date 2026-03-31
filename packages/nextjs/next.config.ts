@@ -7,9 +7,7 @@ const nextConfig: NextConfig = {
   devIndicators: false,
   turbopack: {},
   allowedDevOrigins: ["dev.splithub.space", "*.dev.splithub.space", "splithub.space", "*.splithub.space"],
-  serverExternalPackages: [
-    "ethers",
-  ],
+  serverExternalPackages: ["ethers"],
   typescript: {
     ignoreBuildErrors: process.env.NEXT_PUBLIC_IGNORE_BUILD_ERROR === "true",
   },

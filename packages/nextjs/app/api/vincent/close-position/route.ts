@@ -49,14 +49,12 @@ export async function POST(request: NextRequest) {
       agentAddress: vincentUser.agentAddress,
     });
     const withdrawAmountRaw = BigInt(walletSnapshot.agentAaveWithdrawableUsdcRaw);
-    let withdrawResult:
-      | {
-          success: boolean;
-          txHash?: string;
-          vincentStatus?: "executed" | "denied" | "pending_approval";
-          error?: string;
-        }
-      | null = null;
+    let withdrawResult: {
+      success: boolean;
+      txHash?: string;
+      vincentStatus?: "executed" | "denied" | "pending_approval";
+      error?: string;
+    } | null = null;
 
     if (withdrawAmountRaw > 0n) {
       withdrawResult = await executeAaveWithdrawAll(vincentUser);

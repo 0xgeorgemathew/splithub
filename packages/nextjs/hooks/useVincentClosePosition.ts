@@ -57,8 +57,8 @@ export function useVincentClosePosition() {
           typeof data === "string"
             ? data
             : data && typeof data === "object" && "error" in data && typeof data.error === "string"
-            ? data.error
-            : "Close position failed";
+              ? data.error
+              : "Close position failed";
         throw new Error(message);
       }
 
