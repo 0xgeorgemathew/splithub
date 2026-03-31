@@ -5,8 +5,8 @@ import { getStoreAnalytics, getStoreItems } from "~~/services/storeService";
 
 export const storeHealthScanTask = schedules.task({
   id: "store-health-scan",
-  // cron: "*/15 * * * *",
-  cron: "* * * * *",
+  cron: "*/15 * * * *",
+  // cron: "* * * * *",
 
   run: async payload => {
     logger.info("Starting scheduled store health scan", {
