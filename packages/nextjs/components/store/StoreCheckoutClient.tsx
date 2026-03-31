@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { StoreActivityLogCard } from "./StoreActivityLogCard";
 import { StoreAgentGuardrailsCard } from "./StoreAgentGuardrailsCard";
 import { StoreCatalogGrid } from "./StoreCatalogGrid";
 import { StoreCheckoutPanel } from "./StoreCheckoutPanel";
 import { StoreHero } from "./StoreHero";
 import { StoreManagerControls } from "./StoreManagerControls";
+import { StoreRecentAgentRunsCard } from "./StoreRecentAgentRunsCard";
 import type { AgentFeedback, CheckoutLog, ItemFormState } from "./checkout/shared";
 import { usePrivy } from "@privy-io/react-auth";
 import { createPublicClient, http } from "viem";
@@ -14,6 +15,7 @@ import { baseSepolia } from "viem/chains";
 import deployedContracts from "~~/contracts/deployedContracts";
 import { useHaloChip } from "~~/hooks/halochip-arx/useHaloChip";
 import type { StoreWithCatalog } from "~~/lib/store.types";
+import type { AgentRun, AgentValidation } from "~~/lib/supabase";
 
 const CHAIN_ID = 84532;
 
@@ -60,6 +62,10 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
   const [managerBusy, setManagerBusy] = useState(false);
   const [managerError, setManagerError] = useState<string | null>(null);
   const [agentFeedback, setAgentFeedback] = useState<AgentFeedback | null>(null);
+  const [recentAgentRuns, setRecentAgentRuns] = useState<AgentRun[]>([]);
+  const [recentValidations, setRecentValidations] = useState<AgentValidation[]>([]);
+  const [agentRunsLoading, setAgentRunsLoading] = useState(false);
+  const [queuedRunRequestedAt, setQueuedRunRequestedAt] = useState<number | null>(null);
   const [itemForm, setItemForm] = useState<ItemFormState>({
     sku: "",
     name: "",
@@ -98,6 +104,27 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
 
   const cartTotal = cart.reduce((sum, line) => sum + Number(line.item.price) * line.quantity, 0);
 
+  const fetchAgentLogs = useCallback(async () => {
+    if (!store.manager_agent?.id) return;
+
+    setAgentRunsLoading(true);
+    try {
+      const response = await fetch(`/api/agents/${store.manager_agent.id}/logs`, {
+        cache: "no-store",
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to fetch agent logs");
+      }
+      setRecentAgentRuns(result.runs || []);
+      setRecentValidations(result.validations || []);
+    } catch (error) {
+      console.error("Failed to refresh agent logs:", error);
+    } finally {
+      setAgentRunsLoading(false);
+    }
+  }, [store.manager_agent?.id]);
+
   const pushLog = (message: string, tone: CheckoutLog["tone"] = "info") => {
     setLogs(prev => [
       ...prev,
@@ -115,6 +142,62 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
       [itemId]: Math.max(0, next),
     }));
   };
+
+  useEffect(() => {
+    if (!store.manager_agent?.id) {
+      setRecentAgentRuns([]);
+      setRecentValidations([]);
+      return;
+    }
+
+    void fetchAgentLogs();
+
+    const interval = window.setInterval(
+      () => {
+        void fetchAgentLogs();
+      },
+      agentFeedback?.queued ? 3000 : 10000,
+    );
+
+    return () => window.clearInterval(interval);
+  }, [agentFeedback?.queued, fetchAgentLogs, store.manager_agent?.id]);
+
+  useEffect(() => {
+    if (!agentFeedback?.queued || !queuedRunRequestedAt || recentAgentRuns.length === 0) {
+      return;
+    }
+
+    const latestRun = recentAgentRuns[0];
+    const latestRunStartedAt = Date.parse(latestRun.started_at);
+    if (Number.isNaN(latestRunStartedAt) || latestRunStartedAt < queuedRunRequestedAt - 5000) {
+      return;
+    }
+
+    const validation = recentValidations.find(candidate => candidate.agent_run_id === latestRun.id);
+    const actionCount = Array.isArray(latestRun.output_json?.actions) ? latestRun.output_json.actions.length : 0;
+
+    if (latestRun.state !== "submitted" && latestRun.state !== "failed") {
+      setAgentFeedback({
+        state: latestRun.state,
+        summary:
+          latestRun.decision_summary ||
+          `The queued store agent run is now ${latestRun.state}. Recent runs below will keep refreshing automatically.`,
+        actionCount: 0,
+        validationStatus: validation?.status,
+        queued: true,
+      });
+      return;
+    }
+
+    setAgentFeedback({
+      state: latestRun.state,
+      summary: latestRun.decision_summary || "Agent run completed.",
+      actionCount,
+      validationStatus: validation?.status,
+      queued: false,
+    });
+    setQueuedRunRequestedAt(null);
+  }, [agentFeedback?.queued, queuedRunRequestedAt, recentAgentRuns, recentValidations]);
 
   const handleCheckout = async () => {
     if (!authenticated || !wallet) {
@@ -311,11 +394,15 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
       if (!response.ok) {
         throw new Error(result.error || "Failed to run store agent");
       }
+      setQueuedRunRequestedAt(Date.now());
       setAgentFeedback({
-        state: result.run?.state || "submitted",
-        summary: result.run?.decision_summary || "Agent run completed.",
-        actionCount: result.actions?.length || 0,
-        validationStatus: result.run ? "pending" : undefined,
+        state: result.queued ? "queued" : result.run?.state || "submitted",
+        summary: result.queued
+          ? "The autonomous store run has been queued in Trigger.dev. Check agent activity or refresh in a moment for the completed run."
+          : result.run?.decision_summary || "Agent run completed.",
+        actionCount: result.queued ? 0 : result.actions?.length || 0,
+        validationStatus: result.queued ? undefined : result.run ? "pending" : undefined,
+        queued: Boolean(result.queued),
       });
     } catch (error) {
       setManagerError(error instanceof Error ? error.message : "Failed to run store agent");
@@ -398,6 +485,13 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
             onCheckout={handleCheckout}
           />
           <StoreAgentGuardrailsCard store={store} />
+          {store.manager_agent && (
+            <StoreRecentAgentRunsCard
+              runs={recentAgentRuns}
+              validations={recentValidations}
+              loading={agentRunsLoading}
+            />
+          )}
           <StoreActivityLogCard logs={logs} />
         </div>
       </div>

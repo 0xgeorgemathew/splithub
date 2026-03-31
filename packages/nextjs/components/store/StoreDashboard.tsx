@@ -96,6 +96,7 @@ export function StoreDashboard() {
   const [data, setData] = useState<StoreDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [agentActionStoreId, setAgentActionStoreId] = useState<number | null>(null);
 
   const fetchDashboard = useCallback(async () => {
@@ -144,13 +145,22 @@ export function StoreDashboard() {
 
   const handleAgentTrigger = async (storeId: number) => {
     setAgentActionStoreId(storeId);
+    setError(null);
+    setNotice(null);
     try {
-      await fetch(`/api/stores/${storeId}/agent/runs/trigger`, {
+      const response = await fetch(`/api/stores/${storeId}/agent/runs/trigger`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ triggerSource: "dashboard_manual" }),
       });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to queue store agent");
+      }
+      setNotice("Agent run queued. Refresh activity logs in a moment to see the completed run.");
       await fetchDashboard();
+    } catch (agentError) {
+      setError(agentError instanceof Error ? agentError.message : "Failed to queue store agent");
     } finally {
       setAgentActionStoreId(null);
     }
@@ -158,6 +168,8 @@ export function StoreDashboard() {
 
   const handleCreateAgent = async (storeId: number) => {
     setAgentActionStoreId(storeId);
+    setError(null);
+    setNotice(null);
     try {
       const response = await fetch(`/api/stores/${storeId}/agent/create`, {
         method: "POST",
@@ -166,6 +178,7 @@ export function StoreDashboard() {
       if (!response.ok) {
         throw new Error(result.error || "Failed to create store agent");
       }
+      setNotice("Store agent created. You can now queue autonomous runs for this store.");
       await fetchDashboard();
     } catch (createError) {
       setError(createError instanceof Error ? createError.message : "Failed to create store agent");
@@ -251,6 +264,11 @@ export function StoreDashboard() {
 
       {error && (
         <div className="mt-6 rounded-2xl border border-error/30 bg-error/10 px-4 py-3 text-sm text-error">{error}</div>
+      )}
+      {notice && (
+        <div className="mt-6 rounded-2xl border border-success/30 bg-success/10 px-4 py-3 text-sm text-success">
+          {notice}
+        </div>
       )}
 
       {loading ? (
