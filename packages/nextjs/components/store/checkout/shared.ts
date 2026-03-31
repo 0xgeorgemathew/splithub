@@ -13,6 +13,7 @@ export type AgentFeedback = {
   summary: string;
   actionCount: number;
   validationStatus?: string;
+  queued?: boolean;
 };
 
 export type ItemFormState = {

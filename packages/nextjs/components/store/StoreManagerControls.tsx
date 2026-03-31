@@ -98,10 +98,18 @@ export function StoreManagerControls({
       {managerError && <div className="mt-3 text-sm text-error">{managerError}</div>}
       {agentFeedback && (
         <div className="mt-4 rounded-2xl border border-success/25 bg-success/10 px-4 py-4 text-sm">
-          <div className="font-semibold text-success">Agent run completed</div>
+          <div className="font-semibold text-success">
+            {agentFeedback.queued
+              ? agentFeedback.state === "queued"
+                ? "Agent run queued"
+                : "Agent run in progress"
+              : "Agent run completed"}
+          </div>
           <div className="mt-2 capitalize text-base-content/70">State: {agentFeedback.state}</div>
           <div className="mt-1 text-base-content/70">{agentFeedback.summary}</div>
-          <div className="mt-2 text-base-content/60">Actions executed: {agentFeedback.actionCount}</div>
+          {!agentFeedback.queued && (
+            <div className="mt-2 text-base-content/60">Actions executed: {agentFeedback.actionCount}</div>
+          )}
           {agentFeedback.validationStatus && (
             <div className="mt-1 text-base-content/50">Validation record: {agentFeedback.validationStatus}</div>
           )}
