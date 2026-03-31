@@ -1,15 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { AgentAnimation } from "./AgentAnimation";
 import { FriendsAnimation } from "./FriendsAnimation";
 import { VenuesAnimation } from "./VenuesAnimation";
 import { AnimatePresence, motion } from "framer-motion";
 
-type ActiveTab = "friends" | "venues";
+type ActiveTab = "friends" | "venues" | "agent";
 
 interface PhoneMockupProps {
   showBoth?: boolean;
 }
+
+// Tab config for labels and colors
+const TAB_CONFIG: Record<ActiveTab, { label: string; color: string; dotColor: string }> = {
+  friends: { label: "Split Bills", color: "bg-primary", dotColor: "bg-primary" },
+  venues: { label: "Event Credits", color: "bg-success", dotColor: "bg-success" },
+  agent: { label: "AI Agent", color: "bg-info", dotColor: "bg-info" },
+};
 
 // Phone component to avoid duplication
 function PhoneFrame({
@@ -18,12 +26,12 @@ function PhoneFrame({
   showTapHand,
   tapTarget,
 }: {
-  type: "friends" | "venues";
+  type: ActiveTab;
   showHand?: boolean;
   showTapHand: boolean;
-  tapTarget: "friends" | "venues";
+  tapTarget: ActiveTab;
 }) {
-  const isFriends = type === "friends";
+  const config = TAB_CONFIG[type];
   return (
     <div className="relative">
       {/* Phone bezel */}
@@ -51,20 +59,20 @@ function PhoneFrame({
           {/* App header */}
           <div className="absolute top-8 left-0 right-0 px-4 z-10">
             <div className="flex items-center gap-2">
-              <div className={`w-1.5 h-1.5 rounded-full ${isFriends ? "bg-primary" : "bg-success"}`} />
-              <span className="text-xs font-semibold text-base-content/70">
-                {isFriends ? "Split Bills" : "Event Credits"}
-              </span>
+              <div className={`w-1.5 h-1.5 rounded-full ${config.dotColor}`} />
+              <span className="text-xs font-semibold text-base-content/70">{config.label}</span>
             </div>
           </div>
 
           {/* Animation content */}
           <div className="pt-14 px-2 h-full flex items-start justify-center scale-[0.85] origin-top">
-            {isFriends ? <FriendsAnimation /> : <VenuesAnimation />}
+            {type === "friends" && <FriendsAnimation />}
+            {type === "venues" && <VenuesAnimation />}
+            {type === "agent" && <AgentAnimation />}
           </div>
 
           {/* NFC Connection Line (appears on tap) - Friends only */}
-          {isFriends && (
+          {type === "friends" && (
             <AnimatePresence>
               {showHand && showTapHand && tapTarget === "friends" && (
                 <motion.div
@@ -112,7 +120,7 @@ function PhoneFrame({
       </div>
 
       {/* Tap Hand Animation - Friends only */}
-      {isFriends && showHand && (
+      {type === "friends" && showHand && (
         <AnimatePresence>
           {showTapHand && tapTarget === "friends" && (
             <motion.div
@@ -169,7 +177,7 @@ function PhoneFrame({
 
 export function PhoneMockup({ showBoth = true }: PhoneMockupProps) {
   const [showTapHand, setShowTapHand] = useState(false);
-  const [tapTarget, setTapTarget] = useState<"friends" | "venues">("friends");
+  const [tapTarget, setTapTarget] = useState<ActiveTab>("friends");
   const [mobileTab, setMobileTab] = useState<ActiveTab>("friends");
 
   // Orchestrate tap animation to sync with FriendsAnimation settle phase
@@ -192,28 +200,30 @@ export function PhoneMockup({ showBoth = true }: PhoneMockupProps) {
     };
   }, []);
 
+  const tabs: ActiveTab[] = ["friends", "venues", "agent"];
+
   return (
     <>
       {/* Mobile: Tabbed view */}
       <div className="sm:hidden flex flex-col items-center">
         {/* Tab switcher */}
         <div className="flex bg-base-300/50 rounded-full p-1 mb-6">
-          {(["friends", "venues"] as const).map(tab => (
+          {tabs.map(tab => (
             <button
               key={tab}
               onClick={() => setMobileTab(tab)}
-              className={`relative px-5 py-2 text-sm font-medium rounded-full transition-colors duration-200 ${
+              className={`relative px-4 py-2 text-xs font-medium rounded-full transition-colors duration-200 ${
                 mobileTab === tab ? "text-primary-content" : "text-base-content/60"
               }`}
             >
               {mobileTab === tab && (
                 <motion.div
                   layoutId="phoneMockupTab"
-                  className={`absolute inset-0 rounded-full ${tab === "friends" ? "bg-primary" : "bg-success"}`}
+                  className={`absolute inset-0 rounded-full ${TAB_CONFIG[tab].color}`}
                   transition={{ type: "spring", stiffness: 400, damping: 30 }}
                 />
               )}
-              <span className="relative z-10">{tab === "friends" ? "Split Bills" : "Event Credits"}</span>
+              <span className="relative z-10">{TAB_CONFIG[tab].label}</span>
             </button>
           ))}
         </div>
@@ -222,9 +232,9 @@ export function PhoneMockup({ showBoth = true }: PhoneMockupProps) {
         <AnimatePresence mode="wait">
           <motion.div
             key={mobileTab}
-            initial={{ opacity: 0, x: mobileTab === "friends" ? -20 : 20 }}
+            initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: mobileTab === "friends" ? 20 : -20 }}
+            exit={{ opacity: 0, x: 20 }}
             transition={{ duration: 0.3 }}
           >
             <PhoneFrame
@@ -238,7 +248,7 @@ export function PhoneMockup({ showBoth = true }: PhoneMockupProps) {
       </div>
 
       {/* Desktop: Side-by-side view */}
-      <div className="hidden sm:flex relative items-center justify-center gap-4 lg:gap-8">
+      <div className="hidden sm:flex relative items-center justify-center gap-4 lg:gap-6">
         {/* Phone Frame - Friends */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -256,6 +266,17 @@ export function PhoneMockup({ showBoth = true }: PhoneMockupProps) {
             transition={{ duration: 0.6, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
           >
             <PhoneFrame type="venues" showTapHand={showTapHand} tapTarget={tapTarget} />
+          </motion.div>
+        )}
+
+        {/* Phone Frame - Agent */}
+        {showBoth && (
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <PhoneFrame type="agent" showTapHand={showTapHand} tapTarget={tapTarget} />
           </motion.div>
         )}
 

@@ -1,24 +1,53 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
-import { ArrowRight, CreditCard, Nfc, Smartphone, Users, Wallet } from "lucide-react";
+import { motion, useInView } from "framer-motion";
+import { ArrowRight, Bot, CreditCard, Nfc, Settings, Smartphone, Users, Wallet } from "lucide-react";
 
 interface CardHoverState {
   friends: boolean;
   venues: boolean;
+  agent: boolean;
+}
+
+// Detect touch device (no hover capability)
+function useIsTouchDevice() {
+  const [isTouch, setIsTouch] = useState(false);
+  useEffect(() => {
+    setIsTouch(window.matchMedia("(hover: none)").matches);
+  }, []);
+  return isTouch;
 }
 
 export function UseCaseCards() {
   const [hovered, setHovered] = useState<CardHoverState>({
     friends: false,
     venues: false,
+    agent: false,
   });
+  const isTouch = useIsTouchDevice();
+
+  // Auto-trigger animations on touch devices when cards come into view
+  const friendsRef = useRef(null);
+  const venuesRef = useRef(null);
+  const agentRef = useRef(null);
+  const friendsInView = useInView(friendsRef, { once: false, margin: "-50px" });
+  const venuesInView = useInView(venuesRef, { once: false, margin: "-50px" });
+  const agentInView = useInView(agentRef, { once: false, margin: "-50px" });
+
+  useEffect(() => {
+    if (!isTouch) return;
+    setHovered({
+      friends: friendsInView,
+      venues: venuesInView,
+      agent: agentInView,
+    });
+  }, [isTouch, friendsInView, venuesInView, agentInView]);
 
   return (
     <section id="features" className="py-16 sm:py-24 px-4">
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         {/* Section Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -33,26 +62,27 @@ export function UseCaseCards() {
             viewport={{ once: true }}
             className="font-[family-name:var(--font-outfit)] inline-block text-xs font-semibold text-primary uppercase tracking-widest mb-3 px-3 py-1 bg-primary/10 rounded-full"
           >
-            Two Ways to Pay
+            Three Ways to Pay
           </motion.span>
           <h2 className="font-[family-name:var(--font-archivo)] text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
             The Tap is the New Transaction
           </h2>
           <p className="font-[family-name:var(--font-outfit)] text-base-content/50 text-lg max-w-xl mx-auto font-light">
-            Whether you&apos;re splitting dinner or spending at events, one tap handles it all.
+            Whether you&apos;re splitting dinner, spending at events, or earning yield — one tap handles it all.
           </p>
         </motion.div>
 
-        {/* Two Cards Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
+        {/* Three Cards Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
           {/* Social Settlements Card */}
           <motion.div
+            ref={friendsRef}
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            onHoverStart={() => setHovered(h => ({ ...h, friends: true }))}
-            onHoverEnd={() => setHovered(h => ({ ...h, friends: false }))}
+            onHoverStart={() => !isTouch && setHovered(h => ({ ...h, friends: true }))}
+            onHoverEnd={() => !isTouch && setHovered(h => ({ ...h, friends: false }))}
             className="group relative"
           >
             <motion.div
@@ -66,7 +96,7 @@ export function UseCaseCards() {
               }}
             >
               {/* Background glow */}
-              <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className={`absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 transition-opacity duration-500 ${isTouch ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`} />
 
               {/* Icon */}
               <div className="relative mb-6">
@@ -152,12 +182,13 @@ export function UseCaseCards() {
 
           {/* Venues & Event Credits Card */}
           <motion.div
+            ref={venuesRef}
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            onHoverStart={() => setHovered(h => ({ ...h, venues: true }))}
-            onHoverEnd={() => setHovered(h => ({ ...h, venues: false }))}
+            onHoverStart={() => !isTouch && setHovered(h => ({ ...h, venues: true }))}
+            onHoverEnd={() => !isTouch && setHovered(h => ({ ...h, venues: false }))}
             className="group relative"
           >
             <motion.div
@@ -171,7 +202,7 @@ export function UseCaseCards() {
               }}
             >
               {/* Background glow */}
-              <div className="absolute top-0 right-0 w-64 h-64 bg-success/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className={`absolute top-0 right-0 w-64 h-64 bg-success/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 transition-opacity duration-500 ${isTouch ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`} />
 
               {/* Icon */}
               <div className="relative mb-6">
@@ -265,6 +296,130 @@ export function UseCaseCards() {
                   className="font-[family-name:var(--font-archivo)] inline-flex items-center gap-2 text-success font-semibold group/link"
                 >
                   <span>Buy Credits</span>
+                  <ArrowRight className="w-4 h-4 group-hover/link:translate-x-1 transition-transform" />
+                </Link>
+              </div>
+            </motion.div>
+          </motion.div>
+
+          {/* AI Agent Card */}
+          <motion.div
+            ref={agentRef}
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+            onHoverStart={() => !isTouch && setHovered(h => ({ ...h, agent: true }))}
+            onHoverEnd={() => !isTouch && setHovered(h => ({ ...h, agent: false }))}
+            className="group relative"
+          >
+            <motion.div
+              whileHover={{ y: -4 }}
+              transition={{ duration: 0.3 }}
+              className="relative h-full bg-gradient-to-br from-base-200/80 to-base-200/40 rounded-3xl p-8 border border-info/20 overflow-hidden"
+              style={{
+                boxShadow: hovered.agent
+                  ? "0 20px 40px -12px rgba(59, 130, 246, 0.25)"
+                  : "0 10px 30px -10px rgba(0, 0, 0, 0.2)",
+              }}
+            >
+              {/* Background glow */}
+              <div className={`absolute top-0 right-0 w-64 h-64 bg-info/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 transition-opacity duration-500 ${isTouch ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`} />
+
+              {/* Icon */}
+              <div className="relative mb-6">
+                <motion.div
+                  animate={hovered.agent ? { scale: 1.05 } : { scale: 1 }}
+                  className="w-14 h-14 rounded-2xl bg-info/10 border border-info/20 flex items-center justify-center"
+                >
+                  <Bot className="w-7 h-7 text-info" />
+                </motion.div>
+              </div>
+
+              {/* Content */}
+              <div className="relative">
+                <h3 className="font-[family-name:var(--font-archivo)] text-2xl font-bold mb-3">AI Agent</h3>
+                <p className="font-[family-name:var(--font-outfit)] text-base-content/60 mb-6 leading-relaxed font-light">
+                  Vincent AI manages your USDC on Aave for yield. Funds deploy and recall autonomously — your balance
+                  earns while you wait.
+                </p>
+
+                {/* Features list */}
+                <ul className="space-y-3 mb-8">
+                  {["Autonomous yield on Aave", "JIT funding for payments", "One-click deploy & withdraw"].map(
+                    (feature, i) => (
+                      <li
+                        key={i}
+                        className="font-[family-name:var(--font-outfit)] flex items-center gap-3 text-sm text-base-content/70"
+                      >
+                        <div className="w-1.5 h-1.5 rounded-full bg-info" />
+                        {feature}
+                      </li>
+                    ),
+                  )}
+                </ul>
+
+                {/* Hover Animation - Wallet → Agent → Yield */}
+                <div className="relative h-24 mb-6 overflow-hidden">
+                  {/* Wallet on left */}
+                  <motion.div
+                    animate={hovered.agent ? { x: [0, 30], opacity: 1 } : { x: 0, opacity: 0.5 }}
+                    transition={{ duration: 0.4, ease: "easeOut" }}
+                    className="absolute left-4 top-1/2 -translate-y-1/2"
+                  >
+                    <div className="w-10 h-10 bg-base-300 rounded-lg border border-base-content/10 flex items-center justify-center">
+                      <Wallet className="w-5 h-5 text-base-content/40" />
+                    </div>
+                  </motion.div>
+
+                  {/* Agent gear in center */}
+                  <motion.div
+                    animate={hovered.agent ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.5 }}
+                    transition={{ duration: 0.3, delay: 0.2 }}
+                    className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+                  >
+                    <div className="w-12 h-12 rounded-full bg-info/20 blur-md" />
+                    <motion.div
+                      animate={hovered.agent ? { rotate: [0, 180] } : { rotate: 0 }}
+                      transition={{
+                        duration: 1,
+                        repeat: hovered.agent ? Infinity : 0,
+                        repeatDelay: 0.5,
+                        ease: "linear",
+                      }}
+                      className="absolute inset-0 flex items-center justify-center"
+                    >
+                      <Settings className="w-6 h-6 text-info" />
+                    </motion.div>
+                  </motion.div>
+
+                  {/* Aave/coins on right */}
+                  <motion.div
+                    animate={hovered.agent ? { x: [0, -30], opacity: 1 } : { x: 0, opacity: 0.5 }}
+                    transition={{ duration: 0.4, ease: "easeOut" }}
+                    className="absolute right-4 top-1/2 -translate-y-1/2"
+                  >
+                    <div className="w-10 h-10 bg-base-300 rounded-lg border border-info/20 flex items-center justify-center">
+                      <span className="text-xs font-bold text-info">Aa</span>
+                    </div>
+                  </motion.div>
+
+                  {/* Yield particles floating up */}
+                  <motion.div
+                    animate={hovered.agent ? { opacity: [0, 1, 0], y: [0, -20] } : { opacity: 0 }}
+                    transition={{ duration: 0.8, delay: 0.5, repeat: hovered.agent ? Infinity : 0, repeatDelay: 0.4 }}
+                    className="absolute left-1/2 -translate-x-1/2 top-0 text-info font-bold text-sm"
+                  >
+                    +APY
+                  </motion.div>
+                </div>
+
+                {/* CTA */}
+                <Link
+                  href="/defi"
+                  className="font-[family-name:var(--font-archivo)] inline-flex items-center gap-2 text-info font-semibold group/link"
+                >
+                  <span>Earn Yield</span>
                   <ArrowRight className="w-4 h-4 group-hover/link:translate-x-1 transition-transform" />
                 </Link>
               </div>
