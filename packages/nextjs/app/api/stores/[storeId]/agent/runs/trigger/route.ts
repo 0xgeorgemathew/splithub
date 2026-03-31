@@ -1,5 +1,5 @@
+import { tasks } from "@trigger.dev/sdk";
 import { NextRequest, NextResponse } from "next/server";
-import { executeAutonomousStoreRun } from "~~/services/storeService";
 
 export const dynamic = "force-dynamic";
 
@@ -9,12 +9,19 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const body = await request.json().catch(() => ({}));
     const triggerSource = body.triggerSource || "manual";
 
-    const result = await executeAutonomousStoreRun(Number(storeId), triggerSource);
-    return NextResponse.json(result);
+    const handle = await tasks.trigger("store-agent-run", {
+      storeId: Number(storeId),
+      triggerSource,
+    });
+
+    return NextResponse.json({
+      queued: true,
+      handle,
+    });
   } catch (error) {
     console.error("Trigger store agent error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to trigger store agent" },
+      { error: error instanceof Error ? error.message : "Failed to queue store agent" },
       { status: 500 },
     );
   }
