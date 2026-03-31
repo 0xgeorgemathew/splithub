@@ -1,6 +1,8 @@
 import { type User as PrivyUser } from "@privy-io/react-auth";
 import { type User, supabase } from "~~/lib/supabase";
 
+export const DEFAULT_TAP_LIMIT_USD = 50;
+
 /**
  * Ensures a user exists in the database
  * If the user doesn't exist, creates a minimal user record
@@ -23,6 +25,7 @@ export async function ensureUserExists(walletAddress: string, userData?: Partial
     name: userData?.name || `User ${walletAddress.slice(0, 6)}`,
     email: userData?.email || `${walletAddress.slice(0, 8)}@splithub.temp`,
     chip_address: userData?.chip_address || null,
+    tap_limit_usd: userData?.tap_limit_usd ?? DEFAULT_TAP_LIMIT_USD,
   };
 
   const { data: createdUser, error: insertError } = await supabase.from("users").insert(newUser).select().single();
@@ -180,4 +183,30 @@ export async function searchUsersByTwitter(query: string, limit = 20): Promise<U
   }
 
   return (data || []) as User[];
+}
+
+export async function getUserTapLimit(walletAddress: string): Promise<number> {
+  const user = await getUserByWallet(walletAddress);
+  return user?.tap_limit_usd ?? DEFAULT_TAP_LIMIT_USD;
+}
+
+export async function setUserTapLimit(walletAddress: string, tapLimitUsd: number): Promise<User> {
+  if (!Number.isFinite(tapLimitUsd) || tapLimitUsd <= 0) {
+    throw new Error("tapLimitUsd must be greater than 0");
+  }
+
+  await ensureUserExists(walletAddress);
+
+  const { data, error } = await supabase
+    .from("users")
+    .update({ tap_limit_usd: tapLimitUsd })
+    .eq("wallet_address", walletAddress.toLowerCase())
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to update tap limit: ${error.message}`);
+  }
+
+  return data as User;
 }

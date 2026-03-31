@@ -3,32 +3,36 @@
 import { useState } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertCircle, Coins, Fuel, RefreshCw, User, Wallet } from "lucide-react";
-import { parseUnits } from "viem";
+import { AlertCircle, Coins, RefreshCw, User, Wallet } from "lucide-react";
+import { type Address } from "viem";
 import { useReadContract } from "wagmi";
 import { PaymentStatus, PaymentStatusIndicator } from "~~/components/settle/PaymentStatusIndicator";
 import { TOKENS } from "~~/config/tokens";
-import deployedContracts from "~~/contracts/deployedContracts";
+import { DEFAULT_AGENT_PAY_TEST_RECIPIENT } from "~~/constants/agentPay";
 import { useHaloChip } from "~~/hooks/halochip-arx/useHaloChip";
-import { useTargetNetwork } from "~~/hooks/scaffold-eth";
-import { useEmbeddedWalletClient } from "~~/hooks/useEmbeddedWalletClient";
+import { useCurrentUser } from "~~/hooks/useCurrentUser";
 import { baseSepolia, createBaseSepoliaPublicClient } from "~~/lib/baseSepolia";
-import { dispatchClientRefreshEvents, triggerCircleAutoSplit } from "~~/lib/clientTransactionUtils";
-import { ERC20_ABI, SPLIT_HUB_PAYMENTS_ABI } from "~~/lib/contractAbis";
+import { dispatchClientRefreshEvents } from "~~/lib/clientTransactionUtils";
+import { broadcastSignedChipTransaction, prepareRawChipTokenTransfer } from "~~/lib/chipTransactions";
+import { ERC20_ABI } from "~~/lib/contractAbis";
 import { parseContractError } from "~~/utils/contractErrors";
 
 // Hardcoded values
-const RECIPIENT_ADDRESS = "0x09a6f8C0194246c365bB42122E872626460F8a71" as const;
+const RECIPIENT_ADDRESS = DEFAULT_AGENT_PAY_TEST_RECIPIENT;
 const DEFAULT_TOKEN_ADDRESS = TOKENS.USDC;
 const DEFAULT_AMOUNT = "1";
 
-type FlowState = "idle" | "tapping" | "signing" | "submitting" | "confirming" | "success" | "error";
+type FlowState = "idle" | "preparing" | "tapping" | "submitting" | "confirming" | "success" | "error";
+
+const waitForNextPaint = () =>
+  new Promise<void>(resolve => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
 
 export default function SettlePage() {
   const { authenticated, user } = usePrivy();
-  const { targetNetwork } = useTargetNetwork();
-  const { signTypedData } = useHaloChip();
-  const { getWalletClient } = useEmbeddedWalletClient();
+  const { chipAddress } = useCurrentUser();
+  const { signDigest } = useHaloChip();
 
   // Use Privy's authentication state instead of wagmi's useAccount
   // This properly reflects the embedded wallet connection status
@@ -38,12 +42,6 @@ export default function SettlePage() {
   const [flowState, setFlowState] = useState<FlowState>("idle");
   const [error, setError] = useState("");
   const [txHash, setTxHash] = useState<string | null>(null);
-
-  // Get SplitHubPayments contract address for the current network
-  const chainContracts = deployedContracts[targetNetwork.id as keyof typeof deployedContracts] as
-    | Record<string, { address: string }>
-    | undefined;
-  const paymentsAddress = chainContracts?.SplitHubPayments?.address as `0x${string}` | undefined;
 
   // Read token decimals
   const { data: decimals } = useReadContract({
@@ -59,17 +57,6 @@ export default function SettlePage() {
     functionName: "symbol",
   });
 
-  // Read current nonce for payer
-  const { data: currentNonce, refetch: refetchNonce } = useReadContract({
-    address: paymentsAddress,
-    abi: SPLIT_HUB_PAYMENTS_ABI,
-    functionName: "nonces",
-    args: address ? [address] : undefined,
-    query: {
-      enabled: !!address && !!paymentsAddress,
-    },
-  });
-
   const handleSettle = async () => {
     setError("");
     setTxHash(null);
@@ -79,101 +66,65 @@ export default function SettlePage() {
       return;
     }
 
-    if (!paymentsAddress) {
-      setError("SplitHubPayments contract not deployed on this network");
-      return;
-    }
-
     if (decimals === undefined) {
       setError("Could not read token decimals. Is this a valid ERC-20 token?");
       return;
     }
 
-    if (currentNonce === undefined) {
-      setError("Could not read nonce from contract");
+    if (!chipAddress) {
+      setError("No registered chip found for this wallet");
       return;
     }
 
     try {
-      setFlowState("tapping");
-
-      // Build PaymentAuth struct
-      const amountInWei = parseUnits(DEFAULT_AMOUNT, decimals);
-      const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600); // 1 hour from now
-
-      const paymentAuth = {
-        payer: address,
-        recipient: RECIPIENT_ADDRESS,
-        token: DEFAULT_TOKEN_ADDRESS,
-        amount: amountInWei,
-        nonce: currentNonce,
-        deadline: deadline,
-      };
-
-      // EIP-712 domain and types matching SplitHubPayments.sol
-      const domain = {
-        name: "SplitHubPayments",
-        version: "1",
-        chainId: BigInt(targetNetwork.id),
-        verifyingContract: paymentsAddress,
-      };
-
-      const types = {
-        PaymentAuth: [
-          { name: "payer", type: "address" },
-          { name: "recipient", type: "address" },
-          { name: "token", type: "address" },
-          { name: "amount", type: "uint256" },
-          { name: "nonce", type: "uint256" },
-          { name: "deadline", type: "uint256" },
-        ],
-      };
-
-      // Signing state
-      setFlowState("signing");
-
-      // Sign with NFC chip
-      const chipResult = await signTypedData({
-        domain,
-        types,
-        primaryType: "PaymentAuth",
-        message: paymentAuth,
-      });
-
-      // Submitting state
-      setFlowState("submitting");
-
-      const walletClient = await getWalletClient();
-      const hash = await walletClient.writeContract({
-        account: walletClient.account!,
-        address: paymentsAddress,
-        abi: SPLIT_HUB_PAYMENTS_ABI,
-        chain: baseSepolia,
-        functionName: "executePayment",
-        args: [paymentAuth, chipResult.signature as `0x${string}`],
-      });
-
-      // Confirming state
-      setFlowState("confirming");
-      setTxHash(hash);
-
       const publicClient = createBaseSepoliaPublicClient();
-      const receipt = await publicClient.waitForTransactionReceipt({ hash });
-      if (receipt.status !== "success") {
-        throw new Error("Settlement failed on-chain");
-      }
 
-      await triggerCircleAutoSplit({
-        userWallet: address,
-        amount: amountInWei.toString(),
+      setFlowState("tapping");
+      await waitForNextPaint();
+
+      const prepared = await prepareRawChipTokenTransfer({
+        publicClient,
+        chipAddress: chipAddress as Address,
         tokenAddress: DEFAULT_TOKEN_ADDRESS,
+        recipient: RECIPIENT_ADDRESS,
+        amount: DEFAULT_AMOUNT,
         decimals,
       });
 
-      // Refetch nonce for next payment
-      await refetchNonce();
+      const signed = await signDigest({ digest: prepared.digest });
 
-      // Trigger balance refresh across the app
+      setFlowState("preparing");
+
+      const prepareRes = await fetch("/api/vincent/prepare-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          payerWallet: address,
+          limitWallet: address,
+          fundingTargetWallet: chipAddress,
+          tokenAddress: DEFAULT_TOKEN_ADDRESS,
+          amount: DEFAULT_AMOUNT,
+          decimals,
+        }),
+      });
+
+      if (!prepareRes.ok) {
+        const data = await prepareRes.json().catch(() => null);
+        throw new Error(data?.error || "Failed to prepare wallet for tap");
+      }
+
+      setFlowState("submitting");
+
+      const result = await broadcastSignedChipTransaction({
+        publicClient,
+        chipAddress: chipAddress as Address,
+        prepared,
+        signed,
+      });
+
+      setFlowState("confirming");
+      setTxHash(result.txHash);
+
       dispatchClientRefreshEvents({ balances: true, paymentRequests: true });
 
       setFlowState("success");
@@ -187,7 +138,7 @@ export default function SettlePage() {
   // Map flowState to PaymentStatus for the indicator
   const getPaymentStatus = (): PaymentStatus => {
     if (flowState === "success") return "success";
-    if (["tapping", "signing", "submitting", "confirming"].includes(flowState)) return "processing";
+    if (["preparing", "tapping", "submitting", "confirming"].includes(flowState)) return "processing";
     return "idle";
   };
 
@@ -195,13 +146,13 @@ export default function SettlePage() {
   const getProcessingText = (): string => {
     switch (flowState) {
       case "tapping":
-        return "Tap your chip...";
-      case "signing":
-        return "Authorizing...";
+        return "Tap chip once";
+      case "preparing":
+        return "Preparing payment";
       case "submitting":
-        return "Broadcasting...";
+        return "Sending from chip";
       case "confirming":
-        return "Confirming...";
+        return "Waiting for confirmation";
       default:
         return "Processing...";
     }
@@ -215,9 +166,25 @@ export default function SettlePage() {
   };
 
   const paymentStatus = getPaymentStatus();
+  const isProcessing = ["preparing", "tapping", "submitting", "confirming"].includes(flowState);
+
+  const statusCopy =
+    flowState === "idle"
+      ? "Tap once to trigger the chip prompt. SplitHub will handle the rest on this page."
+      : flowState === "tapping"
+      ? "Hold the registered chip to the phone now."
+      : flowState === "preparing"
+      ? "SplitHub is topping up the chip if needed."
+      : flowState === "submitting"
+      ? "Broadcasting the chip-signed payment."
+      : flowState === "confirming"
+      ? "Waiting for the transaction receipt."
+      : flowState === "success"
+      ? `${DEFAULT_AMOUNT} ${symbol || "tokens"} sent from the chip wallet.`
+      : "Payment failed. Try again.";
 
   return (
-    <div className="min-h-[calc(100vh-64px)] bg-base-200 p-4 pb-24">
+    <div className="min-h-[calc(100vh-64px)] bg-base-200 p-4">
       <div className="w-full max-w-md md:max-w-lg lg:max-w-xl mx-auto">
         {!isConnected ? (
           /* Not Connected State */
@@ -228,128 +195,85 @@ export default function SettlePage() {
             <p className="text-base-content/50 text-center">Connect your wallet to settle</p>
           </div>
         ) : (
-          <div className="flex flex-col items-center pt-6">
-            {/* Info Pills - Only show in idle state */}
-            <AnimatePresence>
-              {paymentStatus === "idle" && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10, height: 0, marginBottom: 0 }}
-                  className="flex flex-wrap justify-center gap-2 mb-6"
-                >
-                  {/* Recipient Pill */}
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-base-100 border border-base-300 rounded-full">
-                    <User className="w-3.5 h-3.5 text-primary" />
-                    <span className="text-xs font-medium text-base-content">
-                      {RECIPIENT_ADDRESS.slice(0, 6)}...{RECIPIENT_ADDRESS.slice(-4)}
-                    </span>
+          <div className="flex min-h-[calc(100vh-120px)] flex-col justify-center gap-4">
+            <div className="card bg-base-100 border border-base-300 shadow-sm">
+              <div className="card-body gap-4 p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm text-base-content/60">Test payment</p>
+                    <h1 className="text-3xl font-semibold text-base-content leading-none">
+                      {DEFAULT_AMOUNT} {symbol || "Token"}
+                    </h1>
                   </div>
+                  <div className="badge badge-outline badge-primary">Direct chip pay</div>
+                </div>
 
-                  {/* Token Pill */}
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-base-100 border border-primary/50 rounded-full">
-                    <Coins className="w-3.5 h-3.5 text-primary" />
-                    <span className="text-xs font-medium text-base-content">{symbol || "Token"}</span>
-                    <span className="w-1.5 h-1.5 bg-success rounded-full" />
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-2xl border border-base-300 bg-base-200/50 p-3">
+                    <p className="text-xs uppercase tracking-wide text-base-content/50">Recipient</p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <User className="h-4 w-4 text-primary" />
+                      <p className="font-medium text-base-content">
+                        {RECIPIENT_ADDRESS.slice(0, 6)}...{RECIPIENT_ADDRESS.slice(-4)}
+                      </p>
+                    </div>
                   </div>
-
-                  {/* Direct submission pill */}
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-base-100 border border-base-300 rounded-full">
-                    <Fuel className="w-3.5 h-3.5 text-success" />
-                    <span className="text-xs font-medium text-success">Direct</span>
+                  <div className="rounded-2xl border border-base-300 bg-base-200/50 p-3">
+                    <p className="text-xs uppercase tracking-wide text-base-content/50">Payer</p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <Coins className="h-4 w-4 text-primary" />
+                      <p className="font-medium text-base-content">{symbol || "Token"} via chip</p>
+                    </div>
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                </div>
 
-            {/* Amount Display - Morphs into success message */}
-            <AnimatePresence mode="wait">
-              {paymentStatus !== "success" ? (
-                <motion.div
-                  key="amount"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="text-center mb-8"
-                >
-                  <p className="text-6xl font-bold text-base-content mb-1">{DEFAULT_AMOUNT}</p>
-                  <p className="text-base-content/50 text-sm">{symbol || "tokens"}</p>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="success-info"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="text-center mb-6"
-                >
-                  <h3 className="text-2xl font-bold mb-3 text-base-content">Payment Complete</h3>
-                  <div className="flex items-center justify-center gap-2 px-4 py-2 bg-base-100 border border-success/30 rounded-full">
-                    <Coins className="w-4 h-4 text-success" />
-                    <span className="text-sm font-semibold text-base-content">
-                      {DEFAULT_AMOUNT} {symbol || "tokens"} sent
-                    </span>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                <PaymentStatusIndicator
+                  status={paymentStatus}
+                  processingText={getProcessingText()}
+                  onTap={handleSettle}
+                  disabled={!chipAddress}
+                  size="lg"
+                />
 
-            {/* Error Message */}
+                <p className="text-center text-sm text-base-content/60">{statusCopy}</p>
+              </div>
+            </div>
+
             <AnimatePresence>
               {error && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-error/10 border border-error/30 rounded-full mb-6 max-w-xs"
+                  className="flex items-center gap-2 rounded-2xl border border-error/30 bg-error/10 px-4 py-3"
                 >
                   <AlertCircle className="w-4 h-4 text-error flex-shrink-0" />
-                  <span className="text-error text-xs">{error}</span>
+                  <span className="text-error text-sm">{error}</span>
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Morphing Payment Status Indicator */}
-            <PaymentStatusIndicator
-              status={paymentStatus}
-              processingText={getProcessingText()}
-              onTap={handleSettle}
-              disabled={!paymentsAddress}
-              size="lg"
-            />
-
-            {/* Transaction Link & New Payment Button - Only on success */}
-            <AnimatePresence>
-              {paymentStatus === "success" && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                  className="flex flex-col items-center gap-3 mt-6"
-                >
-                  {txHash && (
-                    <a
-                      href={`${targetNetwork.blockExplorers?.default.url}/tx/${txHash}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-primary hover:underline font-mono"
-                    >
-                      View transaction →
-                    </a>
-                  )}
-
-                  <motion.button
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.3 }}
-                    onClick={handleReset}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-base-300/50 hover:bg-base-300 rounded-full text-sm font-medium text-base-content transition-colors"
+            {(paymentStatus === "success" || !!txHash || (!isProcessing && flowState !== "idle")) && (
+              <div className="flex flex-col items-center gap-3">
+                {txHash && (
+                  <a
+                    href={`${baseSepolia.blockExplorers.default.url}/tx/${txHash}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-primary hover:underline font-mono"
                   >
-                    <RefreshCw className="w-4 h-4" />
-                    New Payment
-                  </motion.button>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                    View transaction
+                  </a>
+                )}
+
+                {(paymentStatus === "success" || flowState === "error") && (
+                  <button onClick={handleReset} className="btn btn-outline rounded-full">
+                    <RefreshCw className="h-4 w-4" />
+                    New payment
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

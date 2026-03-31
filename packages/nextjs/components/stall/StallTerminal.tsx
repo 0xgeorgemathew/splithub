@@ -96,6 +96,8 @@ function mapFlowToPhase(flowState: StallPaymentFlowState): CardPhase {
   switch (flowState) {
     case "idle":
       return "entry";
+    case "preparing":
+      return "processing";
     case "tapping":
       return "tapping";
     case "submitting":

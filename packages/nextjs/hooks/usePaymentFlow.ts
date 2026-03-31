@@ -16,7 +16,15 @@ import { parseContractError } from "~~/utils/contractErrors";
 /**
  * Payment flow states
  */
-export type FlowState = "idle" | "tapping" | "signing" | "submitting" | "confirming" | "success" | "error";
+export type FlowState =
+  | "idle"
+  | "preparing"
+  | "tapping"
+  | "signing"
+  | "submitting"
+  | "confirming"
+  | "success"
+  | "error";
 
 /**
  * Payment status for UI display
@@ -88,6 +96,24 @@ export function usePaymentFlow(payer?: `0x${string}`) {
       }
 
       try {
+        setFlowState("preparing");
+
+        const prepareRes = await fetch("/api/vincent/prepare-payment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            payerWallet: params.payer,
+            tokenAddress: params.token,
+            amount: params.amount,
+            decimals: params.decimals,
+          }),
+        });
+
+        if (!prepareRes.ok) {
+          const data = await prepareRes.json().catch(() => null);
+          throw new Error(data?.error || "Failed to prepare wallet for tap");
+        }
+
         setFlowState("tapping");
 
         // Build PaymentAuth struct
@@ -192,7 +218,7 @@ export function usePaymentFlow(payer?: `0x${string}`) {
    */
   const getPaymentStatus = (): PaymentStatus => {
     if (flowState === "success") return "success";
-    if (["tapping", "signing", "submitting", "confirming"].includes(flowState)) return "processing";
+    if (["preparing", "tapping", "signing", "submitting", "confirming"].includes(flowState)) return "processing";
     return "idle";
   };
 
@@ -201,6 +227,8 @@ export function usePaymentFlow(payer?: `0x${string}`) {
    */
   const getProcessingText = (): string => {
     switch (flowState) {
+      case "preparing":
+        return "Preparing wallet...";
       case "tapping":
         return "Tap your chip...";
       case "signing":

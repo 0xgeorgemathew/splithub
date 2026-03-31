@@ -40,6 +40,16 @@ export const ERC20_ABI = [
     outputs: [{ name: "", type: "bool" }],
     stateMutability: "nonpayable",
   },
+  {
+    type: "function",
+    name: "allowance",
+    inputs: [
+      { name: "owner", type: "address" },
+      { name: "spender", type: "address" },
+    ],
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+  },
 ] as const;
 
 export const SPLIT_HUB_REGISTRY_ABI = [

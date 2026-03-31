@@ -15,7 +15,15 @@ export interface PaymentParams {
 }
 
 // Flow states for the settle process
-export type FlowState = "idle" | "tapping" | "signing" | "submitting" | "confirming" | "success" | "error";
+export type FlowState =
+  | "idle"
+  | "preparing"
+  | "tapping"
+  | "signing"
+  | "submitting"
+  | "confirming"
+  | "success"
+  | "error";
 
 // Props for the main SettleFlow component
 export interface SettleFlowProps {
@@ -91,6 +99,7 @@ export interface BatchPaymentAuth {
 
 // Progress steps for visual indicator
 export const FLOW_STEPS = [
+  { key: "preparing", label: "Prep" },
   { key: "tapping", label: "Tap" },
   { key: "signing", label: "Sign" },
   { key: "submitting", label: "Send" },

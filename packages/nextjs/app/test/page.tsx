@@ -55,6 +55,8 @@ import {
 import { execHaloCmdWeb } from "@arx-research/libhalo/api/web";
 import { createPublicClient, formatEther, http, keccak256, parseEther, serializeTransaction } from "viem";
 import { baseSepolia } from "viem/chains";
+import { TOKENS } from "~~/config/tokens";
+import { DEFAULT_AGENT_PAY_TEST_RECIPIENT } from "~~/constants/agentPay";
 import { broadcastRawChipTokenTransfer } from "~~/lib/chipTransactions";
 
 export default function TestPage() {
@@ -77,8 +79,8 @@ export default function TestPage() {
   const [ethAmount, setEthAmount] = useState("");
 
   // Form inputs for ERC-20 token transfer
-  const [tokenAddress, setTokenAddress] = useState("");
-  const [tokenTo, setTokenTo] = useState("");
+  const [tokenAddress, setTokenAddress] = useState<string>(TOKENS.USDC);
+  const [tokenTo, setTokenTo] = useState<string>(DEFAULT_AGENT_PAY_TEST_RECIPIENT);
   const [tokenAmount, setTokenAmount] = useState("");
 
   // Debug terminal logs - visible in UI since we can't access browser console

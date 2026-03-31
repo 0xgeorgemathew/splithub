@@ -9,7 +9,7 @@ import { useTargetNetwork } from "~~/hooks/scaffold-eth";
 
 export function SettleFlow({ params, onSuccess, onError, onClose }: SettleFlowProps) {
   const { targetNetwork } = useTargetNetwork();
-  const { flowState, error, txHash, symbol, isConnected, paymentsAddress, initiateSettle } = useSettleFlow({
+  const { flowState, statusMessage, error, txHash, symbol, isConnected, canInitiate, initiateSettle } = useSettleFlow({
     params,
     onSuccess,
     onError,
@@ -18,24 +18,8 @@ export function SettleFlow({ params, onSuccess, onError, onClose }: SettleFlowPr
   // Map flowState to PaymentStatus for the indicator
   const getPaymentStatus = (): PaymentStatus => {
     if (flowState === "success") return "success";
-    if (["tapping", "signing", "submitting", "confirming"].includes(flowState)) return "processing";
+    if (["preparing", "tapping", "submitting", "confirming"].includes(flowState)) return "processing";
     return "idle";
-  };
-
-  // Get processing text based on current flow state
-  const getProcessingText = (): string => {
-    switch (flowState) {
-      case "tapping":
-        return "Tap your chip...";
-      case "signing":
-        return "Authorizing...";
-      case "submitting":
-        return "Broadcasting...";
-      case "confirming":
-        return "Confirming...";
-      default:
-        return "Processing...";
-    }
   };
 
   if (!isConnected) {
@@ -133,9 +117,9 @@ export function SettleFlow({ params, onSuccess, onError, onClose }: SettleFlowPr
       <div className="my-2">
         <PaymentStatusIndicator
           status={paymentStatus}
-          processingText={getProcessingText()}
+          processingText={statusMessage || "Processing..."}
           onTap={initiateSettle}
-          disabled={!paymentsAddress}
+          disabled={!canInitiate}
           size="sm"
         />
       </div>

@@ -9,7 +9,14 @@ import { broadcastRawChipTokenTransfer } from "~~/lib/chipTransactions";
 import { ERC20_ABI, SPLIT_HUB_REGISTRY_ABI } from "~~/lib/contractAbis";
 import type { Stall } from "~~/lib/events.types";
 
-export type StallPaymentFlowState = "idle" | "tapping" | "submitting" | "confirming" | "success" | "error";
+export type StallPaymentFlowState =
+  | "idle"
+  | "preparing"
+  | "tapping"
+  | "submitting"
+  | "confirming"
+  | "success"
+  | "error";
 
 interface UseStallPaymentOptions {
   stall: Stall;
@@ -84,6 +91,28 @@ export function useStallPayment({ stall, onSuccess, onError }: UseStallPaymentOp
           abi: ERC20_ABI,
           functionName: "decimals",
         })) as number;
+
+        setFlowState("preparing");
+
+        const prepareRes = await fetch("/api/vincent/prepare-payment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            payerWallet,
+            limitWallet: payerWallet,
+            fundingTargetWallet: chipAddress,
+            tokenAddress,
+            amount: amount.toString(),
+            decimals: tokenDecimals,
+          }),
+        });
+
+        if (!prepareRes.ok) {
+          const data = await prepareRes.json().catch(() => null);
+          throw new Error(data?.error || "Failed to prepare wallet for tap");
+        }
+
+        setFlowState("tapping");
 
         const amountInWei = parseUnits(amount.toString(), tokenDecimals);
 
@@ -164,10 +193,13 @@ export function useStallPayment({ stall, onSuccess, onError }: UseStallPaymentOp
 
         const message =
           confirmedOnChain && confirmedTxHash
-            ? `Payment confirmed on-chain (${confirmedTxHash.slice(0, 10)}...), but the stall record could not be finalized.`
+            ? `Payment confirmed on-chain (${confirmedTxHash.slice(
+                0,
+                10,
+              )}...), but the stall record could not be finalized.`
             : err instanceof Error
-              ? err.message
-              : "Payment failed";
+            ? err.message
+            : "Payment failed";
 
         setError(message);
         setFlowState("error");
