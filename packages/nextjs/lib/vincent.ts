@@ -269,7 +269,7 @@ function getVincentJwtModule() {
 }
 
 function getVincentContractsModule() {
-  return require("@lit-protocol/vincent-contracts-sdk") as {
+  return require("@lit-protocol/vincent-contracts-sdk/dist/src/utils") as {
     deriveAgentAddress: (publicClient: unknown, userControllerAddress: string, appId: number) => Promise<string>;
   };
 }
