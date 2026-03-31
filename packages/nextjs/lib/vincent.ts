@@ -11,7 +11,6 @@ export const VINCENT_RETURN_TO_COOKIE = "splithub_vincent_return_to";
 const DEFAULT_RETURN_TO = "/defi";
 const VINCENT_DASHBOARD_URL = "https://dashboard.heyvincent.ai";
 const BASE_SEPOLIA_RPC_URL = baseSepolia.rpcUrls.default.http[0] ?? "https://sepolia.base.org";
-const DEFAULT_PUBLIC_APP_ORIGIN = "https://dev.splithub.space";
 const DEFAULT_ALLOWED_PUBLIC_ORIGINS = ["https://dev.splithub.space", "https://splithub.space"];
 
 export class VincentConfigurationError extends Error {
@@ -138,15 +137,6 @@ export function getRequestOrigin(request: NextRequest) {
   return request.nextUrl.origin;
 }
 
-function isLocalOrigin(origin: string) {
-  try {
-    const { hostname } = new URL(origin);
-    return hostname === "localhost" || hostname === "127.0.0.1";
-  } catch {
-    return false;
-  }
-}
-
 function normalizeOrigin(origin: string) {
   return new URL(origin).origin;
 }
@@ -164,20 +154,23 @@ function getAllowedPublicOrigins() {
     .map(normalizeOrigin);
 }
 
-export function getVincentAppOrigin(requestOrigin?: string) {
+export function getVincentAppOrigin(_requestOrigin?: string) {
   const configuredOrigin = process.env.VINCENT_APP_URL ?? process.env.NEXT_PUBLIC_VINCENT_APP_URL;
   if (configuredOrigin) {
-    return normalizeOrigin(configuredOrigin);
-  }
-
-  if (requestOrigin && !isLocalOrigin(requestOrigin)) {
-    const normalizedRequestOrigin = normalizeOrigin(requestOrigin);
-    if (getAllowedPublicOrigins().includes(normalizedRequestOrigin)) {
-      return normalizedRequestOrigin;
+    const normalizedConfiguredOrigin = normalizeOrigin(configuredOrigin);
+    const allowedOrigins = getAllowedPublicOrigins();
+    if (allowedOrigins.length > 0 && !allowedOrigins.includes(normalizedConfiguredOrigin)) {
+      throw new VincentConfigurationError(
+        `Configured Vincent app origin ${normalizedConfiguredOrigin} is not present in VINCENT_ALLOWED_ORIGINS.`,
+      );
     }
+
+    return normalizedConfiguredOrigin;
   }
 
-  return DEFAULT_PUBLIC_APP_ORIGIN;
+  throw new VincentConfigurationError(
+    "Vincent app origin not configured. Set VINCENT_APP_URL or NEXT_PUBLIC_VINCENT_APP_URL explicitly.",
+  );
 }
 
 export function getVincentCallbackUrl(origin: string) {
