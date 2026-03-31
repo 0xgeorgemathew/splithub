@@ -1,4 +1,5 @@
 export * from "./shared";
+export * from "./storeAgentRuntime";
 export * from "./storeAgents";
 export * from "./storeAnalytics";
 export * from "./storeCatalog";
