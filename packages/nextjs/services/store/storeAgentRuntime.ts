@@ -1,7 +1,9 @@
+import { getStoreRecordById } from "./shared";
 import { createAgentRun, createAgentValidation, updateAgentRun } from "./storeAgents";
 import { getStoreAnalytics } from "./storeAnalytics";
 import { upsertStoreInventory } from "./storeCatalog";
 import { getManagerAgentByStore, getStoreItems } from "./storeQueries";
+import { requestSupplierRestock } from "./supplierService";
 import OpenAI from "openai";
 import type { FunctionTool } from "openai/resources/responses/responses";
 import type { StoreAnalytics } from "~~/lib/store.types";
@@ -129,6 +131,8 @@ async function executeStoreTool(params: {
   name: string;
   argumentsJson: string;
   stallId: number;
+  triggerSource: string;
+  storeRecord: Awaited<ReturnType<typeof getStoreRecordById>>;
   agent: ManagerAgent;
   latestItems: Awaited<ReturnType<typeof getStoreItems>>;
   analytics: StoreAnalytics;
@@ -237,6 +241,41 @@ async function executeStoreTool(params: {
           continue;
         }
 
+        const supplierResponse = await requestSupplierRestock({
+          storeId: params.stallId,
+          storeName: params.storeRecord.stall_name,
+          networkName: params.storeRecord.event?.event_name,
+          operatorWallet: params.storeRecord.operator_wallet,
+          agentId: params.agent.id,
+          triggerSource: params.triggerSource,
+          lineItem: {
+            itemId: item.id,
+            sku: item.sku,
+            name: item.name,
+            currentStock: inventory.current_stock,
+            targetStock: safeTargetStock,
+            unitsToRestock,
+            unitPrice: item.price,
+            estimatedValue,
+            reason: candidate.reason,
+            confidence: candidate.confidence,
+          },
+        });
+
+        if (!supplierResponse.accepted) {
+          const failure = {
+            type: "supplier_rejected",
+            itemId: item.id,
+            sku: item.sku,
+            supplierRequestId: supplierResponse.requestId,
+            supplierOrderId: supplierResponse.supplierOrderId,
+            message: supplierResponse.message || "Supplier rejected restock request",
+          };
+          params.failures.push(failure);
+          results.push({ ok: false, ...failure });
+          continue;
+        }
+
         await upsertStoreInventory(item.id, {
           currentStock: safeTargetStock,
           reorderThreshold: inventory.reorder_threshold,
@@ -253,6 +292,10 @@ async function executeStoreTool(params: {
           estimatedValue,
           reason: candidate.reason,
           confidence: candidate.confidence,
+          supplierMode: supplierResponse.mode,
+          supplierName: supplierResponse.supplierName,
+          supplierRequestId: supplierResponse.requestId,
+          supplierOrderId: supplierResponse.supplierOrderId,
           tool: "restock_items",
         };
 
@@ -285,6 +328,7 @@ export async function executeOpenAIStoreAgentRun(stallId: number, triggerSource:
   }
 
   const analytics = await getStoreAnalytics(stallId);
+  const storeRecord = await getStoreRecordById(stallId);
   let latestItems = await getStoreItems(stallId);
   const lowStockItems = latestItems.filter(item => {
     const inventory = item.inventory;
@@ -313,7 +357,7 @@ export async function executeOpenAIStoreAgentRun(stallId: number, triggerSource:
       state: "planning",
     });
 
-    const conversationInput: any[] = [
+    const initialInput: any[] = [
       {
         role: "developer",
         content: buildAgentInstructions(agent),
@@ -343,16 +387,20 @@ export async function executeOpenAIStoreAgentRun(stallId: number, triggerSource:
 
     const tools = buildOpenAITools();
     let finalResponseText = "";
+    let previousResponseId: string | undefined;
+    let nextInput: any[] = initialInput;
 
     for (let turn = 0; turn < MAX_AGENT_TURNS; turn += 1) {
       const response = await openai.responses.create({
         model: DEFAULT_OPENAI_STORE_AGENT_MODEL,
-        input: conversationInput,
+        input: nextInput,
+        previous_response_id: previousResponseId,
         tools,
         reasoning: { effort: "medium" },
         max_output_tokens: 1200,
       });
 
+      previousResponseId = response.id;
       const requestId = (response as any)?._request_id;
       if (requestId) {
         toolCalls.push({ tool: "openai_response", requestId, turn });
@@ -370,11 +418,15 @@ export async function executeOpenAIStoreAgentRun(stallId: number, triggerSource:
         toolCalls,
       });
 
+      const functionOutputs: Array<{ type: "function_call_output"; call_id: string; output: string }> = [];
+
       for (const toolCall of functionCalls as any[]) {
         const result = await executeStoreTool({
           name: toolCall.name,
           argumentsJson: toolCall.arguments,
           stallId,
+          triggerSource,
+          storeRecord,
           agent,
           latestItems,
           analytics,
@@ -389,7 +441,7 @@ export async function executeOpenAIStoreAgentRun(stallId: number, triggerSource:
           result,
         });
 
-        conversationInput.push({
+        functionOutputs.push({
           type: "function_call_output",
           call_id: toolCall.call_id,
           output: JSON.stringify(result),
@@ -399,6 +451,8 @@ export async function executeOpenAIStoreAgentRun(stallId: number, triggerSource:
           latestItems = await getStoreItems(stallId);
         }
       }
+
+      nextInput = functionOutputs;
     }
 
     const finalState: AgentRun["state"] = failures.length > 0 && actions.length === 0 ? "failed" : "submitted";
