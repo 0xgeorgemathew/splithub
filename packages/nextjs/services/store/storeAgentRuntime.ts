@@ -3,6 +3,7 @@ import { createAgentRun, createAgentValidation, updateAgentRun } from "./storeAg
 import { getStoreAnalytics } from "./storeAnalytics";
 import { upsertStoreInventory } from "./storeCatalog";
 import { getManagerAgentByStore, getStoreItems } from "./storeQueries";
+import { processCompletedManagerRun } from "./storeTrust";
 import { requestSupplierRestock } from "./supplierService";
 import OpenAI from "openai";
 import type { FunctionTool } from "openai/resources/responses/responses";
@@ -329,11 +330,20 @@ export async function executeOpenAIStoreAgentRun(stallId: number, triggerSource:
 
   const analytics = await getStoreAnalytics(stallId);
   const storeRecord = await getStoreRecordById(stallId);
-  let latestItems = await getStoreItems(stallId);
+  const initialItems = await getStoreItems(stallId);
+  let latestItems = initialItems;
   const lowStockItems = latestItems.filter(item => {
     const inventory = item.inventory;
     return inventory && inventory.current_stock <= inventory.reorder_threshold && item.status !== "archived";
   });
+  const policy = {
+    budgetDailyCalls: agent.budget_daily_calls,
+    budgetDailyTokens: agent.budget_daily_tokens,
+    maxRestockValue: agent.max_restock_value,
+    maxPriceChangePct: agent.max_price_change_pct,
+    minConfidence: agent.min_confidence,
+    allowedSkus: agent.allowed_skus || [],
+  };
 
   const actions: AgentAction[] = [];
   const failures: AgentFailure[] = [];
@@ -370,14 +380,7 @@ export async function executeOpenAIStoreAgentRun(stallId: number, triggerSource:
             triggerSource,
             analytics,
             items: buildStoreStateSnapshot(latestItems),
-            policy: {
-              budgetDailyCalls: agent.budget_daily_calls,
-              budgetDailyTokens: agent.budget_daily_tokens,
-              maxRestockValue: agent.max_restock_value,
-              maxPriceChangePct: agent.max_price_change_pct,
-              minConfidence: agent.min_confidence,
-              allowedSkus: agent.allowed_skus || [],
-            },
+            policy,
           },
           null,
           2,
@@ -467,6 +470,11 @@ export async function executeOpenAIStoreAgentRun(stallId: number, triggerSource:
       toolCalls,
       failures,
       output: {
+        inputState: {
+          analytics,
+          items: buildStoreStateSnapshot(initialItems),
+          policy,
+        },
         analytics,
         actions,
         model: DEFAULT_OPENAI_STORE_AGENT_MODEL,
@@ -480,6 +488,12 @@ export async function executeOpenAIStoreAgentRun(stallId: number, triggerSource:
       status: "pending",
       evidenceUri: `/api/agents/${agent.id}/logs`,
     });
+
+    try {
+      await processCompletedManagerRun(updatedRun.id);
+    } catch (trustError) {
+      console.error("Failed to process ERC-8004 trust flow:", trustError);
+    }
 
     return {
       agent,

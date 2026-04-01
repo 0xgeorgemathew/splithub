@@ -3,9 +3,10 @@ import { createSlug, findOrCreateNetwork, getStoreRecordById, normalizeAddress, 
 import { getStoreAnalytics } from "./storeAnalytics";
 import { upsertStoreInventory } from "./storeCatalog";
 import { getManagerAgentByStore, getStoreItems } from "./storeQueries";
+import { ensureTrustAgentsForManager, getStoreTrustSnapshot, processCompletedManagerRun } from "./storeTrust";
 import type { Stall } from "~~/lib/events.types";
-import type { CreateStoreInput, StoreAnalytics } from "~~/lib/store.types";
-import type { AgentRun, AgentValidation, ManagerAgent } from "~~/lib/supabase";
+import type { CreateStoreInput, StoreAnalytics, StoreTrustSnapshot } from "~~/lib/store.types";
+import type { AgentRun, AgentValidation, ManagerAgent, ReputationEventRecord } from "~~/lib/supabase";
 import { supabase } from "~~/lib/supabase";
 
 export async function createStore(
@@ -82,6 +83,12 @@ export async function createManagerAgent({
 
   if (error || !data) {
     throw new Error(`Failed to create manager agent: ${error?.message}`);
+  }
+
+  try {
+    await ensureTrustAgentsForManager(data as ManagerAgent);
+  } catch (trustError) {
+    console.error("Failed to prepare ERC-8004 trust agents:", trustError);
   }
 
   return data as ManagerAgent;
@@ -206,7 +213,12 @@ export async function createAgentValidation(params: {
   return data as AgentValidation;
 }
 
-export async function getAgentLogs(agentId: string): Promise<{ runs: AgentRun[]; validations: AgentValidation[] }> {
+export async function getAgentLogs(agentId: string): Promise<{
+  runs: AgentRun[];
+  validations: AgentValidation[];
+  trust: StoreTrustSnapshot | null;
+  reputationEvents: ReputationEventRecord[];
+}> {
   const { data: runs, error } = await supabase
     .from("agent_runs")
     .select("*")
@@ -223,10 +235,13 @@ export async function getAgentLogs(agentId: string): Promise<{ runs: AgentRun[];
     ? (((await supabase.from("agent_validations").select("*").in("agent_run_id", runIds)).data ||
         []) as AgentValidation[])
     : [];
+  const trust = await getStoreTrustSnapshot(agentId).catch(() => null);
 
   return {
     runs: (runs || []) as AgentRun[],
     validations,
+    trust,
+    reputationEvents: trust?.reputationEvents || [],
   };
 }
 
@@ -270,6 +285,14 @@ export async function executeRuleBasedStoreRun(
     const inventory = item.inventory;
     return inventory && inventory.current_stock <= inventory.reorder_threshold && item.status !== "archived";
   });
+  const policy = {
+    budgetDailyCalls: agent.budget_daily_calls,
+    budgetDailyTokens: agent.budget_daily_tokens,
+    maxRestockValue: agent.max_restock_value,
+    maxPriceChangePct: agent.max_price_change_pct,
+    minConfidence: agent.min_confidence,
+    allowedSkus: agent.allowed_skus || [],
+  };
 
   const actions: Record<string, any>[] = [];
   const failures: Record<string, any>[] = [];
@@ -345,6 +368,20 @@ export async function executeRuleBasedStoreRun(
       toolCalls: [...run.tool_calls_json, { tool: "restockItems", count: actions.length }],
       failures,
       output: {
+        inputState: {
+          analytics,
+          items: items.map(item => ({
+            itemId: item.id,
+            sku: item.sku,
+            name: item.name,
+            status: item.status,
+            price: item.price,
+            stock: item.inventory?.current_stock ?? 0,
+            reorderThreshold: item.inventory?.reorder_threshold ?? 0,
+            targetStock: item.inventory?.target_stock ?? 0,
+          })),
+          policy,
+        },
         analytics,
         actions,
       },
@@ -356,6 +393,12 @@ export async function executeRuleBasedStoreRun(
       status: "pending",
       evidenceUri: `/api/agents/${agent.id}/logs`,
     });
+
+    try {
+      await processCompletedManagerRun(updatedRun.id);
+    } catch (trustError) {
+      console.error("Failed to process ERC-8004 trust flow:", trustError);
+    }
 
     return {
       agent,

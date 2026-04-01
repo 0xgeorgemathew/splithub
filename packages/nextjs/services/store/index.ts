@@ -5,4 +5,5 @@ export * from "./storeAnalytics";
 export * from "./storeCatalog";
 export * from "./storeCheckout";
 export * from "./storeQueries";
+export * from "./storeTrust";
 export * from "./supplierService";
