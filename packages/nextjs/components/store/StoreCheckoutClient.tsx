@@ -109,6 +109,7 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
       !trustSnapshot.latestValidation.request_tx_hash &&
       trustSnapshot.latestValidation.status === "pending",
   );
+  const latestRun = recentAgentRuns[0] || null;
 
   const cart = useMemo(
     () =>
@@ -196,7 +197,6 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
     }
 
     const validation = recentValidations.find(candidate => candidate.agent_run_id === latestRun.id);
-    const actionCount = Array.isArray(latestRun.output_json?.actions) ? latestRun.output_json.actions.length : 0;
 
     if (latestRun.state !== "submitted" && latestRun.state !== "failed") {
       setAgentFeedback({
@@ -207,16 +207,34 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
         actionCount: 0,
         validationStatus: validation?.status,
         queued: true,
+        currentStepLabel: "Trigger manager action",
+        nextStepLabel: "Wait for the manager run to complete",
+        nextStepAutomatic: true,
       });
       return;
     }
 
+    const actionCount = Array.isArray(latestRun.output_json?.actions) ? latestRun.output_json.actions.length : 0;
     setAgentFeedback({
       state: latestRun.state,
       summary: latestRun.decision_summary || "Agent run completed.",
       actionCount,
       validationStatus: validation?.status,
       queued: false,
+      currentStepLabel:
+        latestRun.state === "failed"
+          ? "Trigger manager action"
+          : validation?.request_tx_hash
+            ? "Submit validation onchain"
+            : "Trigger manager action",
+      nextStepLabel:
+        latestRun.state === "failed"
+          ? "Review the failed run"
+          : validation?.request_tx_hash
+            ? "Validator verifies automatically"
+            : "Submit validation onchain",
+      nextStepAutomatic: Boolean(validation?.request_tx_hash),
+      requiresManualAction: !validation?.request_tx_hash,
     });
     setQueuedRunRequestedAt(null);
   }, [agentFeedback?.queued, queuedRunRequestedAt, recentAgentRuns, recentValidations]);
@@ -494,6 +512,9 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
         summary: "Manager trust identity registered on Ethereum Sepolia.",
         actionCount: 0,
         queued: false,
+        currentStepLabel: "Register manager identity",
+        nextStepLabel: "Run the manager agent",
+        requiresManualAction: true,
       });
     } catch (error) {
       setManagerError(error instanceof Error ? error.message : "Failed to register manager trust identity");
@@ -528,6 +549,12 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
         actionCount: 0,
         validationStatus: confirmed.validation?.status,
         queued: false,
+        currentStepLabel: "Submit validation onchain",
+        nextStepLabel:
+          confirmed.validation?.status === "verified"
+            ? "Reviewer writes reputation automatically"
+            : "Validator verifies automatically",
+        nextStepAutomatic: true,
       });
     } catch (error) {
       setManagerError(error instanceof Error ? error.message : "Failed to submit validation request");
@@ -613,6 +640,16 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
               onSubmitValidationRequest={handleSubmitValidationRequest}
             />
           )}
+          {store.manager_agent && (
+            <StoreTrustPanel
+              trust={trustSnapshot}
+              loading={agentRunsLoading}
+              latestRun={latestRun}
+              canSignTrust={Boolean(isManager)}
+              needsManagerTrustRegistration={needsManagerTrustRegistration}
+              needsValidationSignature={needsValidationSignature}
+            />
+          )}
         </div>
 
         <div className="space-y-6">
@@ -626,11 +663,11 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
             onCheckout={handleCheckout}
           />
           <StoreAgentGuardrailsCard store={store} />
-          {store.manager_agent && <StoreTrustPanel trust={trustSnapshot} loading={agentRunsLoading} />}
           {store.manager_agent && (
             <StoreRecentAgentRunsCard
               runs={recentAgentRuns}
               validations={recentValidations}
+              reputationEvents={trustSnapshot?.reputationEvents || []}
               loading={agentRunsLoading}
             />
           )}
