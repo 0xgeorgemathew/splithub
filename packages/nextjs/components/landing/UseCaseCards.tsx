@@ -96,7 +96,9 @@ export function UseCaseCards() {
               }}
             >
               {/* Background glow */}
-              <div className={`absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 transition-opacity duration-500 ${isTouch ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`} />
+              <div
+                className={`absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 transition-opacity duration-500 ${isTouch ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+              />
 
               {/* Icon */}
               <div className="relative mb-6">
@@ -202,7 +204,9 @@ export function UseCaseCards() {
               }}
             >
               {/* Background glow */}
-              <div className={`absolute top-0 right-0 w-64 h-64 bg-success/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 transition-opacity duration-500 ${isTouch ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`} />
+              <div
+                className={`absolute top-0 right-0 w-64 h-64 bg-success/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 transition-opacity duration-500 ${isTouch ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+              />
 
               {/* Icon */}
               <div className="relative mb-6">
@@ -324,7 +328,9 @@ export function UseCaseCards() {
               }}
             >
               {/* Background glow */}
-              <div className={`absolute top-0 right-0 w-64 h-64 bg-info/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 transition-opacity duration-500 ${isTouch ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`} />
+              <div
+                className={`absolute top-0 right-0 w-64 h-64 bg-info/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 transition-opacity duration-500 ${isTouch ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+              />
 
               {/* Icon */}
               <div className="relative mb-6">

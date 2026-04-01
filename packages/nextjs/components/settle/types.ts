@@ -97,6 +97,13 @@ export interface BatchPaymentAuth {
   signature: string;
 }
 
+// Timeline step for TX progress display
+export interface TimelineStep {
+  label: string;
+  amount?: string;
+  txHash?: string;
+}
+
 // Progress steps for visual indicator
 export const FLOW_STEPS = [
   { key: "preparing", label: "Prep" },

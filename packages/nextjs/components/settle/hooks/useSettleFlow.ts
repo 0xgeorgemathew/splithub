@@ -1,9 +1,9 @@
 /**
  * Settlement flow hook for single-payer NFC payments
  */
-import { useCallback, useMemo, useState } from "react";
-import { type JitFundingSource } from "../jitUiCopy";
-import { FlowState, PaymentParams } from "../types";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type JitFundingSource, type SourceCardData, buildInitialSourceCards, resolveSourceCards } from "../jitUiCopy";
+import { FlowState, PaymentParams, type TimelineStep } from "../types";
 import { type Address } from "viem";
 import { useReadContract } from "wagmi";
 import { useHaloChip } from "~~/hooks/halochip-arx/useHaloChip";
@@ -21,6 +21,19 @@ interface UseSettleFlowOptions {
   onError?: (error: Error) => void;
 }
 
+interface JitPreparationResult {
+  fundingSource?: JitFundingSource;
+  reasoning?: string;
+  reasoningSource?: "llm" | "fallback";
+  withdrewFromAave?: boolean;
+  transferredToFundedWallet?: boolean;
+  withdrawalTxHash?: string;
+  transferTxHash?: string;
+  shortfallUsd?: string;
+  fundedWalletBalanceUsd?: string;
+  error?: string;
+}
+
 interface UseSettleFlowReturn {
   flowState: FlowState;
   isProcessing: boolean;
@@ -28,6 +41,9 @@ interface UseSettleFlowReturn {
   jitReasoning: string;
   jitReasoningSource: "llm" | "fallback" | null;
   jitFundingSource: JitFundingSource | null;
+  jitPreparation: JitPreparationResult | null;
+  sourceCards: SourceCardData[];
+  scanIndex: number;
   error: string;
   txHash: string | null;
   symbol: string | undefined;
@@ -36,8 +52,11 @@ interface UseSettleFlowReturn {
   canInitiate: boolean;
   initiateSettle: () => Promise<void>;
   reset: () => void;
+  timelineSteps: TimelineStep[];
   getCurrentStepIndex: () => number;
 }
+
+const SCAN_TICK_MS = 400;
 
 export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptions): UseSettleFlowReturn {
   const { walletAddress, isConnected } = useWalletAddress();
@@ -49,8 +68,14 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
   const [jitReasoning, setJitReasoning] = useState("");
   const [jitReasoningSource, setJitReasoningSource] = useState<"llm" | "fallback" | null>(null);
   const [jitFundingSource, setJitFundingSource] = useState<JitFundingSource | null>(null);
+  const [jitPreparation, setJitPreparation] = useState<JitPreparationResult | null>(null);
   const [error, setError] = useState("");
   const [txHash, setTxHash] = useState<string | null>(null);
+
+  // Simulated scanning state
+  const [sourceCards, setSourceCards] = useState<SourceCardData[]>(buildInitialSourceCards());
+  const [scanIndex, setScanIndex] = useState(-1);
+  const scanTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const publicClient = useMemo(() => createBaseSepoliaPublicClient(), []);
 
@@ -66,11 +91,69 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
     functionName: "symbol",
   });
 
+  // Start simulated scanning animation
+  const startScanAnimation = useCallback(() => {
+    const initial = buildInitialSourceCards();
+    setSourceCards(initial);
+    setScanIndex(0);
+
+    // Mark first card as checking
+    initial[0] = { ...initial[0], status: "checking" };
+    setSourceCards([...initial]);
+
+    let idx = 0;
+    scanTimerRef.current = setInterval(() => {
+      idx++;
+      if (idx >= initial.length) {
+        if (scanTimerRef.current) clearInterval(scanTimerRef.current);
+        return;
+      }
+      // Mark current as checking, previous stay as-is (they'll be resolved when API returns)
+      setSourceCards(prev => {
+        const next = [...prev];
+        next[idx] = { ...next[idx], status: "checking" };
+        return next;
+      });
+      setScanIndex(idx);
+    }, SCAN_TICK_MS);
+  }, []);
+
+  // Stop scanning and resolve cards from API result
+  const resolveScan = useCallback((fundingSource: JitFundingSource, prep: JitPreparationResult) => {
+    if (scanTimerRef.current) {
+      clearInterval(scanTimerRef.current);
+      scanTimerRef.current = null;
+    }
+
+    setSourceCards(prev =>
+      resolveSourceCards(
+        prev.map(c => ({ ...c, status: c.status === "queued" ? "rejected" : c.status })),
+        fundingSource,
+        {
+          chipBalance: prep.fundedWalletBalanceUsd ?? null,
+          agentLiquid: null,
+          aaveReserve: null,
+          aaveApy: "4.20%",
+          morphoApy: "0.35%",
+        },
+      ),
+    );
+    setScanIndex(-1);
+  }, []);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (scanTimerRef.current) clearInterval(scanTimerRef.current);
+    };
+  }, []);
+
   const handleSettle = useCallback(async () => {
     setError("");
     setJitReasoning("");
     setJitReasoningSource(null);
     setJitFundingSource(null);
+    setJitPreparation(null);
     setTxHash(null);
 
     if (!isConnected || !walletAddress) {
@@ -104,7 +187,8 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
       const signed = await signDigest({ digest: prepared.digest });
 
       setFlowState("preparing");
-      setStatusMessage("AI checks route");
+      setStatusMessage("Scanning sources");
+      startScanAnimation();
 
       const prepareRes = await fetch("/api/vincent/prepare-payment", {
         method: "POST",
@@ -119,23 +203,22 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
         }),
       });
 
-      const prepareData = (await prepareRes.json().catch(() => null)) as {
-        shortfallUsd?: string;
-        fundingSource?: "chip_balance" | "agent_liquid" | "aave_withdraw" | "insufficient_backing";
-        reasoning?: string;
-        reasoningSource?: "llm" | "fallback";
-        withdrewFromAave?: boolean;
-        transferredToFundedWallet?: boolean;
-        error?: string;
-      } | null;
+      const prepareData = (await prepareRes.json().catch(() => null)) as JitPreparationResult | null;
 
       if (!prepareRes.ok) {
         throw new Error(prepareData?.error || "Failed to prepare chip wallet");
       }
 
+      const funding = prepareData?.fundingSource || null;
       setJitReasoning(prepareData?.reasoning || "");
       setJitReasoningSource(prepareData?.reasoningSource || null);
-      setJitFundingSource(prepareData?.fundingSource || null);
+      setJitFundingSource(funding);
+      setJitPreparation(prepareData ?? null);
+
+      // Resolve the scan animation with actual results
+      if (funding) {
+        resolveScan(funding, prepareData ?? {});
+      }
 
       if (prepareData?.withdrewFromAave && prepareData?.transferredToFundedWallet) {
         setStatusMessage("Aave tops up chip");
@@ -170,9 +253,22 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
       setFlowState("error");
       setError(parseContractError(err) || "Settlement failed. Please try again.");
       setStatusMessage("");
+      if (scanTimerRef.current) clearInterval(scanTimerRef.current);
       onError?.(err instanceof Error ? err : new Error("Settlement failed"));
     }
-  }, [chipAddress, decimals, isConnected, onError, onSuccess, params, publicClient, signDigest, walletAddress]);
+  }, [
+    chipAddress,
+    decimals,
+    isConnected,
+    onError,
+    onSuccess,
+    params,
+    publicClient,
+    resolveScan,
+    signDigest,
+    startScanAnimation,
+    walletAddress,
+  ]);
 
   const reset = useCallback(() => {
     setFlowState("idle");
@@ -181,7 +277,11 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
     setJitReasoning("");
     setJitReasoningSource(null);
     setJitFundingSource(null);
+    setJitPreparation(null);
     setTxHash(null);
+    setSourceCards(buildInitialSourceCards());
+    setScanIndex(-1);
+    if (scanTimerRef.current) clearInterval(scanTimerRef.current);
   }, []);
 
   const getCurrentStepIndex = useCallback(() => {
@@ -196,6 +296,31 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
 
   const isProcessing = flowState !== "idle" && flowState !== "success" && flowState !== "error";
 
+  // Compute timeline steps from preparation data
+  const timelineSteps: TimelineStep[] = useMemo(() => {
+    if (flowState !== "success" || !jitPreparation) return [];
+    const steps: TimelineStep[] = [];
+    if (jitPreparation.withdrewFromAave) {
+      steps.push({
+        label: "Aave withdraw",
+        amount: jitPreparation.shortfallUsd ? `$${jitPreparation.shortfallUsd}` : undefined,
+        txHash: jitPreparation.withdrawalTxHash,
+      });
+    }
+    if (jitPreparation.transferredToFundedWallet) {
+      steps.push({
+        label: "Fund chip wallet",
+        amount: jitPreparation.shortfallUsd ? `$${jitPreparation.shortfallUsd}` : undefined,
+        txHash: jitPreparation.transferTxHash,
+      });
+    }
+    steps.push({
+      label: "Payment sent",
+      txHash: txHash ?? undefined,
+    });
+    return steps;
+  }, [flowState, jitPreparation, txHash]);
+
   return {
     flowState,
     isProcessing,
@@ -203,6 +328,10 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
     jitReasoning,
     jitReasoningSource,
     jitFundingSource,
+    jitPreparation,
+    sourceCards,
+    scanIndex,
+    timelineSteps,
     error,
     txHash,
     symbol,

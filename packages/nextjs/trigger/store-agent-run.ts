@@ -11,10 +11,7 @@ export const storeAgentRunTask = task({
   run: async (payload: StoreAgentRunPayload) => {
     logger.info("Starting autonomous store run", payload);
 
-    const result = await executeAutonomousStoreRun(
-      payload.storeId,
-      payload.triggerSource ?? "trigger_task",
-    );
+    const result = await executeAutonomousStoreRun(payload.storeId, payload.triggerSource ?? "trigger_task");
 
     logger.info("Completed autonomous store run", {
       storeId: payload.storeId,

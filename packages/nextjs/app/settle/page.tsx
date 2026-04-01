@@ -1,13 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertCircle, Coins, RefreshCw, User, Wallet } from "lucide-react";
+import { AlertCircle, CheckCircle, Coins, RefreshCw, User, Wallet } from "lucide-react";
 import { type Address } from "viem";
 import { useReadContract } from "wagmi";
 import { PaymentStatus, PaymentStatusIndicator } from "~~/components/settle/PaymentStatusIndicator";
-import { type JitFundingSource, getJitUiCopy } from "~~/components/settle/jitUiCopy";
+import { SourceScanGrid } from "~~/components/settle/SourceScanGrid";
+import { TxTimeline } from "~~/components/settle/TxTimeline";
+import { type TimelineStep } from "~~/components/settle/types";
+import {
+  type JitFundingSource,
+  type SourceCardData,
+  buildInitialSourceCards,
+  getJitUiCopy,
+  resolveSourceCards,
+} from "~~/components/settle/jitUiCopy";
 import { TOKENS } from "~~/config/tokens";
 import { DEFAULT_AGENT_PAY_TEST_RECIPIENT } from "~~/constants/agentPay";
 import { useHaloChip } from "~~/hooks/halochip-arx/useHaloChip";
@@ -22,6 +31,7 @@ import { parseContractError } from "~~/utils/contractErrors";
 const RECIPIENT_ADDRESS = DEFAULT_AGENT_PAY_TEST_RECIPIENT;
 const DEFAULT_TOKEN_ADDRESS = TOKENS.USDC;
 const DEFAULT_AMOUNT = "1";
+const SCAN_TICK_MS = 400;
 
 type FlowState = "idle" | "preparing" | "tapping" | "submitting" | "confirming" | "success" | "error";
 
@@ -35,8 +45,6 @@ export default function SettlePage() {
   const { chipAddress } = useCurrentUser();
   const { signDigest } = useHaloChip();
 
-  // Use Privy's authentication state instead of wagmi's useAccount
-  // This properly reflects the embedded wallet connection status
   const address = user?.wallet?.address as `0x${string}` | undefined;
   const isConnected = authenticated && !!address;
 
@@ -44,9 +52,22 @@ export default function SettlePage() {
   const [jitReasoning, setJitReasoning] = useState("");
   const [jitReasoningSource, setJitReasoningSource] = useState<"llm" | "fallback" | null>(null);
   const [jitFundingSource, setJitFundingSource] = useState<JitFundingSource | null>(null);
+  const [jitPreparation, setJitPreparation] = useState<{
+    withdrewFromAave?: boolean;
+    transferredToFundedWallet?: boolean;
+    withdrawalTxHash?: string;
+    transferTxHash?: string;
+    shortfallUsd?: string;
+    fundedWalletBalanceUsd?: string;
+  } | null>(null);
   const [error, setError] = useState("");
   const [txHash, setTxHash] = useState<string | null>(null);
   const jitUiCopy = getJitUiCopy(jitFundingSource);
+
+  // Simulated scanning state
+  const [sourceCards, setSourceCards] = useState<SourceCardData[]>(buildInitialSourceCards());
+  const [scanIndex, setScanIndex] = useState(-1);
+  const scanTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Read token decimals
   const { data: decimals } = useReadContract({
@@ -62,11 +83,67 @@ export default function SettlePage() {
     functionName: "symbol",
   });
 
+  // Start simulated scanning animation
+  const startScanAnimation = useCallback(() => {
+    const initial = buildInitialSourceCards();
+    setSourceCards(initial);
+    setScanIndex(0);
+
+    initial[0] = { ...initial[0], status: "checking" };
+    setSourceCards([...initial]);
+
+    let idx = 0;
+    scanTimerRef.current = setInterval(() => {
+      idx++;
+      if (idx >= initial.length) {
+        if (scanTimerRef.current) clearInterval(scanTimerRef.current);
+        return;
+      }
+      setSourceCards(prev => {
+        const next = [...prev];
+        next[idx] = { ...next[idx], status: "checking" };
+        return next;
+      });
+      setScanIndex(idx);
+    }, SCAN_TICK_MS);
+  }, []);
+
+  // Stop scanning and resolve cards from API result
+  const resolveScan = useCallback((fundingSource: JitFundingSource, fundedWalletBalance?: string) => {
+    if (scanTimerRef.current) {
+      clearInterval(scanTimerRef.current);
+      scanTimerRef.current = null;
+    }
+
+    setSourceCards(prev =>
+      resolveSourceCards(
+        prev.map(c => ({ ...c, status: c.status === "queued" ? "rejected" : c.status })),
+        fundingSource,
+        {
+          chipBalance: fundedWalletBalance ?? null,
+          agentLiquid: null,
+          aaveReserve: null,
+          aaveApy: "4.20%",
+          morphoApy: "0.35%",
+        },
+      ),
+    );
+    setScanIndex(-1);
+  }, []);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (scanTimerRef.current) clearInterval(scanTimerRef.current);
+    };
+  }, []);
+
   const handleSettle = async () => {
     setError("");
     setJitReasoning("");
     setJitReasoningSource(null);
     setJitFundingSource(null);
+    setJitPreparation(null);
     setTxHash(null);
 
     if (!isConnected || !address) {
@@ -102,6 +179,7 @@ export default function SettlePage() {
       const signed = await signDigest({ digest: prepared.digest });
 
       setFlowState("preparing");
+      startScanAnimation();
 
       const prepareRes = await fetch("/api/vincent/prepare-payment", {
         method: "POST",
@@ -125,11 +203,23 @@ export default function SettlePage() {
         fundingSource?: JitFundingSource;
         reasoning?: string;
         reasoningSource?: "llm" | "fallback";
+        withdrewFromAave?: boolean;
+        transferredToFundedWallet?: boolean;
+        withdrawalTxHash?: string;
+        transferTxHash?: string;
+        shortfallUsd?: string;
+        fundedWalletBalanceUsd?: string;
       } | null;
 
+      const funding = prepareData?.fundingSource || null;
       setJitReasoning(prepareData?.reasoning || "");
       setJitReasoningSource(prepareData?.reasoningSource || null);
-      setJitFundingSource(prepareData?.fundingSource || null);
+      setJitFundingSource(funding);
+      setJitPreparation(prepareData ?? null);
+
+      if (funding) {
+        resolveScan(funding, prepareData?.fundedWalletBalanceUsd);
+      }
 
       setFlowState("submitting");
 
@@ -150,23 +240,22 @@ export default function SettlePage() {
       console.error("Settlement error:", err);
       setFlowState("error");
       setError(parseContractError(err) || "Settlement failed. Please try again.");
+      if (scanTimerRef.current) clearInterval(scanTimerRef.current);
     }
   };
 
-  // Map flowState to PaymentStatus for the indicator
   const getPaymentStatus = (): PaymentStatus => {
     if (flowState === "success") return "success";
     if (["preparing", "tapping", "submitting", "confirming"].includes(flowState)) return "processing";
     return "idle";
   };
 
-  // Get processing text based on current flow state
   const getProcessingText = (): string => {
     switch (flowState) {
       case "tapping":
         return "Tap chip";
       case "preparing":
-        return "AI checks route";
+        return "Scanning sources";
       case "submitting":
         return jitFundingSource === "aave_withdraw"
           ? "Aave tops up chip"
@@ -180,39 +269,53 @@ export default function SettlePage() {
     }
   };
 
-  // Reset to idle state for another payment
   const handleReset = () => {
     setFlowState("idle");
     setError("");
     setJitReasoning("");
     setJitReasoningSource(null);
     setJitFundingSource(null);
+    setJitPreparation(null);
     setTxHash(null);
+    setSourceCards(buildInitialSourceCards());
+    setScanIndex(-1);
+    if (scanTimerRef.current) clearInterval(scanTimerRef.current);
   };
 
   const paymentStatus = getPaymentStatus();
   const isProcessing = ["preparing", "tapping", "submitting", "confirming"].includes(flowState);
+  const isScanning = flowState === "preparing";
+  const isResolved = flowState === "submitting" || flowState === "confirming";
+  const isSuccess = flowState === "success";
+  const selectedCard = sourceCards.find(c => c.status === "selected");
 
-  const statusCopy =
-    flowState === "idle"
-      ? "Tap once to trigger the chip prompt. SplitHub will handle the rest on this page."
-      : flowState === "tapping"
-        ? "Hold the registered chip to the phone now."
-        : flowState === "preparing"
-          ? "SplitHub is checking the best safe route for this tap."
-          : flowState === "submitting"
-            ? "SplitHub is moving funds if needed and sending the chip-signed payment."
-            : flowState === "confirming"
-              ? "Waiting for the transaction receipt."
-              : flowState === "success"
-                ? `${DEFAULT_AMOUNT} ${symbol || "tokens"} sent from the chip wallet.`
-                : "Payment failed. Try again.";
+  // Build timeline steps
+  const timelineSteps: TimelineStep[] = [];
+  if (isSuccess && jitPreparation) {
+    if (jitPreparation.withdrewFromAave) {
+      timelineSteps.push({
+        label: "Aave withdraw",
+        amount: jitPreparation.shortfallUsd ? `$${jitPreparation.shortfallUsd}` : undefined,
+        txHash: jitPreparation.withdrawalTxHash,
+      });
+    }
+    if (jitPreparation.transferredToFundedWallet) {
+      timelineSteps.push({
+        label: "Fund chip wallet",
+        amount: jitPreparation.shortfallUsd ? `$${jitPreparation.shortfallUsd}` : undefined,
+        txHash: jitPreparation.transferTxHash,
+      });
+    }
+    timelineSteps.push({
+      label: "Payment sent",
+      txHash: txHash ?? undefined,
+    });
+  }
 
   return (
     <div className="min-h-[calc(100vh-64px)] bg-base-200 p-4">
       <div className="w-full max-w-md md:max-w-lg lg:max-w-xl mx-auto">
         {!isConnected ? (
-          /* Not Connected State */
           <div className="flex flex-col items-center justify-center mt-20">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-base-100 mb-4 shadow-md">
               <Wallet className="w-8 h-8 text-base-content/50" />
@@ -260,40 +363,97 @@ export default function SettlePage() {
                   size="lg"
                 />
 
-                <p className="text-center text-sm text-base-content/60">{statusCopy}</p>
+                {/* Fixed-height info area: source cards → selected → success timeline */}
+                <div className="min-h-[180px]">
+                  <AnimatePresence mode="wait">
+                    {/* Phase 1: Source Scanning */}
+                    {isScanning && (
+                      <motion.div
+                        key="scanning"
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <SourceScanGrid cards={sourceCards} scanIndex={scanIndex} />
+                      </motion.div>
+                    )}
 
-                <AnimatePresence>
-                  {jitUiCopy && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 10 }}
-                      className="rounded-2xl border border-base-300 bg-base-200/40 p-3 text-left"
-                    >
-                      <p className="text-xs font-semibold uppercase tracking-wide text-base-content/50">AI Route</p>
-                      <p className="mt-1 text-base font-semibold text-base-content">{jitUiCopy.title}</p>
-                      <p className="mt-1 text-sm text-base-content/70">{jitUiCopy.detail}</p>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {jitUiCopy.badges.map((badge, index) => (
-                          <motion.span
-                            key={badge}
-                            initial={{ opacity: 0, y: 6 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: index * 0.05 }}
-                            className="rounded-full border border-base-300 bg-base-100 px-2.5 py-1 text-[11px] font-medium text-base-content/70"
-                          >
-                            {badge}
-                          </motion.span>
-                        ))}
-                      </div>
-                      {jitReasoning && (
-                        <p className="mt-2 text-xs text-base-content/45">
-                          {jitReasoningSource === "llm" ? "AI verified the route live." : "Fallback route used."}
-                        </p>
-                      )}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                    {/* Phase 2: Source Selected */}
+                    {isResolved && selectedCard && (
+                      <motion.div
+                        key="selected"
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        transition={{ duration: 0.2 }}
+                        className="space-y-2"
+                      >
+                        <div className={`rounded-xl border ${selectedCard.borderColor} ${selectedCard.bgColor} p-3`}>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className={`text-[10px] font-bold uppercase tracking-wider ${selectedCard.color}`}>
+                              {selectedCard.label}
+                            </span>
+                            <span className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse" />
+                          </div>
+                          <p className="text-xs text-base-content/70">
+                            {jitFundingSource === "chip_balance" && "NO TOP-UP NEEDED"}
+                            {jitFundingSource === "agent_liquid" && "USING AGENT RESERVE"}
+                            {jitFundingSource === "aave_withdraw" && "WITHDRAWING FROM AAVE"}
+                            {jitFundingSource === "insufficient_backing" && "NO SAFE ROUTE FOUND"}
+                          </p>
+                          {jitUiCopy && <p className="text-[11px] text-base-content/50 mt-1">{jitUiCopy.detail}</p>}
+                        </div>
+
+                        <div className="flex flex-wrap gap-1.5">
+                          {sourceCards
+                            .filter(c => c.status !== "selected")
+                            .map(c => (
+                              <span
+                                key={c.id}
+                                className={`text-[9px] px-2 py-0.5 rounded-full border ${c.status === "rejected" ? "border-base-300 text-base-content/30" : "border-base-300 text-base-content/40"}`}
+                              >
+                                {c.label} {c.amount ?? "—"}
+                              </span>
+                            ))}
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {/* Phase 3: Success Timeline */}
+                    {isSuccess && (
+                      <motion.div
+                        key="success-timeline"
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        transition={{ duration: 0.2 }}
+                        className="space-y-3"
+                      >
+                        <div className="flex items-center gap-2">
+                          <CheckCircle className="w-4 h-4 text-success" />
+                          <span className="text-sm font-semibold text-base-content">
+                            ${DEFAULT_AMOUNT} {symbol || "USDC"} sent
+                          </span>
+                        </div>
+
+                        {timelineSteps.length > 0 && (
+                          <TxTimeline steps={timelineSteps} explorerBaseUrl={baseSepolia.blockExplorers.default.url} />
+                        )}
+
+                        <div className="flex flex-wrap gap-1.5">
+                          {selectedCard && (
+                            <span
+                              className={`text-[10px] px-2 py-0.5 rounded-full ${selectedCard.bgColor} ${selectedCard.color} border ${selectedCard.borderColor}`}
+                            >
+                              Via {selectedCard.label}
+                            </span>
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               </div>
             </div>
 

@@ -1,11 +1,13 @@
 "use client";
 
 import { PaymentStatus, PaymentStatusIndicator } from "./PaymentStatusIndicator";
+import { SourceScanGrid } from "./SourceScanGrid";
+import { TxTimeline } from "./TxTimeline";
 import { useSettleFlow } from "./hooks/useSettleFlow";
 import { getJitUiCopy } from "./jitUiCopy";
 import { SettleFlowProps } from "./types";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertCircle, Coins, Fuel, Wallet, X } from "lucide-react";
+import { AlertCircle, CheckCircle, Coins, Fuel, Wallet, X } from "lucide-react";
 import { useTargetNetwork } from "~~/hooks/scaffold-eth";
 
 export function SettleFlow({ params, onSuccess, onError, onClose }: SettleFlowProps) {
@@ -13,9 +15,12 @@ export function SettleFlow({ params, onSuccess, onError, onClose }: SettleFlowPr
   const {
     flowState,
     statusMessage,
-    jitReasoning,
-    jitReasoningSource,
+    jitReasoning: _jitReasoning,
     jitFundingSource,
+    jitPreparation,
+    sourceCards,
+    scanIndex,
+    timelineSteps,
     error,
     txHash,
     symbol,
@@ -29,7 +34,6 @@ export function SettleFlow({ params, onSuccess, onError, onClose }: SettleFlowPr
   });
   const jitUiCopy = getJitUiCopy(jitFundingSource);
 
-  // Map flowState to PaymentStatus for the indicator
   const getPaymentStatus = (): PaymentStatus => {
     if (flowState === "success") return "success";
     if (["preparing", "tapping", "submitting", "confirming"].includes(flowState)) return "processing";
@@ -49,9 +53,15 @@ export function SettleFlow({ params, onSuccess, onError, onClose }: SettleFlowPr
 
   const paymentStatus = getPaymentStatus();
 
+  // Find selected source for phase 2 highlight
+  const selectedCard = sourceCards.find(c => c.status === "selected");
+  const isScanning = flowState === "preparing";
+  const isResolved = flowState === "submitting" || flowState === "confirming";
+  const isSuccess = flowState === "success";
+
   return (
-    <div className="flex flex-col items-center pt-1 min-h-[280px]">
-      {/* Top Section - Fixed height for badges/spacer */}
+    <div className="flex flex-col items-center pt-1">
+      {/* Top badges */}
       <div className="h-8 flex items-center justify-center">
         <AnimatePresence>
           {paymentStatus === "idle" && (
@@ -75,10 +85,10 @@ export function SettleFlow({ params, onSuccess, onError, onClose }: SettleFlowPr
         </AnimatePresence>
       </div>
 
-      {/* Amount/Success Section - Fixed height */}
+      {/* Amount / success info */}
       <div className="h-16 flex items-center justify-center my-2">
         <AnimatePresence mode="wait">
-          {paymentStatus !== "success" ? (
+          {!isSuccess ? (
             <motion.div
               key="amount"
               initial={{ opacity: 0 }}
@@ -110,7 +120,7 @@ export function SettleFlow({ params, onSuccess, onError, onClose }: SettleFlowPr
         </AnimatePresence>
       </div>
 
-      {/* Error Message - Fixed height slot */}
+      {/* Error slot */}
       <div className="h-8 flex items-center justify-center">
         <AnimatePresence>
           {error && (
@@ -127,7 +137,7 @@ export function SettleFlow({ params, onSuccess, onError, onClose }: SettleFlowPr
         </AnimatePresence>
       </div>
 
-      {/* Morphing Payment Status Indicator */}
+      {/* Payment button */}
       <div className="my-2">
         <PaymentStatusIndicator
           status={paymentStatus}
@@ -138,34 +148,107 @@ export function SettleFlow({ params, onSuccess, onError, onClose }: SettleFlowPr
         />
       </div>
 
-      {/* Bottom Section - Fixed height for tx link & close button */}
-      <div className="h-16 flex items-center justify-center">
-        <AnimatePresence>
-          {paymentStatus === "success" && (
+      {/* Fixed-height info area: source cards → selected → success timeline */}
+      <div className="w-full min-h-[180px] mt-1">
+        <AnimatePresence mode="wait">
+          {/* Phase 1: Source Scanning */}
+          {isScanning && (
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="flex flex-col items-center gap-2"
+              key="scanning"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.2 }}
             >
-              {txHash && (
-                <a
-                  href={`${targetNetwork.blockExplorers?.default.url}/tx/${txHash}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-primary hover:underline font-mono"
-                >
-                  View transaction →
-                </a>
+              <SourceScanGrid cards={sourceCards} scanIndex={scanIndex} />
+            </motion.div>
+          )}
+
+          {/* Phase 2: Source Selected */}
+          {isResolved && selectedCard && (
+            <motion.div
+              key="selected"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-2"
+            >
+              {/* Selected source highlight */}
+              <div className={`rounded-xl border ${selectedCard.borderColor} ${selectedCard.bgColor} p-3`}>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className={`text-[10px] font-bold uppercase tracking-wider ${selectedCard.color}`}>
+                    {selectedCard.label}
+                  </span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse" />
+                </div>
+                <p className="text-xs text-base-content/70">
+                  {jitFundingSource === "chip_balance" && "NO TOP-UP NEEDED"}
+                  {jitFundingSource === "agent_liquid" && "USING AGENT RESERVE"}
+                  {jitFundingSource === "aave_withdraw" && "WITHDRAWING FROM AAVE"}
+                  {jitFundingSource === "insufficient_backing" && "NO SAFE ROUTE FOUND"}
+                </p>
+                {jitUiCopy && <p className="text-[11px] text-base-content/50 mt-1">{jitUiCopy.detail}</p>}
+              </div>
+
+              {/* Mini badges for other sources */}
+              <div className="flex flex-wrap gap-1.5">
+                {sourceCards
+                  .filter(c => c.status !== "selected")
+                  .map(c => (
+                    <span
+                      key={c.id}
+                      className={`text-[9px] px-2 py-0.5 rounded-full border ${c.status === "rejected" ? "border-base-300 text-base-content/30" : "border-base-300 text-base-content/40"}`}
+                    >
+                      {c.label} {c.amount ?? "—"}
+                    </span>
+                  ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Phase 3: Success Timeline */}
+          {isSuccess && (
+            <motion.div
+              key="success-timeline"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-3"
+            >
+              {/* Success header */}
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-success" />
+                <span className="text-sm font-semibold text-base-content">
+                  ${params.amount} {symbol || "USDC"} sent
+                </span>
+              </div>
+
+              {/* TX Timeline */}
+              {timelineSteps.length > 0 && (
+                <TxTimeline steps={timelineSteps} explorerBaseUrl={targetNetwork.blockExplorers?.default.url ?? ""} />
               )}
 
+              {/* Source badges */}
+              <div className="flex flex-wrap gap-1.5">
+                {selectedCard && (
+                  <span
+                    className={`text-[10px] px-2 py-0.5 rounded-full ${selectedCard.bgColor} ${selectedCard.color} border ${selectedCard.borderColor}`}
+                  >
+                    Via {selectedCard.label}
+                  </span>
+                )}
+              </div>
+
+              {/* Close button */}
               {onClose && (
                 <motion.button
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.3 }}
                   onClick={onClose}
-                  className="flex items-center gap-2 px-4 py-1.5 bg-base-300/50 hover:bg-base-300 rounded-full text-sm font-medium text-base-content transition-colors"
+                  className="flex items-center gap-2 px-4 py-1.5 bg-base-300/50 hover:bg-base-300 rounded-full text-sm font-medium text-base-content transition-colors mx-auto"
                 >
                   <X className="w-4 h-4" />
                   Close
@@ -175,39 +258,6 @@ export function SettleFlow({ params, onSuccess, onError, onClose }: SettleFlowPr
           )}
         </AnimatePresence>
       </div>
-
-      <AnimatePresence>
-        {jitUiCopy && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            className="mt-3 w-full rounded-2xl border border-base-300 bg-base-100/60 p-3 text-left"
-          >
-            <p className="text-xs font-semibold uppercase tracking-wide text-base-content/50">AI Route</p>
-            <p className="mt-1 text-base font-semibold text-base-content">{jitUiCopy.title}</p>
-            <p className="mt-1 text-sm text-base-content/70">{jitUiCopy.detail}</p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {jitUiCopy.badges.map((badge, index) => (
-                <motion.span
-                  key={badge}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="rounded-full border border-base-300 bg-base-200 px-2.5 py-1 text-[11px] font-medium text-base-content/70"
-                >
-                  {badge}
-                </motion.span>
-              ))}
-            </div>
-            {jitReasoning && (
-              <p className="mt-2 text-xs text-base-content/45">
-                {jitReasoningSource === "llm" ? "AI verified the route live." : "Fallback route used."}
-              </p>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
