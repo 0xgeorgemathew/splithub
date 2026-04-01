@@ -45,6 +45,7 @@ function buildWorkflowSteps(params: {
   trust: StoreTrustSnapshot | null;
   latestRun: AgentRun | null;
   canSignTrust: boolean;
+  managerTrustAutomationEnabled: boolean;
   needsManagerTrustRegistration: boolean;
   needsValidationSignature: boolean;
 }): TrustWorkflowStep[] {
@@ -64,10 +65,12 @@ function buildWorkflowSteps(params: {
     {
       key: "register",
       title: "1. Register manager identity",
-      actor: "Manual: Manager wallet",
+      actor: params.managerTrustAutomationEnabled ? "Automatic: Demo operator" : "Manual: Manager wallet",
       description:
-        "Manager-signed step. Click the button to submit the manager's ERC-8004 identity on Ethereum Sepolia.",
-      status: managerRegistered ? "verified" : params.canSignTrust ? "ready" : "waiting",
+        params.managerTrustAutomationEnabled
+          ? "The demo operator wallet registers the manager identity on Ethereum Sepolia without extra clicks."
+          : "Manager-signed step. Click the button to submit the manager's ERC-8004 identity on Ethereum Sepolia.",
+      status: managerRegistered ? "verified" : params.managerTrustAutomationEnabled ? "waiting" : params.canSignTrust ? "ready" : "waiting",
       txLabel: "View registration tx",
       txUrl: params.trust?.managerTrustAgent?.identity_tx_hash
         ? `${process.env.NEXT_PUBLIC_ERC8004_TRUST_EXPLORER_BASE_URL || "https://sepolia.etherscan.io"}/tx/${params.trust.managerTrustAgent.identity_tx_hash}`
@@ -92,15 +95,19 @@ function buildWorkflowSteps(params: {
     {
       key: "validation_request",
       title: "3. Submit validation request",
-      actor: "Manual: Manager wallet",
+      actor: params.managerTrustAutomationEnabled ? "Automatic: Demo operator" : "Manual: Manager wallet",
       description:
-        "Manager-signed step. Submit the ERC-8004 validation request onchain after the run evidence is prepared.",
+        params.managerTrustAutomationEnabled
+          ? "Once evidence is prepared, the demo operator wallet submits the ERC-8004 validation request automatically."
+          : "Manager-signed step. Submit the ERC-8004 validation request onchain after the run evidence is prepared.",
       status:
         !managerRegistered || !latestRun
           ? "waiting"
           : latestValidation?.request_tx_hash
             ? "submitted"
-            : params.needsValidationSignature && params.canSignTrust
+            : params.managerTrustAutomationEnabled && latestValidation
+              ? "waiting"
+              : params.needsValidationSignature && params.canSignTrust
               ? "ready"
               : latestValidation
                 ? "waiting"
@@ -199,6 +206,7 @@ export function StoreTrustPanel({
   loading,
   latestRun,
   canSignTrust,
+  managerTrustAutomationEnabled,
   needsManagerTrustRegistration,
   needsValidationSignature,
 }: {
@@ -206,6 +214,7 @@ export function StoreTrustPanel({
   loading: boolean;
   latestRun: AgentRun | null;
   canSignTrust: boolean;
+  managerTrustAutomationEnabled: boolean;
   needsManagerTrustRegistration: boolean;
   needsValidationSignature: boolean;
 }) {
@@ -220,6 +229,7 @@ export function StoreTrustPanel({
     trust,
     latestRun,
     canSignTrust,
+    managerTrustAutomationEnabled,
     needsManagerTrustRegistration,
     needsValidationSignature,
   });
@@ -230,8 +240,9 @@ export function StoreTrustPanel({
         <div>
           <h2 className="text-xl font-bold">ERC-8004 Trust Flow</h2>
           <p className="mt-1 text-sm text-base-content/55">
-            Current implementation uses manual manager signing for Privy-owned manager wallets. Auditor and reviewer
-            steps are automatic.
+            {managerTrustAutomationEnabled
+              ? "The demo operator wallet now handles the manager-signed trust steps automatically. Auditor and reviewer steps remain automatic."
+              : "Current implementation uses manual manager signing for Privy-owned manager wallets. Auditor and reviewer steps are automatic."}
           </p>
         </div>
         {loading && <span className="text-xs uppercase tracking-[0.2em] text-primary">Refreshing</span>}

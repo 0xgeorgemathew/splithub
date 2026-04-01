@@ -10,6 +10,7 @@ export function StoreManagerControls({
   managerError,
   agentFeedback,
   canSignTrust,
+  managerTrustAutomationEnabled,
   needsManagerTrustRegistration,
   needsValidationSignature,
   onAddItem,
@@ -26,6 +27,7 @@ export function StoreManagerControls({
   managerError: string | null;
   agentFeedback: AgentFeedback | null;
   canSignTrust: boolean;
+  managerTrustAutomationEnabled: boolean;
   needsManagerTrustRegistration: boolean;
   needsValidationSignature: boolean;
   onAddItem: () => void;
@@ -35,7 +37,9 @@ export function StoreManagerControls({
   onRegisterManagerTrust: () => void;
   onSubmitValidationRequest: () => void;
 }) {
-  const trustHelpText = !canSignTrust
+  const trustHelpText = managerTrustAutomationEnabled
+    ? "Manager trust actions are signed automatically by the demo operator wallet. Validator and reviewer steps stay automatic."
+    : !canSignTrust
     ? "Manual trust actions require the manager operator wallet. Validator and reviewer steps stay automatic."
     : needsManagerTrustRegistration
       ? "First step: register the manager's ERC-8004 identity on Ethereum Sepolia."
@@ -109,7 +113,7 @@ export function StoreManagerControls({
               </button>
             ) : (
               <>
-                {canSignTrust && needsManagerTrustRegistration && (
+                {!managerTrustAutomationEnabled && canSignTrust && needsManagerTrustRegistration && (
                   <button className="btn btn-outline" onClick={onRegisterManagerTrust} disabled={managerBusy}>
                     Register Manager Identity
                   </button>
@@ -117,7 +121,7 @@ export function StoreManagerControls({
                 <button className="btn btn-outline" onClick={onAgentRun} disabled={managerBusy}>
                   Run Manager Agent
                 </button>
-                {canSignTrust && !needsManagerTrustRegistration && needsValidationSignature && (
+                {!managerTrustAutomationEnabled && canSignTrust && !needsManagerTrustRegistration && needsValidationSignature && (
                   <button className="btn btn-outline" onClick={onSubmitValidationRequest} disabled={managerBusy}>
                     Submit Validation Onchain
                   </button>

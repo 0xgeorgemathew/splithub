@@ -16,11 +16,13 @@ export function StoreRecentAgentRunsCard({
   runs,
   validations,
   reputationEvents,
+  managerTrustAutomationEnabled,
   loading,
 }: {
   runs: AgentRun[];
   validations: AgentValidation[];
   reputationEvents: ReputationEventRecord[];
+  managerTrustAutomationEnabled: boolean;
   loading: boolean;
 }) {
   const [showAllRuns, setShowAllRuns] = useState(false);
@@ -84,8 +86,12 @@ export function StoreRecentAgentRunsCard({
               {
                 label: "Validation request submitted",
                 detail: latestValidation?.request_tx_hash
-                  ? "Manager submitted the request onchain"
-                  : "Waiting for manager submission",
+                  ? managerTrustAutomationEnabled
+                    ? "Demo operator submitted the request onchain"
+                    : "Manager submitted the request onchain"
+                  : managerTrustAutomationEnabled && latestValidation
+                    ? "Waiting for automatic submission"
+                    : "Waiting for manager submission",
               },
               {
                 label: "Validation response recorded",

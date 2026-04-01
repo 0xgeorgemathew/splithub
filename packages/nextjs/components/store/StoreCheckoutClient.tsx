@@ -101,9 +101,11 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
     trustSnapshot?.managerTrustAgent?.registry_agent_id &&
       trustSnapshot.managerTrustAgent.identity_registry_address?.toLowerCase() === currentIdentityRegistryAddress,
   );
+  const managerTrustAutomationEnabled = Boolean(trustSnapshot?.managerAutomationEnabled);
   const needsManagerTrustRegistration = Boolean(store.manager_agent && !managerTrustRegisteredOnCurrentRegistry);
   const needsValidationSignature = Boolean(
-    isManager &&
+    !managerTrustAutomationEnabled &&
+      isManager &&
       managerTrustRegisteredOnCurrentRegistry &&
       trustSnapshot?.latestValidation &&
       !trustSnapshot.latestValidation.request_tx_hash &&
@@ -215,6 +217,10 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
     }
 
     const actionCount = Array.isArray(latestRun.output_json?.actions) ? latestRun.output_json.actions.length : 0;
+    const validationRequestSubmitted = Boolean(validation?.request_tx_hash);
+    const waitingForAutomaticValidation = Boolean(
+      managerTrustAutomationEnabled && validation && !validation.request_tx_hash && validation.status === "pending",
+    );
     setAgentFeedback({
       state: latestRun.state,
       summary: latestRun.decision_summary || "Agent run completed.",
@@ -224,20 +230,24 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
       currentStepLabel:
         latestRun.state === "failed"
           ? "Trigger manager action"
-          : validation?.request_tx_hash
-            ? "Submit validation onchain"
+          : validationRequestSubmitted
+            ? "Validation request submitted automatically"
+            : waitingForAutomaticValidation
+              ? "Validation request submits automatically"
             : "Trigger manager action",
       nextStepLabel:
         latestRun.state === "failed"
           ? "Review the failed run"
-          : validation?.request_tx_hash
+          : validationRequestSubmitted
             ? "Validator verifies automatically"
+            : waitingForAutomaticValidation
+              ? "Validation request submits automatically"
             : "Submit validation onchain",
-      nextStepAutomatic: Boolean(validation?.request_tx_hash),
-      requiresManualAction: !validation?.request_tx_hash,
+      nextStepAutomatic: Boolean(validationRequestSubmitted || waitingForAutomaticValidation),
+      requiresManualAction: !managerTrustAutomationEnabled && !validationRequestSubmitted,
     });
     setQueuedRunRequestedAt(null);
-  }, [agentFeedback?.queued, queuedRunRequestedAt, recentAgentRuns, recentValidations]);
+  }, [agentFeedback?.queued, managerTrustAutomationEnabled, queuedRunRequestedAt, recentAgentRuns, recentValidations]);
 
   const handleCheckout = async () => {
     if (!authenticated || !wallet) {
@@ -630,6 +640,7 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
               managerError={managerError}
               agentFeedback={agentFeedback}
               canSignTrust={Boolean(isManager)}
+              managerTrustAutomationEnabled={managerTrustAutomationEnabled}
               needsManagerTrustRegistration={needsManagerTrustRegistration}
               needsValidationSignature={needsValidationSignature}
               onAddItem={handleAddItem}
@@ -646,6 +657,7 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
               loading={agentRunsLoading}
               latestRun={latestRun}
               canSignTrust={Boolean(isManager)}
+              managerTrustAutomationEnabled={managerTrustAutomationEnabled}
               needsManagerTrustRegistration={needsManagerTrustRegistration}
               needsValidationSignature={needsValidationSignature}
             />
@@ -668,6 +680,7 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
               runs={recentAgentRuns}
               validations={recentValidations}
               reputationEvents={trustSnapshot?.reputationEvents || []}
+              managerTrustAutomationEnabled={managerTrustAutomationEnabled}
               loading={agentRunsLoading}
             />
           )}
