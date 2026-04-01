@@ -8,6 +8,7 @@ import { parseUnits } from "viem";
 import { ExpenseModal } from "~~/components/expense/ExpenseModal";
 import { SettleModal } from "~~/components/settle/SettleModal";
 import { type PaymentParams } from "~~/components/settle/types";
+import { AiDefiPanel } from "~~/components/splits/AiDefiPanel";
 import { BalanceTransferModal } from "~~/components/splits/BalanceTransferModal";
 import { BalancesLiveFeed } from "~~/components/splits/BalancesLiveFeed";
 import { ChipBalanceCard } from "~~/components/splits/ChipBalanceCard";
@@ -15,6 +16,7 @@ import { SplitsHero } from "~~/components/splits/SplitsHero";
 import { TOKENS, TOKEN_DECIMALS } from "~~/config/tokens";
 import { ANIMATION_DELAYS } from "~~/constants/ui";
 import { useHaloChip } from "~~/hooks/halochip-arx/useHaloChip";
+import { useAiDefiPlan } from "~~/hooks/useAiDefiPlan";
 import { useCurrentUser } from "~~/hooks/useCurrentUser";
 import { useEmbeddedWalletClient } from "~~/hooks/useEmbeddedWalletClient";
 import { useFriendBalancesRealtime } from "~~/hooks/useFriendBalancesRealtime";
@@ -56,6 +58,13 @@ export default function SplitsPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
   const [transferDirection, setTransferDirection] = useState<"cardToWallet" | "walletToCard">("walletToCard");
+  const {
+    loading: aiPlanLoading,
+    data: aiPlanData,
+    error: aiPlanError,
+    fetchPlan,
+    reset: resetAiPlan,
+  } = useAiDefiPlan();
 
   const walletAddress = user?.wallet?.address;
   const publicClient = useMemo(() => createBaseSepoliaPublicClient(), []);
@@ -459,7 +468,10 @@ export default function SplitsPage() {
         isWalletLoading={isWalletBalanceLoading}
         friendCount={balances.length}
         onAddExpense={() => setIsExpenseModalOpen(true)}
+        onAiAllocate={fetchPlan}
       />
+
+      <AiDefiPanel loading={aiPlanLoading} data={aiPlanData} error={aiPlanError} onClose={resetAiPlan} />
 
       <ChipBalanceCard
         chipAddress={chipAddress}

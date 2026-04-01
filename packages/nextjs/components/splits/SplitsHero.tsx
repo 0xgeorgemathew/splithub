@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowDownRight, ArrowUpRight, TrendingUp, Users, Wallet } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Sparkles, TrendingUp, Users, Wallet } from "lucide-react";
 
 interface SplitsHeroProps {
   walletBalance: number;
@@ -9,6 +9,7 @@ interface SplitsHeroProps {
   isWalletLoading: boolean;
   friendCount: number;
   onAddExpense: () => void;
+  onAiAllocate?: () => void;
 }
 
 const formatCurrency = (amount: number): string => {
@@ -40,6 +41,7 @@ const HeroCard = ({
   overallBalance,
   isWalletLoading,
   friendCount,
+  onAiAllocate,
 }: Omit<SplitsHeroProps, "onAddExpense">) => {
   const isPositive = overallBalance > 0;
   const isNeutral = overallBalance === 0;
@@ -79,9 +81,22 @@ const HeroCard = ({
 
       <div className="relative">
         {/* Label */}
-        <div className="flex items-center gap-2 mb-2">
-          <Wallet className="w-4 h-4 text-warning" />
-          <span className="text-xs font-bold text-warning uppercase tracking-wider">Wallet Balance</span>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <Wallet className="w-4 h-4 text-warning" />
+            <span className="text-xs font-bold text-warning uppercase tracking-wider">Wallet Balance</span>
+          </div>
+          {onAiAllocate && (
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={onAiAllocate}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 hover:bg-amber-500/15 transition-colors"
+            >
+              <Sparkles className="w-3 h-3" />
+              <span className="text-[10px] font-bold uppercase tracking-wider">AI Allocate</span>
+            </motion.button>
+          )}
         </div>
 
         {/* Main Balance */}
