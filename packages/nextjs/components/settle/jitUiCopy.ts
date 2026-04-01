@@ -30,24 +30,24 @@ export function getJitUiCopy(fundingSource: JitFundingSource | null): JitUiCopy 
   if (fundingSource === "chip_balance") {
     return {
       title: "No top-up needed",
-      detail: "The chip wallet already covers this payment.",
-      badges: ["Ready", "Aave untouched"],
+      detail: "Chip balance already covers the payment.",
+      badges: ["Tap ready", "Route clear"],
     };
   }
 
   if (fundingSource === "agent_liquid") {
     return {
       title: "Using Vincent reserve",
-      detail: "Liquid funds cover this payment without withdrawing from Aave.",
-      badges: ["Fast path", "Liquid reserve"],
+      detail: "Liquid reserve can cover this payment directly.",
+      badges: ["Fast path", "Reserve ready"],
     };
   }
 
   if (fundingSource === "aave_withdraw") {
     return {
-      title: "AI picked Aave",
-      detail: "Withdrawing the exact shortfall, then funding the chip wallet.",
-      badges: ["Best yield", "Deep liquidity", "JIT top-up"],
+      title: "Aave selected",
+      detail: "Best route for reserve-backed payment readiness.",
+      badges: ["Best yield", "Fast withdraw", "Reserve ready"],
     };
   }
 

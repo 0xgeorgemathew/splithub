@@ -37,6 +37,7 @@ interface JitPreparationResult {
 interface UseSettleFlowReturn {
   flowState: FlowState;
   isProcessing: boolean;
+  uiPhase: "idle" | "scan" | "reasoning" | "actions" | "success";
   statusMessage: string;
   jitReasoning: string;
   jitReasoningSource: "llm" | "fallback" | null;
@@ -56,7 +57,69 @@ interface UseSettleFlowReturn {
   getCurrentStepIndex: () => number;
 }
 
-const SCAN_TICK_MS = 400;
+const SCAN_TICK_MS = 1100;
+const SCAN_HOLD_MS = 1700;
+const REASONING_HOLD_MS = 2000;
+const ACTION_STEP_MS = 650;
+
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+function buildWorkflowSteps(prep: JitPreparationResult | null, txHash: string | null = null): TimelineStep[] {
+  const fundingSource = prep?.fundingSource;
+  const amount = prep?.shortfallUsd ? `$${prep.shortfallUsd}` : undefined;
+
+  if (fundingSource === "chip_balance") {
+    return [
+      {
+        label: "Payment sent",
+        detail: "Chip balance is already ready.",
+        txHash: txHash ?? undefined,
+        status: "pending",
+      },
+    ];
+  }
+
+  if (fundingSource === "agent_liquid") {
+    return [
+      {
+        label: "Funding chip",
+        detail: "Liquid reserve is moving into the payment wallet.",
+        amount,
+        txHash: prep?.transferTxHash,
+        status: "pending",
+      },
+      {
+        label: "Payment sent",
+        detail: "Chip transfer will broadcast as soon as funding lands.",
+        txHash: txHash ?? undefined,
+        status: "pending",
+      },
+    ];
+  }
+
+  return [
+    {
+      label: "Withdrawing from Aave",
+      detail: "Pulling the exact shortfall from reserve.",
+      amount,
+      txHash: prep?.withdrawalTxHash,
+      status: "pending",
+    },
+    {
+      label: "Funding chip",
+      detail: "Fresh USDC is moving into the payment wallet.",
+      amount,
+      txHash: prep?.transferTxHash,
+      status: "pending",
+    },
+    {
+      label: "Payment sent",
+      detail: "Chip transfer broadcasts once funding is ready.",
+      txHash: txHash ?? undefined,
+      status: "pending",
+    },
+  ];
+}
 
 export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptions): UseSettleFlowReturn {
   const { walletAddress, isConnected } = useWalletAddress();
@@ -64,6 +127,7 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
   const { signDigest } = useHaloChip();
 
   const [flowState, setFlowState] = useState<FlowState>("idle");
+  const [uiPhase, setUiPhase] = useState<"idle" | "scan" | "reasoning" | "actions" | "success">("idle");
   const [statusMessage, setStatusMessage] = useState("");
   const [jitReasoning, setJitReasoning] = useState("");
   const [jitReasoningSource, setJitReasoningSource] = useState<"llm" | "fallback" | null>(null);
@@ -71,11 +135,11 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
   const [jitPreparation, setJitPreparation] = useState<JitPreparationResult | null>(null);
   const [error, setError] = useState("");
   const [txHash, setTxHash] = useState<string | null>(null);
+  const [timelineSteps, setTimelineSteps] = useState<TimelineStep[]>([]);
 
-  // Simulated scanning state
   const [sourceCards, setSourceCards] = useState<SourceCardData[]>(buildInitialSourceCards());
   const [scanIndex, setScanIndex] = useState(-1);
-  const scanTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const animationRunRef = useRef(0);
 
   const publicClient = useMemo(() => createBaseSepoliaPublicClient(), []);
 
@@ -91,60 +155,129 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
     functionName: "symbol",
   });
 
-  // Start simulated scanning animation
-  const startScanAnimation = useCallback(() => {
-    const initial = buildInitialSourceCards();
-    setSourceCards(initial);
+  const startScanAnimation = useCallback(async (runId: number) => {
+    const scriptedCards = buildInitialSourceCards();
+
+    setUiPhase("scan");
+    setTimelineSteps([]);
     setScanIndex(0);
 
-    // Mark first card as checking
-    initial[0] = { ...initial[0], status: "checking" };
-    setSourceCards([...initial]);
+    scriptedCards[0] = { ...scriptedCards[0], status: "checking" };
+    setSourceCards([...scriptedCards]);
 
-    let idx = 0;
-    scanTimerRef.current = setInterval(() => {
-      idx++;
-      if (idx >= initial.length) {
-        if (scanTimerRef.current) clearInterval(scanTimerRef.current);
-        return;
-      }
-      // Mark current as checking, previous stay as-is (they'll be resolved when API returns)
-      setSourceCards(prev => {
-        const next = [...prev];
-        next[idx] = { ...next[idx], status: "checking" };
-        return next;
-      });
-      setScanIndex(idx);
-    }, SCAN_TICK_MS);
-  }, []);
+    await wait(SCAN_TICK_MS);
+    if (animationRunRef.current !== runId) return;
 
-  // Stop scanning and resolve cards from API result
-  const resolveScan = useCallback((fundingSource: JitFundingSource, prep: JitPreparationResult) => {
-    if (scanTimerRef.current) {
-      clearInterval(scanTimerRef.current);
-      scanTimerRef.current = null;
-    }
+    scriptedCards[0] = { ...scriptedCards[0], status: "rejected", amount: "$0.00", reason: "Insufficient" };
+    scriptedCards[1] = { ...scriptedCards[1], status: "checking" };
+    setScanIndex(1);
+    setSourceCards([...scriptedCards]);
 
-    setSourceCards(prev =>
-      resolveSourceCards(
-        prev.map(c => ({ ...c, status: c.status === "queued" ? "rejected" : c.status })),
-        fundingSource,
-        {
-          chipBalance: prep.fundedWalletBalanceUsd ?? null,
-          agentLiquid: null,
-          aaveReserve: null,
-          aaveApy: "4.20%",
-          morphoApy: "0.35%",
-        },
-      ),
-    );
+    await wait(SCAN_TICK_MS);
+    if (animationRunRef.current !== runId) return;
+
+    scriptedCards[1] = { ...scriptedCards[1], status: "rejected", amount: "$0.00", reason: "Reserve held back" };
+    scriptedCards[2] = { ...scriptedCards[2], status: "checking", apy: "4.20%" };
+    setScanIndex(2);
+    setSourceCards([...scriptedCards]);
+
+    await wait(SCAN_TICK_MS);
+    if (animationRunRef.current !== runId) return;
+
+    scriptedCards[2] = { ...scriptedCards[2], status: "selected", amount: "route ready", apy: "4.20%", reason: null };
+    scriptedCards[3] = { ...scriptedCards[3], status: "rejected", amount: "standby", apy: "0.35%", reason: "Lower priority" };
+    setSourceCards([...scriptedCards]);
+    setStatusMessage("Aave selected");
+
+    await wait(SCAN_HOLD_MS);
+    if (animationRunRef.current !== runId) return;
+
     setScanIndex(-1);
+    setUiPhase("reasoning");
+    setStatusMessage("Reserve route locked");
+
+    await wait(REASONING_HOLD_MS);
+    if (animationRunRef.current !== runId) return;
+
+    setUiPhase("actions");
+
+    const provisionalSteps = buildWorkflowSteps({ fundingSource: "aave_withdraw" });
+    setTimelineSteps(provisionalSteps.map((step, index) => ({ ...step, status: index === 0 ? "active" : "pending" })));
+    setStatusMessage(provisionalSteps[0]?.label ?? "Preparing payment");
   }, []);
 
-  // Cleanup timer on unmount
+  const setTimelineStepState = useCallback((index: number, step: Partial<TimelineStep>) => {
+    setTimelineSteps(prev => prev.map((item, itemIndex) => (itemIndex === index ? { ...item, ...step } : item)));
+  }, []);
+
+  const playWorkflowSequence = useCallback(
+    async (
+      runId: number,
+      prep: JitPreparationResult,
+      prepared: Parameters<typeof broadcastSignedChipTransaction>[0]["prepared"],
+      signed: Parameters<typeof broadcastSignedChipTransaction>[0]["signed"],
+    ) => {
+      const resolvedSteps = buildWorkflowSteps(prep);
+
+      setTimelineSteps(resolvedSteps.map((step, index) => ({ ...step, status: index === 0 ? "active" : "pending" })));
+      setStatusMessage(resolvedSteps[0]?.label ?? "Preparing payment");
+
+      for (let index = 0; index < Math.max(0, resolvedSteps.length - 1); index++) {
+        await wait(ACTION_STEP_MS);
+        if (animationRunRef.current !== runId) return;
+
+        setTimelineStepState(index, { status: "complete" });
+
+        const nextStep = resolvedSteps[index + 1];
+        if (nextStep) {
+          setTimelineStepState(index + 1, { status: "active" });
+          setStatusMessage(nextStep.label);
+        }
+      }
+
+      if (animationRunRef.current !== runId) return;
+
+      setFlowState("submitting");
+
+      const result = await broadcastSignedChipTransaction({
+        publicClient,
+        chipAddress: chipAddress as Address,
+        prepared,
+        signed,
+      });
+
+      if (animationRunRef.current !== runId) return;
+
+      setFlowState("confirming");
+      setStatusMessage("Confirming payment");
+      setTxHash(result.txHash);
+
+      const lastIndex = resolvedSteps.length - 1;
+      setTimelineStepState(lastIndex, {
+        status: "active",
+        txHash: result.txHash,
+        detail: "Transaction accepted on Base Sepolia.",
+      });
+
+      dispatchClientRefreshEvents({ balances: true, paymentRequests: true });
+
+      setFlowState("success");
+      setUiPhase("success");
+      setStatusMessage("Sent");
+      setTimelineStepState(lastIndex, {
+        status: "complete",
+        txHash: result.txHash,
+        detail: "Payment confirmed and balances refreshed.",
+      });
+
+      onSuccess?.(result.txHash);
+    },
+    [chipAddress, onSuccess, publicClient, setTimelineStepState],
+  );
+
   useEffect(() => {
     return () => {
-      if (scanTimerRef.current) clearInterval(scanTimerRef.current);
+      animationRunRef.current += 1;
     };
   }, []);
 
@@ -155,6 +288,8 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
     setJitFundingSource(null);
     setJitPreparation(null);
     setTxHash(null);
+    setTimelineSteps([]);
+    setUiPhase("idle");
 
     if (!isConnected || !walletAddress) {
       setError("Please connect your wallet first");
@@ -172,6 +307,9 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
     }
 
     try {
+      const runId = animationRunRef.current + 1;
+      animationRunRef.current = runId;
+
       setFlowState("tapping");
       setStatusMessage("Tap chip");
 
@@ -187,8 +325,8 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
       const signed = await signDigest({ digest: prepared.digest });
 
       setFlowState("preparing");
-      setStatusMessage("Scanning sources");
-      startScanAnimation();
+      setStatusMessage("Scanning resources");
+      const scanSequence = startScanAnimation(runId);
 
       const prepareRes = await fetch("/api/vincent/prepare-payment", {
         method: "POST",
@@ -215,45 +353,40 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
       setJitFundingSource(funding);
       setJitPreparation(prepareData ?? null);
 
-      // Resolve the scan animation with actual results
       if (funding) {
-        resolveScan(funding, prepareData ?? {});
+        setSourceCards(prev =>
+          resolveSourceCards(
+            prev.map(card => ({ ...card, status: card.status === "queued" ? "rejected" : card.status })),
+            funding,
+            {
+              chipBalance: prepareData?.fundedWalletBalanceUsd ?? null,
+              agentLiquid: null,
+              aaveReserve: null,
+              aaveApy: "4.20%",
+              morphoApy: "0.35%",
+            },
+          ),
+        );
       }
 
-      if (prepareData?.withdrewFromAave && prepareData?.transferredToFundedWallet) {
-        setStatusMessage("Aave tops up chip");
-      } else if (prepareData?.transferredToFundedWallet) {
-        setStatusMessage("Funding chip");
-      } else {
-        setStatusMessage("No top-up needed");
-      }
+      await scanSequence;
+      if (animationRunRef.current !== runId) return;
 
-      setFlowState("submitting");
-      setStatusMessage("Paying now");
-
-      const result = await broadcastSignedChipTransaction({
-        publicClient,
-        chipAddress: chipAddress as Address,
-        prepared,
-        signed,
-      });
-
-      setFlowState("confirming");
-      setStatusMessage("Confirming");
-      setTxHash(result.txHash);
-
-      dispatchClientRefreshEvents({ balances: true, paymentRequests: true });
-
-      setFlowState("success");
-      setStatusMessage("Sent");
-
-      onSuccess?.(result.txHash);
+      await playWorkflowSequence(runId, prepareData ?? {}, prepared, signed);
     } catch (err) {
       console.error("Settlement error:", err);
       setFlowState("error");
+      setUiPhase("actions");
       setError(parseContractError(err) || "Settlement failed. Please try again.");
       setStatusMessage("");
-      if (scanTimerRef.current) clearInterval(scanTimerRef.current);
+      setTimelineSteps(prev => {
+        if (prev.length === 0) return prev;
+        const activeIndex = prev.findIndex(step => step.status === "active");
+        const fallbackIndex = activeIndex === -1 ? prev.length - 1 : activeIndex;
+        return prev.map((step, index) =>
+          index === fallbackIndex ? { ...step, status: "error", detail: "Agent flow stopped before settlement completed." } : step,
+        );
+      });
       onError?.(err instanceof Error ? err : new Error("Settlement failed"));
     }
   }, [
@@ -264,7 +397,7 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
     onSuccess,
     params,
     publicClient,
-    resolveScan,
+    playWorkflowSequence,
     signDigest,
     startScanAnimation,
     walletAddress,
@@ -279,9 +412,11 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
     setJitFundingSource(null);
     setJitPreparation(null);
     setTxHash(null);
+    setUiPhase("idle");
+    setTimelineSteps([]);
     setSourceCards(buildInitialSourceCards());
     setScanIndex(-1);
-    if (scanTimerRef.current) clearInterval(scanTimerRef.current);
+    animationRunRef.current += 1;
   }, []);
 
   const getCurrentStepIndex = useCallback(() => {
@@ -296,34 +431,10 @@ export function useSettleFlow({ params, onSuccess, onError }: UseSettleFlowOptio
 
   const isProcessing = flowState !== "idle" && flowState !== "success" && flowState !== "error";
 
-  // Compute timeline steps from preparation data
-  const timelineSteps: TimelineStep[] = useMemo(() => {
-    if (flowState !== "success" || !jitPreparation) return [];
-    const steps: TimelineStep[] = [];
-    if (jitPreparation.withdrewFromAave) {
-      steps.push({
-        label: "Aave withdraw",
-        amount: jitPreparation.shortfallUsd ? `$${jitPreparation.shortfallUsd}` : undefined,
-        txHash: jitPreparation.withdrawalTxHash,
-      });
-    }
-    if (jitPreparation.transferredToFundedWallet) {
-      steps.push({
-        label: "Fund chip wallet",
-        amount: jitPreparation.shortfallUsd ? `$${jitPreparation.shortfallUsd}` : undefined,
-        txHash: jitPreparation.transferTxHash,
-      });
-    }
-    steps.push({
-      label: "Payment sent",
-      txHash: txHash ?? undefined,
-    });
-    return steps;
-  }, [flowState, jitPreparation, txHash]);
-
   return {
     flowState,
     isProcessing,
+    uiPhase,
     statusMessage,
     jitReasoning,
     jitReasoningSource,

@@ -15,11 +15,11 @@ interface PaymentStatusIndicatorProps {
 
 const sizeConfig = {
   sm: {
-    container: "w-20 h-20",
-    icon: "w-6 h-6",
-    checkIcon: "w-8 h-8",
+    container: "w-[4.25rem] h-[4.25rem]",
+    icon: "w-4.5 h-4.5",
+    checkIcon: "w-6.5 h-6.5",
     text: "text-[9px]",
-    statusText: "text-base",
+    statusText: "text-[14px]",
   },
   md: {
     container: "w-24 h-24",
@@ -54,7 +54,7 @@ export function PaymentStatusIndicator({
   const config = sizeConfig[size];
 
   return (
-    <div className="flex flex-col items-center justify-center gap-4">
+    <div className="flex flex-col items-center justify-center gap-2">
       <AnimatePresence mode="wait">
         {/* IDLE State - Tap to Pay Button */}
         {status === "idle" && (
