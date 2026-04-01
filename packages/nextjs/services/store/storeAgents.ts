@@ -1,5 +1,12 @@
 import { ensureUserExists } from "../userService";
-import { createSlug, findOrCreateNetwork, getStoreRecordById, normalizeAddress, resolveManager } from "./shared";
+import {
+  createSlug,
+  findOrCreateNetwork,
+  getStoreRecordById,
+  normalizeAddress,
+  resolveManager,
+  resolveStoreOperatorWallet,
+} from "./shared";
 import { getStoreAnalytics } from "./storeAnalytics";
 import { upsertStoreInventory } from "./storeCatalog";
 import { getManagerAgentByStore, getStoreItems } from "./storeQueries";
@@ -13,7 +20,8 @@ export async function createStore(
   input: CreateStoreInput,
 ): Promise<{ network: Awaited<ReturnType<typeof findOrCreateNetwork>>; store: Stall; agent: ManagerAgent }> {
   const network = await findOrCreateNetwork(input.adminWallet, input.networkName, input.networkSlug);
-  const manager = await resolveManager(input);
+  const operatorWallet = resolveStoreOperatorWallet();
+  const manager = await resolveManager({ ...input, managerWallet: operatorWallet });
 
   const { data: store, error } = await supabase
     .from("stalls")
@@ -23,7 +31,7 @@ export async function createStore(
       stall_slug: createSlug(input.storeSlug || input.storeName),
       stall_description: input.storeDescription || null,
       operator_twitter_handle: manager?.twitter_handle || input.managerTwitterHandle?.replace(/^@/, "") || "unassigned",
-      operator_wallet: manager?.wallet_address || input.managerWallet?.toLowerCase() || null,
+      operator_wallet: operatorWallet,
       split_percentage: input.splitPercentage ?? 80,
       status: "active",
       token_address: input.tokenAddress.toLowerCase(),
@@ -37,7 +45,7 @@ export async function createStore(
 
   const agent = await createManagerAgent({
     stallId: store.id,
-    operatorWallet: manager?.wallet_address || input.managerWallet?.toLowerCase() || input.adminWallet.toLowerCase(),
+    operatorWallet,
     agentName: input.agentName || `${input.storeName} AI Manager`,
   });
 
