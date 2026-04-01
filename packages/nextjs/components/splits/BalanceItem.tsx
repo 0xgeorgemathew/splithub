@@ -61,7 +61,7 @@ export const BalanceItem = ({
         isClickable ? "cursor-pointer hover:bg-white/[0.02] active:bg-white/[0.04]" : "cursor-default"
       } ${!isClickable && !isRequestable ? "opacity-60" : ""}`}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 min-w-0 flex-1">
         {/* Avatar */}
         <BalanceAvatar
           user={{
@@ -81,7 +81,7 @@ export const BalanceItem = ({
       </div>
 
       {/* Amount & Actions - CSS Grid for alignment */}
-      <div className="grid grid-cols-[80px_32px] gap-2 items-center">
+      <div className="grid grid-cols-[80px_32px] gap-2 items-center flex-shrink-0">
         <div
           className={`font-mono text-base font-bold tabular-nums text-right ${isPositive ? "text-[#00E0B8]" : "text-rose-500"}`}
         >

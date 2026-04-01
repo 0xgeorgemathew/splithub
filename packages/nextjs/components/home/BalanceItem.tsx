@@ -80,7 +80,7 @@ export function BalanceItem({
       onClick={() => isNegative && onRowClick(balance)}
     >
       {/* Left: Avatar + Name */}
-      <div className="flex items-center gap-4 flex-1 min-w-0">
+      <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
         {balance.friend_twitter_profile_url ? (
           <Image
             src={balance.friend_twitter_profile_url}
@@ -103,9 +103,9 @@ export function BalanceItem({
       </div>
 
       {/* Right: Amount + Icon - CSS Grid enforces exact column widths */}
-      <div className="grid grid-cols-[100px_40px] gap-2 items-center flex-shrink-0">
+      <div className="grid grid-cols-[80px_36px] gap-1.5 items-center flex-shrink-0">
         <div
-          className={`font-mono text-lg font-bold tabular-nums text-right ${
+          className={`font-mono text-base sm:text-lg font-bold tabular-nums text-right ${
             isPositive ? "text-[#00E0B8]" : "text-rose-500"
           }`}
         >
@@ -125,7 +125,7 @@ export function BalanceItem({
               : undefined
           }
           onKeyDown={isPositive ? handleKeyDown : undefined}
-          className={`w-10 h-10 flex items-center justify-center rounded-full transition-colors ${
+          className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors ${
             isPositive && !isProcessing && !isSuccess
               ? "cursor-pointer hover:bg-[#00E0B8]/10 focus:bg-[#00E0B8]/10 focus:outline-none focus:ring-2 focus:ring-[#00E0B8]/50"
               : ""

@@ -175,11 +175,13 @@ export const FriendBalancesList = () => {
       />
 
       {/* Section Header */}
-      <div className="flex items-center justify-between mb-4 px-1">
-        <div className="flex items-center gap-2">
-          <Wallet className="w-4 h-4 text-primary" />
-          <span className="text-sm font-semibold text-base-content/70 uppercase tracking-wider">Ledger</span>
-          <span className="text-xs text-base-content/50 bg-base-300/50 px-2 py-0.5 rounded-full">
+      <div className="flex items-center justify-between mb-4 px-1 gap-1">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <Wallet className="w-4 h-4 text-primary flex-shrink-0" />
+          <span className="text-sm font-semibold text-base-content/70 uppercase tracking-wider whitespace-nowrap">
+            Ledger
+          </span>
+          <span className="text-xs text-base-content/50 bg-base-300/50 px-1.5 py-0.5 rounded-full">
             {balances.length}
           </span>
         </div>
@@ -187,10 +189,10 @@ export const FriendBalancesList = () => {
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => setIsExpenseModalOpen(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-warning/10 hover:bg-warning/20 text-warning rounded-full text-xs font-semibold transition-colors"
+          className="flex items-center gap-1.5 px-2.5 py-1.5 bg-warning/10 hover:bg-warning/20 text-warning rounded-full text-xs font-semibold transition-colors flex-shrink-0"
         >
           <Plus className="w-3.5 h-3.5" />
-          Add Expense
+          <span className="hidden min-[400px]:inline">Add Expense</span>
         </motion.button>
       </div>
 
