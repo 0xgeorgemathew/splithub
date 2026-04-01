@@ -85,6 +85,56 @@ function resolvePlatformRoleWallet(role: "validator" | "reviewer") {
   return normalizeAddress(createErc8004WalletClients(privateKey).account.address);
 }
 
+type TrustAutomationContext = {
+  privateKey: `0x${string}`;
+  signerAddress: string;
+  walletClient: ReturnType<typeof createErc8004WalletClients>["walletClient"];
+};
+
+function resolveTrustAutomationContext(
+  agent: Pick<Erc8004AgentRecord, "role" | "operator_wallet" | "owner_wallet"> | null | undefined,
+): TrustAutomationContext | null {
+  if (!agent) {
+    return null;
+  }
+
+  const privateKey = resolvePrivateKeyForRole(agent.role);
+  if (!privateKey) {
+    return null;
+  }
+
+  const { walletClient, account } = createErc8004WalletClients(privateKey);
+  const signerAddress = normalizeAddress(account.address);
+
+  if (
+    signerAddress !== normalizeAddress(agent.operator_wallet) &&
+    signerAddress !== normalizeAddress(agent.owner_wallet)
+  ) {
+    return null;
+  }
+
+  return {
+    privateKey,
+    signerAddress,
+    walletClient,
+  };
+}
+
+export function resolveManagerDemoOperatorWallet() {
+  const privateKey = resolvePrivateKeyForRole("manager");
+  if (!privateKey) {
+    return null;
+  }
+
+  return normalizeAddress(createErc8004WalletClients(privateKey).account.address);
+}
+
+export function isManagerTrustAutomationEnabled(
+  agent: Pick<Erc8004AgentRecord, "role" | "operator_wallet" | "owner_wallet"> | null | undefined,
+) {
+  return Boolean(resolveTrustAutomationContext(agent));
+}
+
 function formatOnchainSubmissionError(error: unknown) {
   if (error instanceof Error) {
     const candidate = error as Error & {
@@ -417,19 +467,12 @@ async function maybeRegisterTrustAgentIdentity(agent: Erc8004AgentRecord) {
     return agent;
   }
 
-  const privateKey = resolvePrivateKeyForRole(agent.role);
-  if (!privateKey) {
+  const automationContext = resolveTrustAutomationContext(agent);
+  if (!automationContext) {
     return agent;
   }
 
-  const { walletClient, account } = createErc8004WalletClients(privateKey);
-  const normalizedSigner = normalizeAddress(account.address);
-  if (
-    normalizedSigner !== normalizeAddress(agent.operator_wallet) &&
-    normalizedSigner !== normalizeAddress(agent.owner_wallet)
-  ) {
-    return agent;
-  }
+  const { walletClient, signerAddress } = automationContext;
 
   try {
     const config = getErc8004TrustConfig();
@@ -446,7 +489,7 @@ async function maybeRegisterTrustAgentIdentity(agent: Erc8004AgentRecord) {
       .from("erc8004_agents")
       .update({
         registry_agent_id: registryAgentId,
-        agent_wallet: normalizedSigner,
+        agent_wallet: signerAddress,
         identity_tx_hash: txHash,
         identity_registry_address: config.identityRegistryAddress,
         status: registryAgentId ? "registered" : "link_pending",
@@ -464,7 +507,7 @@ async function maybeRegisterTrustAgentIdentity(agent: Erc8004AgentRecord) {
         .from("manager_agents")
         .update({
           erc8004_agent_id: registryAgentId,
-          agent_address: normalizedSigner,
+          agent_address: signerAddress,
         })
         .eq("id", agent.linked_manager_agent_id);
     }
@@ -529,7 +572,7 @@ export async function registerTrustAgentIdentity(
 }
 
 export async function ensureTrustAgentsForManager(managerAgent: ManagerAgent) {
-  const managerTrustAgent = await upsertTrustAgentRecord({
+  const managerTrustAgentRecord = await upsertTrustAgentRecord({
     role: "manager",
     name: managerAgent.agent_name,
     description: "Autonomous store manager for SplitHub store operations on Base Sepolia.",
@@ -545,6 +588,12 @@ export async function ensureTrustAgentsForManager(managerAgent: ManagerAgent) {
       spec: ERC8004_SPEC_URL,
     },
   });
+  let managerTrustAgent = managerTrustAgentRecord;
+  try {
+    managerTrustAgent = await maybeRegisterTrustAgentIdentity(managerTrustAgentRecord);
+  } catch (error) {
+    console.error("Failed to auto-register manager trust agent:", error);
+  }
   const [validatorAgent, reviewerAgent] = await Promise.all([
     ensurePlatformTrustAgent("validator"),
     ensurePlatformTrustAgent("reviewer"),
@@ -558,17 +607,12 @@ export async function ensureTrustAgentsForManager(managerAgent: ManagerAgent) {
 }
 
 export async function getStoreTrustSnapshot(managerAgentId: string): Promise<StoreTrustSnapshot> {
-  const { data: managerTrustData } = await supabase
-    .from("erc8004_agents")
-    .select("*")
-    .eq("linked_manager_agent_id", managerAgentId)
-    .limit(1);
+  const { data: managerAgentData } = await supabase.from("manager_agents").select("*").eq("id", managerAgentId).single();
+  const managerAgent = (managerAgentData as ManagerAgent | null) || null;
 
-  const managerTrustAgent = (managerTrustData?.[0] as Erc8004AgentRecord | undefined) || null;
-  const [validatorAgent, reviewerAgent] = await Promise.all([
-    ensurePlatformTrustAgent("validator"),
-    ensurePlatformTrustAgent("reviewer"),
-  ]);
+  const { managerTrustAgent, validatorAgent, reviewerAgent } = managerAgent
+    ? await ensureTrustAgentsForManager(managerAgent)
+    : { managerTrustAgent: null, validatorAgent: null, reviewerAgent: null };
 
   const { data: agentRuns } = await supabase.from("agent_runs").select("id").eq("agent_id", managerAgentId).limit(100);
   const runIds = (agentRuns || []).map(run => run.id);
@@ -597,6 +641,7 @@ export async function getStoreTrustSnapshot(managerAgentId: string): Promise<Sto
     managerTrustAgent,
     validatorAgent,
     reviewerAgent,
+    managerAutomationEnabled: isManagerTrustAutomationEnabled(managerTrustAgent),
     latestValidation,
     latestReputation: reputationEvents[0] || null,
     reputationEvents,
@@ -821,6 +866,61 @@ export async function submitValidationRequest(runId: string) {
 
   if (error || !data) {
     throw new Error(`Failed to persist validation request: ${error?.message}`);
+  }
+
+  return data as AgentValidation;
+}
+
+async function maybeSubmitManagerValidationRequestOnchain(params: {
+  validation: AgentValidation;
+  managerTrustAgent: Erc8004AgentRecord;
+  validatorAgent: Erc8004AgentRecord | null;
+}) {
+  if (params.validation.request_tx_hash) {
+    return params.validation;
+  }
+
+  if (!params.managerTrustAgent.registry_agent_id || !isCurrentIdentityRegistration(params.managerTrustAgent)) {
+    return params.validation;
+  }
+
+  const automationContext = resolveTrustAutomationContext(params.managerTrustAgent);
+  if (!automationContext || !params.validatorAgent) {
+    return params.validation;
+  }
+
+  if (!params.validation.request_hash || !params.validation.request_uri) {
+    throw new Error("Validation request is missing request hash or URI");
+  }
+
+  const config = getErc8004TrustConfig();
+  const txHash = await automationContext.walletClient.writeContract({
+    address: config.validationRegistryAddress,
+    abi: ERC8004_VALIDATION_REGISTRY_ABI,
+    functionName: "validationRequest",
+    args: [
+      (params.validatorAgent.agent_wallet || params.validatorAgent.operator_wallet) as `0x${string}`,
+      BigInt(params.managerTrustAgent.registry_agent_id),
+      params.validation.request_uri,
+      params.validation.request_hash as `0x${string}`,
+    ],
+  });
+
+  await createErc8004PublicClient().waitForTransactionReceipt({ hash: txHash });
+
+  const { data, error } = await supabase
+    .from("agent_validations")
+    .update({
+      request_tx_hash: txHash,
+      request_explorer_url: buildTrustExplorerUrl(txHash),
+      status: "submitted",
+    })
+    .eq("id", params.validation.id)
+    .select("*")
+    .single();
+
+  if (error || !data) {
+    throw new Error(`Failed to persist manager validation request tx: ${error?.message}`);
   }
 
   return data as AgentValidation;
@@ -1229,10 +1329,37 @@ async function pauseManagerAfterRepeatedTrustFailures(managerAgentId: string) {
 }
 
 export async function processCompletedManagerRun(runId: string) {
-  const validation = await submitValidationRequest(runId);
+  const run = await getAgentRunWithManager(runId);
+  if (!run.agent) {
+    throw new Error(`Manager agent missing for run ${runId}`);
+  }
+
+  const { managerTrustAgent, validatorAgent } = await ensureTrustAgentsForManager(run.agent);
+  let validation = await submitValidationRequest(runId);
+  let reputation: ReputationEventRecord | null = null;
+
+  validation = await maybeSubmitManagerValidationRequestOnchain({
+    validation,
+    managerTrustAgent,
+    validatorAgent,
+  });
+
+  if (validation.request_tx_hash) {
+    validation = await submitValidationResponse(validation.id);
+
+    if (validation.status === "verified") {
+      reputation = await submitReputationFeedback(validation.agent_run_id, validation.response_score || 100, [
+        "inventory",
+        "ops",
+      ]);
+    } else {
+      await pauseManagerAfterRepeatedTrustFailures(run.agent.id);
+    }
+  }
+
   return {
     validation,
-    reputation: null,
+    reputation,
   };
 }
 

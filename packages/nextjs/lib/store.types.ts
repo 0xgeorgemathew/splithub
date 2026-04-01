@@ -84,6 +84,7 @@ export type StoreTrustSnapshot = {
   managerTrustAgent: Erc8004AgentRecord | null;
   validatorAgent: Erc8004AgentRecord | null;
   reviewerAgent: Erc8004AgentRecord | null;
+  managerAutomationEnabled: boolean;
   latestValidation: AgentValidation | null;
   latestReputation: ReputationEventRecord | null;
   reputationEvents: ReputationEventRecord[];
