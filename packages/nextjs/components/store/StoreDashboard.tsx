@@ -283,7 +283,7 @@ export function StoreDashboard() {
           <section className="mt-8">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-bold">Managed Stores</h2>
-              <span className="text-sm text-base-content/50">Your wallet controls these store agents</span>
+              <span className="text-sm text-base-content/50">Demo operator wallet controls these store agents</span>
             </div>
             <div className="grid gap-4 lg:grid-cols-2">
               {data?.managedStores.length ? (
