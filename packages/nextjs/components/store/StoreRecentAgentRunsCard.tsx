@@ -99,7 +99,9 @@ export function StoreRecentAgentRunsCard({
                   latestValidation?.status === "verified"
                     ? `Verified with score ${latestValidation.response_score ?? "pending"}`
                     : latestValidation?.status === "failed"
-                      ? "Validation failed"
+                      ? latestValidation?.explorer_url
+                        ? "Validation response transaction failed onchain"
+                        : "Validation failed"
                       : "Waiting for auditor",
               },
               {
