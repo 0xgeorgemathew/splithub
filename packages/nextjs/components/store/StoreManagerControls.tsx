@@ -9,10 +9,15 @@ export function StoreManagerControls({
   managerBusy,
   managerError,
   agentFeedback,
+  canSignTrust,
+  needsManagerTrustRegistration,
+  needsValidationSignature,
   onAddItem,
   onCreateAgent,
   onAgentRun,
   onAgentPause,
+  onRegisterManagerTrust,
+  onSubmitValidationRequest,
 }: {
   store: StoreWithCatalog;
   itemForm: ItemFormState;
@@ -20,10 +25,15 @@ export function StoreManagerControls({
   managerBusy: boolean;
   managerError: string | null;
   agentFeedback: AgentFeedback | null;
+  canSignTrust: boolean;
+  needsManagerTrustRegistration: boolean;
+  needsValidationSignature: boolean;
   onAddItem: () => void;
   onCreateAgent: () => void;
   onAgentRun: () => void;
   onAgentPause: (status: "active" | "paused") => void;
+  onRegisterManagerTrust: () => void;
+  onSubmitValidationRequest: () => void;
 }) {
   return (
     <div className="mt-8 rounded-3xl border border-white/10 bg-base-200/50 p-5">
@@ -83,6 +93,16 @@ export function StoreManagerControls({
             <button className="btn btn-outline" onClick={onAgentRun} disabled={managerBusy}>
               Run Agent
             </button>
+            {canSignTrust && needsManagerTrustRegistration && (
+              <button className="btn btn-outline" onClick={onRegisterManagerTrust} disabled={managerBusy}>
+                Register Trust Identity
+              </button>
+            )}
+            {canSignTrust && !needsManagerTrustRegistration && needsValidationSignature && (
+              <button className="btn btn-outline" onClick={onSubmitValidationRequest} disabled={managerBusy}>
+                Submit Validation Request
+              </button>
+            )}
             {store.manager_agent.status === "paused" ? (
               <button className="btn btn-outline" onClick={() => onAgentPause("active")} disabled={managerBusy}>
                 Resume Agent

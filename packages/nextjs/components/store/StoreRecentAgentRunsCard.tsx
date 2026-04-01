@@ -50,7 +50,9 @@ export function StoreRecentAgentRunsCard({
               </div>
             </div>
             <div
-              className={`text-xs font-semibold uppercase tracking-[0.18em] ${RUN_STATE_CLASS_NAMES[latestRun.state] || "text-base-content/60"}`}
+              className={`text-xs font-semibold uppercase tracking-[0.18em] ${
+                RUN_STATE_CLASS_NAMES[latestRun.state] || "text-base-content/60"
+              }`}
             >
               {latestRun.state}
             </div>
@@ -105,7 +107,9 @@ export function StoreRecentAgentRunsCard({
                       </div>
                     </div>
                     <div
-                      className={`text-xs font-semibold uppercase tracking-[0.18em] ${RUN_STATE_CLASS_NAMES[run.state] || "text-base-content/60"}`}
+                      className={`text-xs font-semibold uppercase tracking-[0.18em] ${
+                        RUN_STATE_CLASS_NAMES[run.state] || "text-base-content/60"
+                      }`}
                     >
                       {run.state}
                     </div>
@@ -117,7 +121,35 @@ export function StoreRecentAgentRunsCard({
                     <span>Actions: {actionCount}</span>
                     <span>Retries: {run.retries}</span>
                     <span>Validation: {validation?.status || "not created"}</span>
+                    {validation?.response_score !== null && validation?.response_score !== undefined && (
+                      <span>Score: {validation.response_score}</span>
+                    )}
                   </div>
+
+                  {(validation?.request_explorer_url || validation?.explorer_url) && (
+                    <div className="mt-2 flex flex-wrap gap-3 text-xs">
+                      {validation.request_explorer_url && (
+                        <a
+                          href={validation.request_explorer_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-primary underline"
+                        >
+                          Validation request
+                        </a>
+                      )}
+                      {validation.explorer_url && (
+                        <a
+                          href={validation.explorer_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-primary underline"
+                        >
+                          Validation response
+                        </a>
+                      )}
+                    </div>
+                  )}
 
                   <details className="mt-3 rounded-xl border border-white/10 bg-base-200/40 px-3 py-3">
                     <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[0.18em] text-base-content/60">

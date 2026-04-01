@@ -8,13 +8,16 @@ import { StoreCheckoutPanel } from "./StoreCheckoutPanel";
 import { StoreHero } from "./StoreHero";
 import { StoreManagerControls } from "./StoreManagerControls";
 import { StoreRecentAgentRunsCard } from "./StoreRecentAgentRunsCard";
+import { StoreTrustPanel } from "./StoreTrustPanel";
 import type { AgentFeedback, CheckoutLog, ItemFormState } from "./checkout/shared";
 import { usePrivy } from "@privy-io/react-auth";
 import { createPublicClient, http } from "viem";
-import { baseSepolia } from "viem/chains";
+import { baseSepolia, sepolia } from "viem/chains";
 import deployedContracts from "~~/contracts/deployedContracts";
 import { useHaloChip } from "~~/hooks/halochip-arx/useHaloChip";
-import type { StoreWithCatalog } from "~~/lib/store.types";
+import { useEmbeddedWalletClient } from "~~/hooks/useEmbeddedWalletClient";
+import { ERC8004_DEFAULT_IDENTITY_REGISTRY } from "~~/lib/erc8004";
+import type { StoreTrustSnapshot, StoreWithCatalog } from "~~/lib/store.types";
 import type { AgentRun, AgentValidation } from "~~/lib/supabase";
 
 const CHAIN_ID = 84532;
@@ -54,6 +57,7 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
   const { authenticated, login, user } = usePrivy();
   const wallet = user?.wallet?.address;
   const { signTypedData } = useHaloChip();
+  const { sendTransaction } = useEmbeddedWalletClient();
   const [quantities, setQuantities] = useState<Record<number, number>>({});
   const [logs, setLogs] = useState<CheckoutLog[]>([]);
   const [checkoutBusy, setCheckoutBusy] = useState(false);
@@ -64,6 +68,7 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
   const [agentFeedback, setAgentFeedback] = useState<AgentFeedback | null>(null);
   const [recentAgentRuns, setRecentAgentRuns] = useState<AgentRun[]>([]);
   const [recentValidations, setRecentValidations] = useState<AgentValidation[]>([]);
+  const [trustSnapshot, setTrustSnapshot] = useState<StoreTrustSnapshot | null>(null);
   const [agentRunsLoading, setAgentRunsLoading] = useState(false);
   const [queuedRunRequestedAt, setQueuedRunRequestedAt] = useState<number | null>(null);
   const [itemForm, setItemForm] = useState<ItemFormState>({
@@ -89,6 +94,21 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
   const isManager = wallet?.toLowerCase() === store.operator_wallet?.toLowerCase();
   const isAdmin = wallet?.toLowerCase() === store.network?.owner_wallet?.toLowerCase();
   const canManage = Boolean(isManager || isAdmin);
+  const currentIdentityRegistryAddress = (
+    process.env.NEXT_PUBLIC_ERC8004_IDENTITY_REGISTRY_ADDRESS || ERC8004_DEFAULT_IDENTITY_REGISTRY
+  ).toLowerCase();
+  const managerTrustRegisteredOnCurrentRegistry = Boolean(
+    trustSnapshot?.managerTrustAgent?.registry_agent_id &&
+      trustSnapshot.managerTrustAgent.identity_registry_address?.toLowerCase() === currentIdentityRegistryAddress,
+  );
+  const needsManagerTrustRegistration = Boolean(store.manager_agent && !managerTrustRegisteredOnCurrentRegistry);
+  const needsValidationSignature = Boolean(
+    isManager &&
+      managerTrustRegisteredOnCurrentRegistry &&
+      trustSnapshot?.latestValidation &&
+      !trustSnapshot.latestValidation.request_tx_hash &&
+      trustSnapshot.latestValidation.status === "pending",
+  );
 
   const cart = useMemo(
     () =>
@@ -118,6 +138,7 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
       }
       setRecentAgentRuns(result.runs || []);
       setRecentValidations(result.validations || []);
+      setTrustSnapshot(result.trust || null);
     } catch (error) {
       console.error("Failed to refresh agent logs:", error);
     } finally {
@@ -147,6 +168,7 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
     if (!store.manager_agent?.id) {
       setRecentAgentRuns([]);
       setRecentValidations([]);
+      setTrustSnapshot(null);
       return;
     }
 
@@ -451,6 +473,120 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
     }
   };
 
+  const handleRegisterManagerTrust = async () => {
+    setManagerBusy(true);
+    setManagerError(null);
+    try {
+      const confirmed = await submitTrustTransaction({
+        prepareUrl: `/api/stores/${store.id}/agent/trust/register/prepare`,
+        confirmUrl: `/api/stores/${store.id}/agent/trust/register/confirm`,
+        prepareError: "Failed to prepare manager trust registration",
+        confirmError: "Failed to confirm manager trust registration",
+        buildConfirmBody: txHash => ({ txHash }),
+      });
+      if (!confirmed) {
+        return;
+      }
+
+      await fetchAgentLogs();
+      setAgentFeedback({
+        state: "registered",
+        summary: "Manager trust identity registered on Ethereum Sepolia.",
+        actionCount: 0,
+        queued: false,
+      });
+    } catch (error) {
+      setManagerError(error instanceof Error ? error.message : "Failed to register manager trust identity");
+    } finally {
+      setManagerBusy(false);
+    }
+  };
+
+  const handleSubmitValidationRequest = async () => {
+    setManagerBusy(true);
+    setManagerError(null);
+    try {
+      const confirmed = await submitTrustTransaction({
+        prepareUrl: `/api/stores/${store.id}/agent/trust/validation-request/prepare`,
+        confirmUrl: `/api/stores/${store.id}/agent/trust/validation-request/confirm`,
+        prepareError: "Failed to prepare validation request",
+        confirmError: "Failed to confirm validation request",
+        requireValidation: true,
+        buildConfirmBody: (txHash, prepared) => ({ validationId: prepared.validation.id, txHash }),
+      });
+      if (!confirmed) {
+        return;
+      }
+
+      await fetchAgentLogs();
+      setAgentFeedback({
+        state: confirmed.validation?.status || "submitted",
+        summary:
+          confirmed.validation?.status === "verified"
+            ? "Validation request submitted and the trust pipeline completed successfully."
+            : "Validation request submitted on Ethereum Sepolia.",
+        actionCount: 0,
+        validationStatus: confirmed.validation?.status,
+        queued: false,
+      });
+    } catch (error) {
+      setManagerError(error instanceof Error ? error.message : "Failed to submit validation request");
+    } finally {
+      setManagerBusy(false);
+    }
+  };
+
+  const submitTrustTransaction = useCallback(
+    async ({
+      prepareUrl,
+      confirmUrl,
+      prepareError,
+      confirmError,
+      requireValidation = false,
+      buildConfirmBody,
+    }: {
+      prepareUrl: string;
+      confirmUrl: string;
+      prepareError: string;
+      confirmError: string;
+      requireValidation?: boolean;
+      buildConfirmBody: (txHash: `0x${string}`, prepared: any) => Record<string, unknown>;
+    }) => {
+      const prepareResponse = await fetch(prepareUrl, { method: "POST" });
+      const prepared = await prepareResponse.json();
+      if (!prepareResponse.ok) {
+        throw new Error(prepared.error || prepareError);
+      }
+      if (requireValidation && !prepared.validation) {
+        throw new Error("No validation request is ready");
+      }
+      if (!prepared.txRequest) {
+        await fetchAgentLogs();
+        return null;
+      }
+
+      const txHash = await sendTransaction({
+        to: prepared.txRequest.to,
+        data: prepared.txRequest.data,
+        value: BigInt(prepared.txRequest.value || "0"),
+        chain: sepolia,
+      });
+
+      const confirmResponse = await fetch(confirmUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildConfirmBody(txHash, prepared)),
+      });
+      const confirmed = await confirmResponse.json();
+      if (!confirmResponse.ok) {
+        throw new Error(confirmed.error || confirmError);
+      }
+
+      return confirmed;
+    },
+    [fetchAgentLogs, sendTransaction],
+  );
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-4 pb-24 md:px-6 lg:px-8">
       <StoreHero store={store} />
@@ -466,10 +602,15 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
               managerBusy={managerBusy}
               managerError={managerError}
               agentFeedback={agentFeedback}
+              canSignTrust={Boolean(isManager)}
+              needsManagerTrustRegistration={needsManagerTrustRegistration}
+              needsValidationSignature={needsValidationSignature}
               onAddItem={handleAddItem}
               onCreateAgent={handleCreateAgent}
               onAgentRun={handleAgentRun}
               onAgentPause={handleAgentPause}
+              onRegisterManagerTrust={handleRegisterManagerTrust}
+              onSubmitValidationRequest={handleSubmitValidationRequest}
             />
           )}
         </div>
@@ -485,6 +626,7 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
             onCheckout={handleCheckout}
           />
           <StoreAgentGuardrailsCard store={store} />
+          {store.manager_agent && <StoreTrustPanel trust={trustSnapshot} loading={agentRunsLoading} />}
           {store.manager_agent && (
             <StoreRecentAgentRunsCard
               runs={recentAgentRuns}
