@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import { useWallets } from "@privy-io/react-auth";
-import { type Address, type Hex, type WalletClient, createWalletClient, custom, toHex } from "viem";
+import { type Address, type Chain, type Hex, type WalletClient, createWalletClient, custom, toHex } from "viem";
 import { useWalletClient } from "wagmi";
 import { baseSepolia } from "~~/lib/baseSepolia";
 
@@ -10,43 +10,48 @@ interface SendTransactionParams {
   to: `0x${string}`;
   data?: `0x${string}`;
   value?: bigint;
+  chain?: Chain;
 }
 
 export function useEmbeddedWalletClient() {
   const { wallets } = useWallets();
   const { data: wagmiWalletClient } = useWalletClient();
 
-  const getWalletClient = useCallback(async (): Promise<WalletClient> => {
-    const embeddedWallet = wallets.find(wallet => wallet.walletClientType === "privy");
-
-    if (embeddedWallet) {
-      await embeddedWallet.switchChain(baseSepolia.id);
-      const provider = await embeddedWallet.getEthereumProvider();
-
-      return createWalletClient({
-        account: embeddedWallet.address as Address,
-        chain: baseSepolia,
-        transport: custom(provider),
-      });
-    }
-
-    if (wagmiWalletClient) {
-      if (wagmiWalletClient.chain && wagmiWalletClient.chain.id !== baseSepolia.id) {
-        throw new Error("Please switch your wallet to Base Sepolia");
-      }
-
-      return wagmiWalletClient as WalletClient;
-    }
-
-    throw new Error("No connected wallet available");
-  }, [wallets, wagmiWalletClient]);
-
-  const sendTransaction = useCallback(
-    async (params: SendTransactionParams): Promise<Hex> => {
+  const getWalletClient = useCallback(
+    async (chain: Chain = baseSepolia): Promise<WalletClient> => {
       const embeddedWallet = wallets.find(wallet => wallet.walletClientType === "privy");
 
       if (embeddedWallet) {
-        await embeddedWallet.switchChain(baseSepolia.id);
+        await embeddedWallet.switchChain(chain.id);
+        const provider = await embeddedWallet.getEthereumProvider();
+
+        return createWalletClient({
+          account: embeddedWallet.address as Address,
+          chain,
+          transport: custom(provider),
+        });
+      }
+
+      if (wagmiWalletClient) {
+        if (wagmiWalletClient.chain && wagmiWalletClient.chain.id !== chain.id) {
+          throw new Error(`Please switch your wallet to ${chain.name}`);
+        }
+
+        return wagmiWalletClient as WalletClient;
+      }
+
+      throw new Error("No connected wallet available");
+    },
+    [wallets, wagmiWalletClient],
+  );
+
+  const sendTransaction = useCallback(
+    async (params: SendTransactionParams): Promise<Hex> => {
+      const chain = params.chain || baseSepolia;
+      const embeddedWallet = wallets.find(wallet => wallet.walletClientType === "privy");
+
+      if (embeddedWallet) {
+        await embeddedWallet.switchChain(chain.id);
         const provider = await embeddedWallet.getEthereumProvider();
         const hash = await provider.request({
           method: "eth_sendTransaction",
@@ -63,7 +68,7 @@ export function useEmbeddedWalletClient() {
         return hash as Hex;
       }
 
-      const walletClient = await getWalletClient();
+      const walletClient = await getWalletClient(chain);
       if (!walletClient.account) {
         throw new Error("No connected wallet account available");
       }
