@@ -11,6 +11,20 @@ export function StoreCatalogGrid({
   quantities: Record<number, number>;
   onUpdateQuantity: (itemId: number, next: number) => void;
 }) {
+  if (!items.length) {
+    return (
+      <div>
+        <div className="mb-4 flex items-center gap-2">
+          <ShoppingCart className="h-5 w-5 text-primary" />
+          <h2 className="text-xl font-bold">Catalog</h2>
+        </div>
+        <div className="rounded-3xl border border-dashed border-white/10 bg-base-200/40 p-5 text-sm text-base-content/60">
+          This store does not have any catalog items yet. Add your first item from Manager Controls to finish setup.
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="mb-4 flex items-center gap-2">

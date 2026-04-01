@@ -187,6 +187,11 @@ export function StoreDashboard() {
     }
   };
 
+  const handleStoreCreated = async () => {
+    setNotice("Store created. Add catalog items from the store page to finish setup.");
+    await fetchDashboard();
+  };
+
   if (!ready) {
     return (
       <div className="min-h-[calc(100vh-160px)] flex items-center justify-center">
@@ -371,7 +376,7 @@ export function StoreDashboard() {
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
         adminWallet={wallet}
-        onCreated={fetchDashboard}
+        onCreated={handleStoreCreated}
       />
     </div>
   );
