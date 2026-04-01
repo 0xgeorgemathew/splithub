@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getErc8004TrustConfig } from "~~/lib/erc8004";
+import { resolveManagerDemoOperatorWallet } from "~~/services/store/storeTrust";
 import { supabase } from "~~/lib/supabase";
 
 export const dynamic = "force-dynamic";
@@ -16,10 +17,15 @@ export async function GET() {
       .filter(agent => agent.role === "manager" && agent.linked_manager_agent_id)
       .map(agent => [agent.linked_manager_agent_id, agent]),
   );
+  const operatorWallet =
+    resolveManagerDemoOperatorWallet() ||
+    (trustAgents || []).find(agent => agent.role === "manager")?.operator_wallet ||
+    (agents || [])[0]?.operator_wallet ||
+    null;
 
   return NextResponse.json({
     name: "SplitHub Autonomous Store Orchestrator",
-    operator_wallet: process.env.NEXT_PUBLIC_PLATFORM_OPERATOR_WALLET || null,
+    operator_wallet: operatorWallet,
     trust_chain: {
       name: "Ethereum Sepolia",
       chain_id: trustConfig.chainId,
