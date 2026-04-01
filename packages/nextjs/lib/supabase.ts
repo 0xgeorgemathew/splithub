@@ -205,6 +205,29 @@ export type ManagerAgent = {
   updated_at: string;
 };
 
+export type Erc8004AgentRole = "manager" | "validator" | "reviewer";
+
+export type Erc8004AgentRecord = {
+  id: string;
+  linked_manager_agent_id: string | null;
+  role: Erc8004AgentRole;
+  name: string;
+  description: string | null;
+  owner_wallet: string;
+  operator_wallet: string;
+  operating_chain_id: number;
+  trust_chain_id: number;
+  registry_agent_id: string | null;
+  agent_wallet: string | null;
+  agent_uri: string | null;
+  identity_tx_hash: string | null;
+  identity_registry_address: string | null;
+  status: "pending" | "registered" | "link_pending" | "failed";
+  metadata_json: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+};
+
 export type AgentRun = {
   id: string;
   agent_id: string;
@@ -224,9 +247,40 @@ export type AgentRun = {
 export type AgentValidation = {
   id: string;
   agent_run_id: string;
+  validator_agent_id: string | null;
+  request_id: string | null;
+  request_uri: string | null;
+  request_hash: string | null;
+  request_tx_hash: string | null;
+  request_explorer_url: string | null;
+  response_uri: string | null;
+  response_hash: string | null;
+  response_score: number | null;
   erc8004_validation_tx: string | null;
+  explorer_url: string | null;
   status: "pending" | "submitted" | "verified" | "failed";
   evidence_uri: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+};
+
+export type ReputationEventRecord = {
+  id: string;
+  subject_agent_id: string;
+  reviewer_agent_id: string;
+  source_run_id: string | null;
+  source_validation_id: string | null;
+  score: number;
+  value_decimals: number;
+  tag1: string | null;
+  tag2: string | null;
+  endpoint: string | null;
+  feedback_uri: string | null;
+  feedback_hash: string | null;
+  reputation_tx_hash: string | null;
+  explorer_url: string | null;
+  proof_of_payment_json: Record<string, any>;
+  status: "pending" | "submitted" | "verified" | "failed";
   created_at: string;
 };
 
