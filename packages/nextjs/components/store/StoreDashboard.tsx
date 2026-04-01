@@ -187,6 +187,11 @@ export function StoreDashboard() {
     }
   };
 
+  const handleStoreCreated = async () => {
+    setNotice("Store created. Add catalog items from the store page to finish setup.");
+    await fetchDashboard();
+  };
+
   if (!ready) {
     return (
       <div className="min-h-[calc(100vh-160px)] flex items-center justify-center">
@@ -278,7 +283,7 @@ export function StoreDashboard() {
           <section className="mt-8">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-bold">Managed Stores</h2>
-              <span className="text-sm text-base-content/50">Your wallet controls these store agents</span>
+              <span className="text-sm text-base-content/50">Demo operator wallet controls these store agents</span>
             </div>
             <div className="grid gap-4 lg:grid-cols-2">
               {data?.managedStores.length ? (
@@ -300,70 +305,6 @@ export function StoreDashboard() {
             </div>
           </section>
 
-          <section className="mt-10">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-bold">Store Directory</h2>
-              <span className="text-sm text-base-content/50">Live catalog endpoints for shoppers</span>
-            </div>
-            <div className="grid gap-4 lg:grid-cols-3">
-              {data?.publicStores.map(store => (
-                <StoreCard
-                  key={store.id}
-                  store={store}
-                  href={`/store/${store.network?.event_slug}/${store.stall_slug}`}
-                />
-              ))}
-            </div>
-          </section>
-
-          <section className="mt-10 grid gap-6 lg:grid-cols-[1.3fr_0.7fr]">
-            <div className="rounded-3xl border border-white/10 bg-base-200/50 p-5">
-              <h2 className="text-lg font-bold">Recent Orders</h2>
-              <div className="mt-4 space-y-3">
-                {data?.recentOrders.length ? (
-                  data.recentOrders.map(order => (
-                    <div key={order.id} className="rounded-2xl bg-base-100/80 px-4 py-3">
-                      <div className="flex items-center justify-between gap-4">
-                        <div>
-                          <div className="font-semibold">Order #{order.id}</div>
-                          <div className="text-xs text-base-content/50">
-                            {new Date(order.created_at).toLocaleString()}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="font-semibold">{formatUsd(Number(order.subtotal))}</div>
-                          <div className="text-xs capitalize text-base-content/50">{order.status}</div>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-sm text-base-content/55">No completed shopper orders yet.</div>
-                )}
-              </div>
-            </div>
-
-            <div className="rounded-3xl border border-white/10 bg-base-200/50 p-5">
-              <h2 className="text-lg font-bold">Agent Activity</h2>
-              <div className="mt-4 space-y-3">
-                {data?.agentRuns.length ? (
-                  data.agentRuns.map(run => (
-                    <div key={run.id} className="rounded-2xl bg-base-100/80 px-4 py-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-sm font-semibold">{run.run_type}</span>
-                        <span className="text-xs uppercase tracking-[0.2em] text-primary">{run.state}</span>
-                      </div>
-                      <p className="mt-2 text-sm text-base-content/60">
-                        {run.decision_summary || "No summary recorded."}
-                      </p>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-sm text-base-content/55">No agent runs logged yet.</div>
-                )}
-              </div>
-            </div>
-          </section>
         </>
       )}
 
@@ -371,7 +312,7 @@ export function StoreDashboard() {
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
         adminWallet={wallet}
-        onCreated={fetchDashboard}
+        onCreated={handleStoreCreated}
       />
     </div>
   );

@@ -8,6 +8,7 @@ import { supabase } from "~~/lib/supabase";
 
 export const MICRO_MULTIPLIER = 10 ** TOKEN_DECIMALS.USDC;
 export const DEFAULT_NETWORK_NAME = "SplitHub Retail Network";
+export const DEMO_OPERATOR_WALLET = "0xaB8AB9c654b73b7C253CF6Cc7333880736981742";
 
 export const toMicros = (value: number | string): number => {
   const parsed = typeof value === "number" ? value : parseFloat(value);
@@ -28,6 +29,7 @@ export const createSlug = (value: string): string =>
 export const normalizeAddress = (value: string) => value.toLowerCase();
 
 export const DEFAULT_STORE_TOKEN = TOKENS.USDC;
+export const resolveStoreOperatorWallet = () => normalizeAddress(DEMO_OPERATOR_WALLET);
 
 export async function findOrCreateNetwork(
   adminWallet: string,

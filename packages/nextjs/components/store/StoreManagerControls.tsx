@@ -9,10 +9,16 @@ export function StoreManagerControls({
   managerBusy,
   managerError,
   agentFeedback,
+  canSignTrust,
+  managerTrustAutomationEnabled,
+  needsManagerTrustRegistration,
+  needsValidationSignature,
   onAddItem,
   onCreateAgent,
   onAgentRun,
   onAgentPause,
+  onRegisterManagerTrust,
+  onSubmitValidationRequest,
 }: {
   store: StoreWithCatalog;
   itemForm: ItemFormState;
@@ -20,80 +26,119 @@ export function StoreManagerControls({
   managerBusy: boolean;
   managerError: string | null;
   agentFeedback: AgentFeedback | null;
+  canSignTrust: boolean;
+  managerTrustAutomationEnabled: boolean;
+  needsManagerTrustRegistration: boolean;
+  needsValidationSignature: boolean;
   onAddItem: () => void;
   onCreateAgent: () => void;
   onAgentRun: () => void;
   onAgentPause: (status: "active" | "paused") => void;
+  onRegisterManagerTrust: () => void;
+  onSubmitValidationRequest: () => void;
 }) {
+  const trustHelpText = managerTrustAutomationEnabled
+    ? "Manager trust actions are signed automatically by the demo operator wallet. Validator and reviewer steps stay automatic."
+    : !canSignTrust
+    ? "Manual trust actions require the manager operator wallet. Validator and reviewer steps stay automatic."
+    : needsManagerTrustRegistration
+      ? "First step: register the manager's ERC-8004 identity on Ethereum Sepolia."
+      : needsValidationSignature
+        ? "Manager run finished. Submit the validation request onchain to continue the trust pipeline."
+        : "Validator and reviewer steps complete automatically after the manager submits the required onchain step.";
+
   return (
     <div className="mt-8 rounded-3xl border border-white/10 bg-base-200/50 p-5">
       <div className="flex items-center gap-2">
         <ShieldCheck className="h-5 w-5 text-primary" />
         <h2 className="text-xl font-bold">Manager Controls</h2>
       </div>
-      <div className="mt-4 grid gap-4 md:grid-cols-2">
-        <label className="flex flex-col gap-2">
-          <span className="text-sm text-base-content/60">SKU</span>
-          <input
-            value={itemForm.sku}
-            onChange={event => onItemFormChange({ ...itemForm, sku: event.target.value })}
-            className="input input-bordered"
-          />
-        </label>
-        <label className="flex flex-col gap-2">
-          <span className="text-sm text-base-content/60">Name</span>
-          <input
-            value={itemForm.name}
-            onChange={event => onItemFormChange({ ...itemForm, name: event.target.value })}
-            className="input input-bordered"
-          />
-        </label>
-        <label className="flex flex-col gap-2">
-          <span className="text-sm text-base-content/60">Price</span>
-          <input
-            value={itemForm.price}
-            onChange={event => onItemFormChange({ ...itemForm, price: event.target.value })}
-            className="input input-bordered"
-            type="number"
-            min="0"
-            step="0.01"
-          />
-        </label>
-        <label className="flex flex-col gap-2">
-          <span className="text-sm text-base-content/60">Starting Stock</span>
-          <input
-            value={itemForm.stock}
-            onChange={event => onItemFormChange({ ...itemForm, stock: event.target.value })}
-            className="input input-bordered"
-            type="number"
-            min="0"
-          />
-        </label>
-      </div>
-      <div className="mt-4 flex flex-wrap gap-3">
-        <button className="btn btn-primary" onClick={onAddItem} disabled={managerBusy}>
-          Add Item
-        </button>
-        {!store.manager_agent ? (
-          <button className="btn btn-outline" onClick={onCreateAgent} disabled={managerBusy}>
-            Add Agent
-          </button>
-        ) : (
-          <>
-            <button className="btn btn-outline" onClick={onAgentRun} disabled={managerBusy}>
-              Run Agent
+      <div className="mt-4 space-y-5">
+        <div className="rounded-2xl border border-white/10 bg-base-100/40 p-4">
+          <div className="text-sm font-semibold">Catalog Setup</div>
+          <div className="mt-1 text-xs text-base-content/55">Add products and starting inventory for this store.</div>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <label className="flex flex-col gap-2">
+              <span className="text-sm text-base-content/60">SKU</span>
+              <input
+                value={itemForm.sku}
+                onChange={event => onItemFormChange({ ...itemForm, sku: event.target.value })}
+                className="input input-bordered"
+              />
+            </label>
+            <label className="flex flex-col gap-2">
+              <span className="text-sm text-base-content/60">Name</span>
+              <input
+                value={itemForm.name}
+                onChange={event => onItemFormChange({ ...itemForm, name: event.target.value })}
+                className="input input-bordered"
+              />
+            </label>
+            <label className="flex flex-col gap-2">
+              <span className="text-sm text-base-content/60">Price</span>
+              <input
+                value={itemForm.price}
+                onChange={event => onItemFormChange({ ...itemForm, price: event.target.value })}
+                className="input input-bordered"
+                type="number"
+                min="0"
+                step="0.01"
+              />
+            </label>
+            <label className="flex flex-col gap-2">
+              <span className="text-sm text-base-content/60">Starting Stock</span>
+              <input
+                value={itemForm.stock}
+                onChange={event => onItemFormChange({ ...itemForm, stock: event.target.value })}
+                className="input input-bordered"
+                type="number"
+                min="0"
+              />
+            </label>
+          </div>
+          <div className="mt-4">
+            <button className="btn btn-primary" onClick={onAddItem} disabled={managerBusy}>
+              Add Item
             </button>
-            {store.manager_agent.status === "paused" ? (
-              <button className="btn btn-outline" onClick={() => onAgentPause("active")} disabled={managerBusy}>
-                Resume Agent
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-primary/15 bg-primary/5 p-4">
+          <div className="text-sm font-semibold">Agent & Trust Actions</div>
+          <div className="mt-1 text-xs text-base-content/60">{trustHelpText}</div>
+          <div className="mt-4 flex flex-wrap gap-3">
+            {!store.manager_agent ? (
+              <button className="btn btn-outline" onClick={onCreateAgent} disabled={managerBusy}>
+                Add Agent
               </button>
             ) : (
-              <button className="btn btn-outline" onClick={() => onAgentPause("paused")} disabled={managerBusy}>
-                Pause Agent
-              </button>
+              <>
+                {!managerTrustAutomationEnabled && canSignTrust && needsManagerTrustRegistration && (
+                  <button className="btn btn-outline" onClick={onRegisterManagerTrust} disabled={managerBusy}>
+                    Register Manager Identity
+                  </button>
+                )}
+                <button className="btn btn-outline" onClick={onAgentRun} disabled={managerBusy}>
+                  Run Manager Agent
+                </button>
+                {!managerTrustAutomationEnabled && canSignTrust && !needsManagerTrustRegistration && needsValidationSignature && (
+                  <button className="btn btn-outline" onClick={onSubmitValidationRequest} disabled={managerBusy}>
+                    Submit Validation Onchain
+                  </button>
+                )}
+                {store.manager_agent.status === "paused" ? (
+                  <button className="btn btn-outline" onClick={() => onAgentPause("active")} disabled={managerBusy}>
+                    Resume Agent
+                  </button>
+                ) : (
+                  <button className="btn btn-outline" onClick={() => onAgentPause("paused")} disabled={managerBusy}>
+                    Pause Agent
+                  </button>
+                )}
+              </>
             )}
-          </>
-        )}
+          </div>
+        </div>
       </div>
       {managerError && <div className="mt-3 text-sm text-error">{managerError}</div>}
       {agentFeedback && (
@@ -107,6 +152,15 @@ export function StoreManagerControls({
           </div>
           <div className="mt-2 capitalize text-base-content/70">State: {agentFeedback.state}</div>
           <div className="mt-1 text-base-content/70">{agentFeedback.summary}</div>
+          {agentFeedback.currentStepLabel && (
+            <div className="mt-2 text-base-content/60">Current step: {agentFeedback.currentStepLabel}</div>
+          )}
+          {agentFeedback.nextStepLabel && (
+            <div className="mt-1 text-base-content/55">
+              Next: {agentFeedback.nextStepLabel}
+              {agentFeedback.nextStepAutomatic ? " (automatic)" : agentFeedback.requiresManualAction ? " (manual)" : ""}
+            </div>
+          )}
           {!agentFeedback.queued && (
             <div className="mt-2 text-base-content/60">Actions executed: {agentFeedback.actionCount}</div>
           )}

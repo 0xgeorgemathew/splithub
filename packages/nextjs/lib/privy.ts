@@ -1,4 +1,4 @@
-import { baseSepolia } from "viem/chains";
+import { baseSepolia, sepolia } from "viem/chains";
 
 export const privyConfig = {
   appId: process.env.NEXT_PUBLIC_PRIVY_APP_ID!,
@@ -16,6 +16,6 @@ export const privyConfig = {
       showWalletUIs: false,
     },
     defaultChain: baseSepolia,
-    supportedChains: [baseSepolia],
+    supportedChains: [baseSepolia, sepolia],
   },
 };

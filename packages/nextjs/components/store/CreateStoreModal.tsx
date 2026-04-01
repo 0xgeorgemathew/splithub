@@ -1,31 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Modal } from "~~/components/ui/Modal";
-
-type ParsedItem = {
-  sku: string;
-  name: string;
-  price: number;
-  stock: number;
-};
-
-const parseInitialItems = (value: string): ParsedItem[] => {
-  return value
-    .split("\n")
-    .map(line => line.trim())
-    .filter(Boolean)
-    .map(line => {
-      const [sku, name, price, stock] = line.split("|").map(part => part.trim());
-      return {
-        sku,
-        name,
-        price: Number(price),
-        stock: Number(stock || 0),
-      };
-    })
-    .filter(item => item.sku && item.name && !Number.isNaN(item.price) && !Number.isNaN(item.stock));
-};
+import { DEMO_OPERATOR_WALLET } from "~~/services/store/shared";
 
 interface CreateStoreModalProps {
   isOpen: boolean;
@@ -35,23 +13,20 @@ interface CreateStoreModalProps {
 }
 
 export function CreateStoreModal({ isOpen, onClose, adminWallet, onCreated }: CreateStoreModalProps) {
+  const router = useRouter();
   const [networkName, setNetworkName] = useState("SplitHub Store Network");
   const [storeName, setStoreName] = useState("");
   const [storeDescription, setStoreDescription] = useState("");
-  const [managerWallet, setManagerWallet] = useState(adminWallet);
+  const [managerWallet, setManagerWallet] = useState(DEMO_OPERATOR_WALLET);
   const [splitPercentage, setSplitPercentage] = useState("80");
-  const [initialItems, setInitialItems] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const parsedItems = useMemo(() => parseInitialItems(initialItems), [initialItems]);
 
   const reset = () => {
     setStoreName("");
     setStoreDescription("");
-    setManagerWallet(adminWallet);
+    setManagerWallet(DEMO_OPERATOR_WALLET);
     setSplitPercentage("80");
-    setInitialItems("");
     setError(null);
   };
 
@@ -86,22 +61,12 @@ export function CreateStoreModal({ isOpen, onClose, adminWallet, onCreated }: Cr
         throw new Error(result.error || "Failed to create store");
       }
 
-      for (const item of parsedItems) {
-        await fetch(`/api/stores/${result.store.id}/items`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            sku: item.sku,
-            name: item.name,
-            price: item.price,
-            currentStock: item.stock,
-          }),
-        });
-      }
+      const storePath = `/store/${result.network.event_slug}/${result.store.stall_slug}`;
 
       reset();
-      onCreated();
       onClose();
+      onCreated();
+      router.push(storePath);
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Failed to create store");
     } finally {
@@ -140,7 +105,7 @@ export function CreateStoreModal({ isOpen, onClose, adminWallet, onCreated }: Cr
             value={storeDescription}
             onChange={e => setStoreDescription(e.target.value)}
             className="textarea textarea-bordered min-h-24"
-            placeholder="What this store sells and how the agent should manage it."
+            placeholder="What this store sells and how the agent should manage it. You can add catalog items on the next screen."
           />
         </label>
 
@@ -151,6 +116,7 @@ export function CreateStoreModal({ isOpen, onClose, adminWallet, onCreated }: Cr
               value={managerWallet}
               onChange={e => setManagerWallet(e.target.value)}
               className="input input-bordered w-full"
+              readOnly
               placeholder="0x..."
             />
           </label>
@@ -167,16 +133,10 @@ export function CreateStoreModal({ isOpen, onClose, adminWallet, onCreated }: Cr
           </label>
         </div>
 
-        <label className="flex flex-col gap-2">
-          <span className="text-sm font-medium text-base-content/70">Initial Items</span>
-          <textarea
-            value={initialItems}
-            onChange={e => setInitialItems(e.target.value)}
-            className="textarea textarea-bordered min-h-32 font-mono text-sm"
-            placeholder={"sku|name|price|stock\nlatte|Iced Latte|4.5|12\nbeans|House Beans|16|4"}
-          />
-          <span className="text-xs text-base-content/50">One item per line in the format: `sku|name|price|stock`</span>
-        </label>
+        <div className="rounded-xl border border-white/10 bg-base-200/50 px-4 py-3 text-sm text-base-content/65">
+          Create the store shell here, then add catalog items inside the store page using the manager controls. That
+          keeps store setup and inventory management in one place.
+        </div>
 
         {error && (
           <div className="rounded-xl border border-error/30 bg-error/10 px-4 py-3 text-sm text-error">{error}</div>

@@ -11,7 +11,7 @@ import { AppProgressBar as ProgressBar } from "next-nprogress-bar";
 import { useTheme } from "next-themes";
 import { Toaster } from "react-hot-toast";
 import { http } from "viem";
-import { baseSepolia } from "viem/chains";
+import { baseSepolia, sepolia } from "viem/chains";
 import { createConfig } from "wagmi";
 import { BottomNav } from "~~/components/BottomNav";
 import { TopNav } from "~~/components/TopNav";
@@ -41,9 +41,10 @@ export const queryClient = new QueryClient({
 });
 
 const wagmiConfig = createConfig({
-  chains: [baseSepolia],
+  chains: [baseSepolia, sepolia],
   transports: {
     [baseSepolia.id]: http(),
+    [sepolia.id]: http(),
   },
 });
 

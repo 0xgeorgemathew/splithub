@@ -1,11 +1,17 @@
 import withSerwist from "@serwist/next";
 import type { NextConfig } from "next";
 
+const aesJsCompatPath = "./lib/shims/aes-js-compat.ts";
+
 const nextConfig: NextConfig = {
   output: "standalone",
   reactStrictMode: true,
   devIndicators: false,
-  turbopack: {},
+  turbopack: {
+    resolveAlias: {
+      "aes-js": aesJsCompatPath,
+    },
+  },
   allowedDevOrigins: ["dev.splithub.space", "*.dev.splithub.space", "splithub.space", "*.splithub.space"],
   serverExternalPackages: ["ethers"],
   typescript: {
@@ -26,6 +32,7 @@ const nextConfig: NextConfig = {
 
     config.resolve.alias = {
       ...config.resolve.alias,
+      "aes-js": aesJsCompatPath,
       "@solana-program/system": false,
       "@solana-program/memo": false,
       "@solana-program/token": false,

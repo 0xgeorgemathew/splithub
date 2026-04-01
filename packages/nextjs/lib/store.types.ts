@@ -2,7 +2,9 @@ import type { Event, Stall } from "~~/lib/events.types";
 import type {
   AgentRun,
   AgentValidation,
+  Erc8004AgentRecord,
   ManagerAgent,
+  ReputationEventRecord,
   StoreInventory,
   StoreItem,
   StoreOrder,
@@ -76,6 +78,16 @@ export type StoreDashboardData = {
   recentOrderItems: StoreOrderItem[];
   agentRuns: AgentRun[];
   validations: AgentValidation[];
+};
+
+export type StoreTrustSnapshot = {
+  managerTrustAgent: Erc8004AgentRecord | null;
+  validatorAgent: Erc8004AgentRecord | null;
+  reviewerAgent: Erc8004AgentRecord | null;
+  managerAutomationEnabled: boolean;
+  latestValidation: AgentValidation | null;
+  latestReputation: ReputationEventRecord | null;
+  reputationEvents: ReputationEventRecord[];
 };
 
 export type CreateStoreInput = {
