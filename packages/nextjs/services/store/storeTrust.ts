@@ -153,6 +153,10 @@ function formatOnchainSubmissionError(error: unknown) {
   return String(error);
 }
 
+function addGasBuffer(estimate: bigint, multiplier = 120n, divisor = 100n) {
+  return (estimate * multiplier + (divisor - 1n)) / divisor;
+}
+
 function ensureAgentUsesCurrentIdentityRegistry(
   agent: Pick<Erc8004AgentRecord, "registry_agent_id" | "identity_registry_address">,
   label: string,
@@ -1140,18 +1144,34 @@ export async function submitValidationResponse(validationId: string, score?: num
   };
   const responseHash = hashJsonPayload(responseDocument);
 
-  let txHash: string | null = null;
+  let txHash: `0x${string}` | null = null;
   let submissionError: string | null = null;
   if (validation.request_hash && validatorAgent) {
     const privateKey = resolvePrivateKeyForRole("validator");
     if (privateKey) {
+      const { publicClient, walletClient } = createErc8004WalletClients(privateKey);
       try {
-        txHash = await createErc8004WalletClients(privateKey).walletClient.writeContract({
+        const gasEstimate = await publicClient.estimateContractGas({
           address: getErc8004TrustConfig().validationRegistryAddress,
           abi: ERC8004_VALIDATION_REGISTRY_ABI,
           functionName: "validationResponse",
           args: [validation.request_hash as `0x${string}`, responseScore, responseUri, responseHash, review.tag],
+          account: walletClient.account,
         });
+        const gas = addGasBuffer(gasEstimate);
+
+        txHash = await walletClient.writeContract({
+          address: getErc8004TrustConfig().validationRegistryAddress,
+          abi: ERC8004_VALIDATION_REGISTRY_ABI,
+          functionName: "validationResponse",
+          args: [validation.request_hash as `0x${string}`, responseScore, responseUri, responseHash, review.tag],
+          gas,
+        });
+
+        const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+        if (receipt.status !== "success") {
+          submissionError = "Validation response transaction reverted onchain";
+        }
       } catch (error) {
         submissionError = formatOnchainSubmissionError(error);
         console.error("Failed to submit ERC-8004 validation response onchain:", submissionError);
