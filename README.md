@@ -14,15 +14,17 @@ If the chip is lost, the user does not lose funds. Capital stays under wallet an
 
 ---
 
-## What SplitHub Does
+## Built Product Features
 
-SplitHub currently brings together three user-facing payment experiences:
+SplitHub is now organized around a few clear product surfaces:
 
-| Surface | What it feels like | Why it matters |
+| Feature | User-facing surface | What is built |
 | --- | --- | --- |
-| **Split Bills** | Like a tap-native, onchain Splitwise | Track shared expenses, balances, and settle with one tap |
-| **Merchant Payments** | Fast NFC checkout for stores and stalls | Accept USDC-powered payments without typical wallet friction |
-| **Tap to Pay** | Physical chip interaction with instant authorization | Makes onchain spending feel real-world and natural |
+| **Stores** | `/store` | Store creation, catalogs, checkout, payout splits, analytics, and autonomous store managers |
+| **DeFi** | `/defi` | Vincent-connected treasury management with Aave deployment, withdrawal, and planner-driven actions |
+| **Agent Pay** | `/agents-pay` | Just-in-time payment readiness, tap limits, and liquidity movement so users can pay without keeping idle balance parked |
+| **Split Bills** | `/splits`, `/settle`, `/requests` | Group expenses, balances, payment requests, circles, and settlements |
+| **Tap to Pay** | checkout and settlement flows | Arx Halo chip authorization across consumer and merchant payment paths |
 
 Under the hood, these are connected by **Agent Pay**:
 
@@ -58,44 +60,56 @@ It is a more useful mental model for real-world crypto payments:
 
 ---
 
-## Product Pillars
+## Feature Highlights
 
-### 1. Social Payments
+### 1. Stores
 
-SplitHub started with shared expenses and still treats that as a first-class flow.
+Stores are a full product surface, not just a demo checkout page.
 
-- Create group expenses
-- Track who owes whom
-- Settle balances with a single tap
-- Send and receive payment requests
-- Auto-split activity using circles
+- create merchant storefronts linked to event networks
+- manage catalog items and inventory
+- split checkout proceeds between manager and admin wallets
+- inspect revenue, failed orders, low-stock items, and top sellers
+- attach autonomous manager agents that can monitor and act on store health
 
-This turns onchain settlement into something that feels lightweight instead of ceremonial.
+This turns SplitHub into a commerce operating layer for merchants, stalls, and venue networks.
 
-### 2. Merchant and Venue Checkout
+### 2. DeFi
 
-SplitHub also supports real-world commerce flows:
+The DeFi surface gives the treasury layer a dedicated user experience.
 
-- merchant checkout
-- event stalls
-- venue credit experiences
-- store catalogs and split revenue logic
+- connect to Vincent-backed wallet infrastructure
+- inspect Privy, agent, and Aave balances
+- generate planner-guided capital allocation decisions
+- fund the agent wallet from the user wallet
+- deploy idle USDC into Aave
+- withdraw capital back when liquidity is needed
 
-The same tap interaction that settles between friends can also power point-of-sale experiences.
+The goal is simple: keep payment capital productive instead of idle.
 
 ### 3. Agent Pay
 
-This is the differentiator.
+Agent Pay is the mechanism that ties checkout and DeFi together.
 
-SplitHub integrates a Vincent-powered DeFi agent that can:
+- evaluate whether a user can cover their configured tap limit
+- look at chip-linked wallet balance, agent liquidity, and Aave-backed reserves
+- decide whether a top-up or withdrawal is needed right now
+- move capital just in time before payment
+- let users tap and pay without preloading a dedicated spend wallet
 
-- monitor wallet readiness
-- evaluate available liquidity
-- move funds just in time for payments
-- keep capital productive in Aave when idle
-- support tap-limit based spending controls
+This is the product's core differentiator.
 
-In practice, that means a user can tap to pay **without needing to keep their wallet sitting loaded for every future purchase**.
+### 4. Social and Tap Payments
+
+SplitHub still keeps the original social payment experience intact:
+
+- create shared expenses
+- track balances between friends
+- send payment requests
+- auto-split activity with circles
+- settle with a single tap
+
+The same tap primitive also powers merchant and venue checkout.
 
 ---
 
@@ -141,16 +155,112 @@ Instead of forcing users to hold dead checkout balance, SplitHub can route idle 
 
 Active product areas in this repo include:
 
+- Store dashboard, catalog, checkout, analytics, and split-payout order flow
+- Store manager agents, agent logs, validations, and restock automation
+- DeFi deployment and withdrawal via Vincent + Aave
+- Agent-backed treasury, payment readiness, tap limits, and just-in-time funding
 - Splits dashboard and balance tracking
 - Single-party and multi-party settlement flows
 - Payment requests with shareable links
 - Circle auto-splitting
 - Credits / venue payment UI
 - Event and stall payments
-- Store dashboard, catalog, checkout, and analytics
-- Agent-backed treasury and readiness flows
-- DeFi deployment and withdrawal via Vincent + Aave
-- Store agents with autonomous restock infrastructure
+- Tap-to-pay chip authorization across social and merchant flows
+
+---
+
+## DeFi Features
+
+The `DeFi` surface in this repo is backed by real planning and execution services, not static portfolio UI.
+
+Built DeFi capabilities include:
+
+- Vincent session handling and wallet discovery
+- treasury snapshots across user wallet, agent wallet, and Aave reserve
+- planner-driven open-position logic with OpenAI plus deterministic fallback validation
+- Privy-to-agent funding transaction construction
+- Aave deployment and withdrawal flows
+- venue comparison and reasoning UX for capital allocation
+
+At the product level, this is the part of SplitHub that keeps money working while it waits for the next payment.
+
+---
+
+## Agent Pay Features
+
+`Agent Pay` is the payment-readiness layer that makes the tap experience feel liquid even when the user is not holding spendable balance in the payment wallet.
+
+Built Agent Pay capabilities include:
+
+- per-user tap limit configuration
+- readiness checks combining chip wallet balance, agent liquid balance, and Aave withdrawable reserves
+- recent spend signal analysis for expected payment size
+- JIT payment preparation that can decide between existing balance, liquid agent funds, and Aave withdrawal
+- payment funding explanations and reasoning UX
+- integration into settlement and payment flows so a user can tap first and fund only when required
+
+This is the feature that makes the product feel unusual: **users can pay without keeping idle capital exposed just for checkout readiness**.
+
+---
+
+## Store Platform Features
+
+The store layer is not just a UI mock. The API surface in `packages/nextjs/app/api/stores` implements an actual merchant operations backend for SplitHub's checkout and agent workflows.
+
+### Store APIs
+
+Built store capabilities include:
+
+- store creation with admin, manager, payout split, token, and agent configuration
+- wallet-based store dashboard queries for operators
+- per-store analytics for revenue, order quality, low-stock items, and top sellers
+- catalog item creation, listing, and updates
+- checkout quote generation for a live cart
+- checkout confirmation with two signed payout legs, one for the manager and one for the admin
+- order lifecycle handling for pending, completed, and failed orders
+- automatic inventory decrement after successful checkout
+
+This makes the merchant flow more than "tap to pay." It supports **split payouts, operational visibility, and inventory-aware checkout**.
+
+### Store Agent Controls
+
+The store API also exposes agent management primitives:
+
+- create a manager agent for a store
+- pause or reactivate that agent
+- inspect analytics that help decide when an autonomous run is needed
+
+That means SplitHub is not only enabling merchant payments, but also giving each store an operational automation layer.
+
+---
+
+## Trigger-Powered Automation
+
+The background jobs in `packages/nextjs/trigger` are a major part of the newer product direction.
+
+### Autonomous store runs
+
+`store-agent-run.ts` executes an autonomous store run for a given store and records:
+
+- which store ran
+- the run id and state
+- how many actions were taken
+- the decision summary produced by the run
+
+This is the execution path that turns store agents from a configuration object into something that can actually act.
+
+### Scheduled health scans
+
+`store-health-scan.ts` runs on a schedule and checks active store agents for operational issues such as:
+
+- low-stock items
+- failed orders
+
+When a store needs attention, the scan queues a background store-agent run automatically. If everything looks healthy, the store is skipped. In product terms, this means SplitHub now supports **merchant monitoring and intervention loops**, not just checkout.
+
+Together, the store API layer and Trigger jobs add a new product dimension:
+
+**SplitHub is becoming a commerce platform with autonomous operations, not just a tap-to-pay frontend.**
 
 ---
 
@@ -179,6 +289,8 @@ SplitHub is a full-stack monorepo.
 - Supabase Postgres
 - Supabase realtime subscriptions
 - app API routes for payments, stores, events, and agent operations
+- store APIs for catalog management, analytics, checkout, and agent control
+- payment request, settlement, tap-limit, and Vincent treasury endpoints
 
 ### Smart Contracts
 
@@ -193,6 +305,8 @@ SplitHub is a full-stack monorepo.
 - Aave-backed capital deployment
 - OpenAI-powered planning and store agent workflows
 - Trigger.dev background jobs for store agents
+- scheduled store health scans and autonomous run orchestration
+- just-in-time payment funding and readiness evaluation
 
 ---
 
@@ -340,13 +454,13 @@ bun run dev:trigger
 
 If you want to understand the product quickly, start here:
 
+- `/store`
+- `/defi`
+- `/agents-pay`
 - `/splits`
 - `/settle`
 - `/credits`
 - `/events`
-- `/store`
-- `/defi`
-- `/agents-pay`
 
 ---
 

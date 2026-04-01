@@ -1,121 +1,303 @@
 # SplitHub
 
-Tap-to-pay bill splitting on blockchain. NFC Halo Chips sign EIP-712 messages; relayer pays gas.
+SplitHub is a tap-to-pay onchain payments product with four active feature pillars:
+
+- `Stores` for merchant checkout, analytics, and autonomous store operations
+- `DeFi` for Vincent-connected treasury management and Aave deployment
+- `Agent Pay` for just-in-time liquidity and tap-limit-backed payment readiness
+- `Splits` for shared expenses, payment requests, circles, and settlement
+
+The physical tap experience is powered by Arx Halo NFC chips, but the chip is not treated as the place where meaningful value lives. Capital can stay in wallets and DeFi until payment time.
 
 ## Stack
 
-- **Frontend:** Next.js 15, React 19, Wagmi/Viem, Privy (Twitter OAuth), TailwindCSS + DaisyUI
-- **NFC:** @arx-research/libhalo
-- **Contracts:** Foundry, Solidity 0.8.19, Base Sepolia (84532)
-- **Database:** Supabase (PostgreSQL)
-- **State:** Zustand
+- **Frontend:** Next.js 16, React 19, Tailwind CSS 4, DaisyUI 5
+- **Wallet/Auth:** Privy, Wagmi, Viem
+- **NFC:** `@arx-research/libhalo`
+- **Backend/Data:** Supabase Postgres + realtime
+- **Agent Infra:** Vincent, OpenAI, Trigger.dev
+- **Contracts:** Foundry, Solidity 0.8.19, OpenZeppelin, Base Sepolia (`84532`)
+- **Runtime:** Bun workspaces
 
-## Structure
+## Product Surfaces
 
-```
+### 1. Stores
+
+Merchant and venue commerce surface.
+
+- store creation and operator dashboard
+- public store browsing
+- catalog and inventory management
+- split-recipient checkout between manager and admin
+- store analytics
+- manager agents with run history and validations
+- supplier restock integration
+- scheduled store health scans via Trigger.dev
+
+Primary routes:
+
+- `/store`
+- `/store/[networkSlug]/[storeSlug]`
+
+Primary code:
+
+- `packages/nextjs/app/api/stores`
+- `packages/nextjs/services/store`
+- `packages/nextjs/trigger`
+
+### 2. DeFi
+
+Treasury and yield surface.
+
+- Vincent wallet session handling
+- wallet snapshot across Privy, agent wallet, and Aave
+- OpenAI planner with deterministic fallback
+- open position / withdraw flows
+- capital deployment to Aave
+
+Primary route:
+
+- `/defi`
+
+Primary code:
+
+- `packages/nextjs/app/api/vincent`
+- `packages/nextjs/services/agentPlannerService.ts`
+- `packages/nextjs/services/internalTreasuryService.ts`
+- `packages/nextjs/services/vincentExecutionService.ts`
+- `packages/nextjs/services/vincentWalletService.ts`
+
+### 3. Agent Pay
+
+Just-in-time payment liquidity layer.
+
+- payment readiness evaluation
+- per-user tap-limit support
+- top-up and withdraw decisioning
+- JIT funding before payment
+- payment reasoning UX
+
+Primary route:
+
+- `/agents-pay`
+
+Primary code:
+
+- `packages/nextjs/services/paymentReadinessService.ts`
+- `packages/nextjs/services/jitPaymentService.ts`
+- `packages/nextjs/services/jitReasoningService.ts`
+- `packages/nextjs/app/api/user/tap-limit/route.ts`
+- `packages/nextjs/app/api/vincent/prepare-payment/route.ts`
+- `packages/nextjs/app/api/vincent/readiness/route.ts`
+
+### 4. Splits and Tap Payments
+
+Original social payment surface, still active.
+
+- group expenses
+- live balances
+- payment requests
+- circles and auto-splitting
+- settle and multi-settle flows
+- chip-driven tap authorization
+
+Primary routes:
+
+- `/splits`
+- `/expense/add`
+- `/settle`
+- `/settle/[requestId]`
+- `/multi-settle`
+- `/request/create`
+- `/requests`
+
+## Repo Structure
+
+```text
 packages/nextjs/
-  app/api/relay/       # Gasless transaction endpoints
-  services/            # balanceService, expenseService, etc.
-  hooks/               # useHaloChip, etc.
+  app/
+    store/                  Store product routes
+    defi/                   DeFi route
+    agents-pay/             Agent Pay route
+    splits/, settle/        Social payment routes
+    api/stores/             Store backend APIs
+    api/vincent/            DeFi + Agent Pay APIs
+    api/payment-requests/   Payment request APIs
+    api/events/             Event + stall APIs
+    api/supplier/           Supplier adapter endpoint
+  components/
+    store/                  Store UI and agent run UI
+    splits/                 Balance and settlement UI
+    settle/                 Payment settlement flows
+    credits/                Venue credit UI
+    events/                 Event and stall management UI
+  services/
+    store/                  Store, checkout, analytics, agents, supplier logic
+    agentPlannerService.ts  DeFi planning
+    jitPaymentService.ts    Agent Pay JIT top-up logic
+    paymentReadinessService.ts
+    vincentExecutionService.ts
+  trigger/
+    store-agent-run.ts
+    store-health-scan.ts
+
 packages/foundry/
-  contracts/           # SplitHubRegistry, SplitHubPayments, CreditToken
+  contracts/
+    SplitHubRegistry.sol
+    SplitHubPayments.sol
+    CreditToken.sol
 ```
 
 ## Contracts
 
-- **SplitHubRegistry** - Links NFC chips to wallets
-- **SplitHubPayments** - Gasless token transfers via EIP-712
-- **CreditToken** - ERC-20 credits (1 USDC = 10 credits)
+- **SplitHubRegistry**: maps chip addresses to owners
+- **SplitHubPayments**: payment execution and auth checks
+- **CreditToken**: venue credits token
 
-## Database Tables
+## Database Areas
 
-**users**
-- `wallet_address` (PK), `chip_address` (UNIQUE), `name`, `email`
-- `chip_registration_status`: pending | registered | skipped | null
-- `approval_status`: pending | completed | null
-- `privy_user_id`, `twitter_handle`, `twitter_profile_url`, `twitter_user_id`
+### Social payments
 
-**expense**
-- `id` (PK), `creator_wallet` (FK), `description`, `total_amount`, `token_address`
-- `status`: active | settled | cancelled
+- `users`
+- `expense`
+- `expense_participants`
+- `settlements`
+- `payment_requests`
+- `circles`
+- `circle_members`
 
-**expense_participants**
-- `expense_id` (FK), `wallet_address` (FK), `share_amount`, `is_creator`
-- UNIQUE(expense_id, wallet_address)
+### Events and stores
 
-**settlements**
-- `payer_wallet` (FK), `payee_wallet` (FK), `amount`, `token_address`, `tx_hash`
-- `status`: pending | completed | failed
+- `events`
+- `stalls`
+- `stall_payments`
+- `store_items`
+- `store_inventory`
+- `store_orders`
+- `store_order_items`
 
-**payment_requests**
-- `id` (UUID PK), `payer` (FK), `recipient` (FK), `token`, `amount`, `memo`
-- `status`: pending | completed | expired
-- `expires_at`, `tx_hash`, `requester_twitter`, `payer_twitter`
+### Store agents
 
-**circles**
-- `id` (UUID PK), `name`, `creator_wallet` (FK), `is_active`
+- `manager_agents`
+- `agent_runs`
+- `agent_validations`
 
-**circle_members**
-- `circle_id` (FK), `member_wallet` (FK)
-- UNIQUE(circle_id, member_wallet)
+## Important Flows
 
-## Core Flows
+### Store checkout
 
-### Payment Flow
-1. Build EIP-712 `PaymentAuth`: `{ payer, recipient, token, amount, nonce, deadline }`
-2. User taps NFC chip → signs typed data
-3. POST `/api/relay/payment` with auth + signature
-4. Contract verifies deadline, nonce, signature, chip ownership
-5. Executes `safeTransferFrom`
+1. Build a quote for the cart.
+2. Split payout between manager and admin recipients.
+3. Collect signed payment legs from the buyer flow.
+4. Persist the order.
+5. Complete checkout and decrement inventory.
 
-### Balance Calculation (balanceService.ts)
-- Expenses where user is creator → friends owe user
-- Expenses where user is participant → user owes creator
-- Subtract completed settlements
-- Positive = owed to you, negative = you owe
+Relevant files:
 
-### Onboarding
-1. Twitter login → Privy creates embedded wallet
-2. `UserSyncWrapper` syncs to database
-3. Chip registration (or skip) → `/api/onboarding/finalize`
-4. Redirects to `/approve` or `/splits`
+- `packages/nextjs/app/api/stores/[storeId]/checkout/route.ts`
+- `packages/nextjs/services/store/storeCheckout.ts`
 
-## Security
+### Store automation
 
-- **Nonce** - Prevents replay; must match contract state
-- **Deadline** - Signatures expire (~1 hour)
-- **Registry** - Contract verifies `registry.ownerOf(chipAddress) == payer`
+1. A manager agent is created for a store.
+2. Manual or scheduled runs are queued.
+3. The agent inspects store state and analytics.
+4. Safe actions can be taken through structured tools.
+5. Restock requests can be sent to a supplier adapter.
+
+Relevant files:
+
+- `packages/nextjs/services/store/storeAgentRuntime.ts`
+- `packages/nextjs/trigger/store-agent-run.ts`
+- `packages/nextjs/trigger/store-health-scan.ts`
+- `packages/nextjs/services/store/supplierService.ts`
+
+### DeFi deployment
+
+1. User connects Vincent-backed session.
+2. Wallet snapshot is fetched.
+3. Planner computes valid capital actions.
+4. Funds can move from Privy wallet to agent wallet.
+5. Idle funds can be deployed to Aave or withdrawn back.
+
+Relevant files:
+
+- `packages/nextjs/app/defi/page.tsx`
+- `packages/nextjs/services/agentPlannerService.ts`
+- `packages/nextjs/services/internalTreasuryService.ts`
+
+### Agent Pay
+
+1. User configures a tap limit.
+2. SplitHub computes readiness from chip wallet, agent liquidity, and Aave reserve.
+3. JIT funding path is chosen.
+4. Funds move only when required for payment.
+
+Relevant files:
+
+- `packages/nextjs/app/agents-pay/page.tsx`
+- `packages/nextjs/services/paymentReadinessService.ts`
+- `packages/nextjs/services/jitPaymentService.ts`
+
+## Product Constraints
+
+- Treat `Stores`, `DeFi`, and `Agent Pay` as first-class product features.
+- Do not describe the app as only bill splitting; that is now incomplete.
+- The chip should be described as an authorization device, not a stored-value vault.
+- Prefer saying the product enables payment without keeping idle balance parked for checkout readiness.
+- Current product messaging should emphasize:
+  - merchant/store commerce
+  - DeFi-backed treasury management
+  - just-in-time liquidity for tap payments
 
 ## Key Files
 
-- `app/api/relay/payment/route.ts` - Payment relayer
-- `services/balanceService.ts` - Balance calculation
-- `hooks/halochip-arx/useHaloChip.ts` - NFC signing
-- `components/UserSyncWrapper.tsx` - Onboarding logic
-- `foundry/contracts/SplitHubPayments.sol` - Payment contract
+- `packages/nextjs/app/store/page.tsx`
+- `packages/nextjs/app/defi/page.tsx`
+- `packages/nextjs/app/agents-pay/page.tsx`
+- `packages/nextjs/app/api/stores/dashboard/route.ts`
+- `packages/nextjs/app/api/stores/[storeId]/checkout/route.ts`
+- `packages/nextjs/app/api/stores/[storeId]/agent/create/route.ts`
+- `packages/nextjs/app/api/stores/[storeId]/agent/pause/route.ts`
+- `packages/nextjs/app/api/stores/[storeId]/agent/runs/trigger/route.ts`
+- `packages/nextjs/services/store/storeAnalytics.ts`
+- `packages/nextjs/services/store/storeAgentRuntime.ts`
+- `packages/nextjs/services/paymentReadinessService.ts`
+- `packages/nextjs/services/jitPaymentService.ts`
+- `packages/nextjs/services/agentPlannerService.ts`
+- `packages/nextjs/trigger/store-agent-run.ts`
+- `packages/nextjs/trigger/store-health-scan.ts`
 
 ## Commands
 
 ```bash
-yarn chain          # Local Anvil
-yarn deploy         # Deploy localhost
-yarn deploy:base    # Deploy Base Sepolia
-yarn start          # Start frontend
+bun install
+bun run start
+bun run chain
+bun run deploy:local
+bun run deploy:base
+bun run next:lint
+bun run next:check-types
+bun run test
 ```
 
-## Common Errors
+Trigger.dev local development:
 
-| Error | Fix |
-|-------|-----|
-| `InvalidNonce` | Refetch nonce from contract |
-| `ExpiredSignature` | Generate new signature |
-| `UnauthorizedSigner` | Register chip first |
-| `insufficient allowance` | Navigate to `/approve` |
+```bash
+cd packages/nextjs
+bun run dev:trigger
+```
 
-## Routes
+## Routes Worth Checking
 
-- `/register` - Chip registration
-- `/approve` - ERC-20 approvals
-- `/splits` - Balances dashboard
-- `/settle` - Quick payment
-- `/expense/add` - Create expense
+- `/store`
+- `/defi`
+- `/agents-pay`
+- `/splits`
+- `/settle`
+- `/credits`
+- `/events`
+- `/request/create`
+- `/requests`
+- `/register`
+- `/approve`
