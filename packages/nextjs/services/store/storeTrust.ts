@@ -85,6 +85,39 @@ function resolvePlatformRoleWallet(role: "validator" | "reviewer") {
   return normalizeAddress(createErc8004WalletClients(privateKey).account.address);
 }
 
+function formatOnchainSubmissionError(error: unknown) {
+  if (error instanceof Error) {
+    const candidate = error as Error & {
+      shortMessage?: string;
+      cause?: { shortMessage?: string; signature?: string; raw?: string };
+    };
+    const details = [
+      candidate.shortMessage || candidate.message,
+      candidate.cause?.signature ? `signature=${candidate.cause.signature}` : null,
+      candidate.cause?.raw ? `raw=${candidate.cause.raw}` : null,
+    ].filter(Boolean);
+
+    return details.join(" | ");
+  }
+
+  return String(error);
+}
+
+function ensureAgentUsesCurrentIdentityRegistry(
+  agent: Pick<Erc8004AgentRecord, "registry_agent_id" | "identity_registry_address">,
+  label: string,
+) {
+  const config = getErc8004TrustConfig();
+  const currentIdentityRegistry = config.identityRegistryAddress.toLowerCase();
+  if (agent.registry_agent_id && agent.identity_registry_address?.toLowerCase() === currentIdentityRegistry) {
+    return;
+  }
+
+  throw new Error(
+    `${label} must be registered on the current ERC-8004 identity registry (${config.identityRegistryAddress}) before continuing. Current value: ${agent.identity_registry_address || "missing"}${agent.registry_agent_id ? ` (agentId ${agent.registry_agent_id})` : ""}.`,
+  );
+}
+
 function getRoleCapabilities(role: Erc8004AgentRole) {
   if (role === "manager") {
     return ["store-planning", "inventory-restock", "validation-request"];
@@ -1008,6 +1041,7 @@ export async function submitValidationResponse(validationId: string, score?: num
   const responseHash = hashJsonPayload(responseDocument);
 
   let txHash: string | null = null;
+  let submissionError: string | null = null;
   if (validation.request_hash && validatorAgent) {
     const privateKey = resolvePrivateKeyForRole("validator");
     if (privateKey) {
@@ -1019,7 +1053,8 @@ export async function submitValidationResponse(validationId: string, score?: num
           args: [validation.request_hash as `0x${string}`, responseScore, responseUri, responseHash, review.tag],
         });
       } catch (error) {
-        console.error("Failed to submit ERC-8004 validation response onchain:", error);
+        submissionError = formatOnchainSubmissionError(error);
+        console.error("Failed to submit ERC-8004 validation response onchain:", submissionError);
       }
     }
   }
@@ -1034,7 +1069,7 @@ export async function submitValidationResponse(validationId: string, score?: num
       erc8004_validation_tx: txHash,
       explorer_url: buildTrustExplorerUrl(txHash),
       reviewed_at: reviewedAt,
-      status: responseScore === 100 ? "verified" : "failed",
+      status: submissionError ? "failed" : responseScore === 100 ? "verified" : "failed",
     })
     .eq("id", validation.id)
     .select("*")
@@ -1042,6 +1077,10 @@ export async function submitValidationResponse(validationId: string, score?: num
 
   if (persistError || !persisted) {
     throw new Error(`Failed to persist validation response: ${persistError?.message}`);
+  }
+
+  if (submissionError) {
+    throw new Error(`Failed to submit ERC-8004 validation response onchain: ${submissionError}`);
   }
 
   return persisted as AgentValidation;
@@ -1073,6 +1112,8 @@ export async function submitReputationFeedback(
   if (!reviewerAgent) {
     throw new Error("Reviewer trust agent is not configured");
   }
+  ensureAgentUsesCurrentIdentityRegistry(managerTrustAgent, "Manager trust agent");
+  ensureAgentUsesCurrentIdentityRegistry(reviewerAgent, "Reviewer trust agent");
 
   if (normalizeAddress(reviewerAgent.operator_wallet) === normalizeAddress(managerTrustAgent.operator_wallet)) {
     throw new Error("Reviewer wallet must be separate from the manager operator wallet");
@@ -1100,6 +1141,7 @@ export async function submitReputationFeedback(
   const feedbackHash = hashJsonPayload(feedbackDocument);
 
   let reputationTxHash: string | null = null;
+  let submissionError: string | null = null;
   if (managerTrustAgent.registry_agent_id && reviewerAgent.registry_agent_id) {
     const privateKey = resolvePrivateKeyForRole("reviewer");
     if (privateKey) {
@@ -1120,7 +1162,8 @@ export async function submitReputationFeedback(
           ],
         });
       } catch (error) {
-        console.error("Failed to submit ERC-8004 reputation feedback onchain:", error);
+        submissionError = formatOnchainSubmissionError(error);
+        console.error("Failed to submit ERC-8004 reputation feedback onchain:", submissionError);
       }
     }
   }
@@ -1140,7 +1183,7 @@ export async function submitReputationFeedback(
     reputation_tx_hash: reputationTxHash,
     explorer_url: buildTrustExplorerUrl(reputationTxHash),
     proof_of_payment_json: proofOfPayment,
-    status: reputationTxHash ? "verified" : "submitted",
+    status: submissionError ? "failed" : reputationTxHash ? "verified" : "submitted",
   };
 
   const mutation = existing
@@ -1150,6 +1193,10 @@ export async function submitReputationFeedback(
   const { data, error } = await mutation;
   if (error || !data) {
     throw new Error(`Failed to persist reputation feedback: ${error?.message}`);
+  }
+
+  if (submissionError) {
+    throw new Error(`Failed to submit ERC-8004 reputation feedback onchain: ${submissionError}`);
   }
 
   return data as ReputationEventRecord;
