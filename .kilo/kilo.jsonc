@@ -1,0 +1,4 @@
+{
+	"$schema": "https://app.kilo.ai/config.json",
+	"model": "zai-coding-plan/glm-5.1"
+}
