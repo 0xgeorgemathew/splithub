@@ -232,6 +232,11 @@ const deployedContracts = {
         },
         {
           type: "error",
+          name: "NotOwner",
+          inputs: [],
+        },
+        {
+          type: "error",
           name: "StringTooLong",
           inputs: [
             {
@@ -247,609 +252,8 @@ const deployedContracts = {
     },
   },
   84532: {
-    SplitHubRegistry: {
-      address: "0xeabde4d7b969bdaf524c9e7a55082a51c5eee513",
-      abi: [
-        {
-          type: "constructor",
-          inputs: [],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "CHIP_REGISTRATION_TYPEHASH",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "bytes32",
-              internalType: "bytes32",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "domainSeparator",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "bytes32",
-              internalType: "bytes32",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "eip712Domain",
-          inputs: [],
-          outputs: [
-            {
-              name: "fields",
-              type: "bytes1",
-              internalType: "bytes1",
-            },
-            {
-              name: "name",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "version",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "chainId",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "verifyingContract",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "salt",
-              type: "bytes32",
-              internalType: "bytes32",
-            },
-            {
-              name: "extensions",
-              type: "uint256[]",
-              internalType: "uint256[]",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "getDigest",
-          inputs: [
-            {
-              name: "owner",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "chipAddress",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          outputs: [
-            {
-              name: "",
-              type: "bytes32",
-              internalType: "bytes32",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "ownerOf",
-          inputs: [
-            {
-              name: "signer",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          outputs: [
-            {
-              name: "owner",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "register",
-          inputs: [
-            {
-              name: "signer",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "owner",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "signature",
-              type: "bytes",
-              internalType: "bytes",
-            },
-          ],
-          outputs: [],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "signerOf",
-          inputs: [
-            {
-              name: "owner",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          outputs: [
-            {
-              name: "signer",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "event",
-          name: "EIP712DomainChanged",
-          inputs: [],
-          anonymous: false,
-        },
-        {
-          type: "event",
-          name: "Registered",
-          inputs: [
-            {
-              name: "signer",
-              type: "address",
-              indexed: true,
-              internalType: "address",
-            },
-            {
-              name: "owner",
-              type: "address",
-              indexed: true,
-              internalType: "address",
-            },
-          ],
-          anonymous: false,
-        },
-        {
-          type: "error",
-          name: "ECDSAInvalidSignature",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "ECDSAInvalidSignatureLength",
-          inputs: [
-            {
-              name: "length",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-        },
-        {
-          type: "error",
-          name: "ECDSAInvalidSignatureS",
-          inputs: [
-            {
-              name: "s",
-              type: "bytes32",
-              internalType: "bytes32",
-            },
-          ],
-        },
-        {
-          type: "error",
-          name: "InvalidShortString",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "InvalidSignature",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "StringTooLong",
-          inputs: [
-            {
-              name: "str",
-              type: "string",
-              internalType: "string",
-            },
-          ],
-        },
-      ],
-      inheritedFunctions: {},
-      deployedOnBlock: 34386417,
-    },
-    SplitHubPayments: {
-      address: "0x948856f736b97aceaf5c1377c29808bd0ad08dab",
-      abi: [
-        {
-          type: "constructor",
-          inputs: [
-            {
-              name: "_registry",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "PAYMENT_AUTH_TYPEHASH",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "bytes32",
-              internalType: "bytes32",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "domainSeparator",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "bytes32",
-              internalType: "bytes32",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "eip712Domain",
-          inputs: [],
-          outputs: [
-            {
-              name: "fields",
-              type: "bytes1",
-              internalType: "bytes1",
-            },
-            {
-              name: "name",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "version",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "chainId",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "verifyingContract",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "salt",
-              type: "bytes32",
-              internalType: "bytes32",
-            },
-            {
-              name: "extensions",
-              type: "uint256[]",
-              internalType: "uint256[]",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "executePayment",
-          inputs: [
-            {
-              name: "auth",
-              type: "tuple",
-              internalType: "struct SplitHubPayments.PaymentAuth",
-              components: [
-                {
-                  name: "payer",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "recipient",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "token",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "amount",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "nonce",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "deadline",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
-            },
-            {
-              name: "signature",
-              type: "bytes",
-              internalType: "bytes",
-            },
-          ],
-          outputs: [],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "getDigest",
-          inputs: [
-            {
-              name: "auth",
-              type: "tuple",
-              internalType: "struct SplitHubPayments.PaymentAuth",
-              components: [
-                {
-                  name: "payer",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "recipient",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "token",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "amount",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "nonce",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "deadline",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
-            },
-          ],
-          outputs: [
-            {
-              name: "",
-              type: "bytes32",
-              internalType: "bytes32",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "getNonce",
-          inputs: [
-            {
-              name: "payer",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          outputs: [
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "nonces",
-          inputs: [
-            {
-              name: "payer",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          outputs: [
-            {
-              name: "nonce",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "registry",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "contract ISplitHubRegistry",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "event",
-          name: "EIP712DomainChanged",
-          inputs: [],
-          anonymous: false,
-        },
-        {
-          type: "event",
-          name: "PaymentExecuted",
-          inputs: [
-            {
-              name: "payer",
-              type: "address",
-              indexed: true,
-              internalType: "address",
-            },
-            {
-              name: "recipient",
-              type: "address",
-              indexed: true,
-              internalType: "address",
-            },
-            {
-              name: "token",
-              type: "address",
-              indexed: true,
-              internalType: "address",
-            },
-            {
-              name: "amount",
-              type: "uint256",
-              indexed: false,
-              internalType: "uint256",
-            },
-            {
-              name: "signer",
-              type: "address",
-              indexed: false,
-              internalType: "address",
-            },
-            {
-              name: "nonce",
-              type: "uint256",
-              indexed: false,
-              internalType: "uint256",
-            },
-          ],
-          anonymous: false,
-        },
-        {
-          type: "error",
-          name: "ECDSAInvalidSignature",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "ECDSAInvalidSignatureLength",
-          inputs: [
-            {
-              name: "length",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-        },
-        {
-          type: "error",
-          name: "ECDSAInvalidSignatureS",
-          inputs: [
-            {
-              name: "s",
-              type: "bytes32",
-              internalType: "bytes32",
-            },
-          ],
-        },
-        {
-          type: "error",
-          name: "ExpiredSignature",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "InvalidNonce",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "InvalidShortString",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "InvalidSignature",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "SafeERC20FailedOperation",
-          inputs: [
-            {
-              name: "token",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-        },
-        {
-          type: "error",
-          name: "StringTooLong",
-          inputs: [
-            {
-              name: "str",
-              type: "string",
-              internalType: "string",
-            },
-          ],
-        },
-        {
-          type: "error",
-          name: "UnauthorizedSigner",
-          inputs: [],
-        },
-      ],
-      inheritedFunctions: {},
-      deployedOnBlock: 34386417,
-    },
     VenueCredits: {
-      address: "0xee61cc3366b6fba6e49f4b2629bde1e3c2a4ac51",
+      address: "0x15ce5163bee40c3269c61512276f5e16065c7033",
       abi: [
         {
           type: "constructor",
@@ -1280,24 +684,6 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "transferVenueOwnership",
-          inputs: [
-            {
-              name: "venueId",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "newOwner",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          outputs: [],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
           name: "usdc",
           inputs: [],
           outputs: [
@@ -1544,31 +930,6 @@ const deployedContracts = {
         },
         {
           type: "event",
-          name: "VenueOwnershipTransferred",
-          inputs: [
-            {
-              name: "venueId",
-              type: "uint256",
-              indexed: true,
-              internalType: "uint256",
-            },
-            {
-              name: "previousOwner",
-              type: "address",
-              indexed: true,
-              internalType: "address",
-            },
-            {
-              name: "newOwner",
-              type: "address",
-              indexed: true,
-              internalType: "address",
-            },
-          ],
-          anonymous: false,
-        },
-        {
-          type: "event",
           name: "Withdrawn",
           inputs: [
             {
@@ -1693,7 +1054,613 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 49204042,
+      deployedOnBlock: 49211665,
+    },
+    SplitHubRegistry: {
+      address: "0xf24acfd511c56d3ba2fd31936c2cd2ecf8d58556",
+      abi: [
+        {
+          type: "constructor",
+          inputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "CHIP_REGISTRATION_TYPEHASH",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "bytes32",
+              internalType: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "domainSeparator",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "bytes32",
+              internalType: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "eip712Domain",
+          inputs: [],
+          outputs: [
+            {
+              name: "fields",
+              type: "bytes1",
+              internalType: "bytes1",
+            },
+            {
+              name: "name",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "version",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "chainId",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "verifyingContract",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "salt",
+              type: "bytes32",
+              internalType: "bytes32",
+            },
+            {
+              name: "extensions",
+              type: "uint256[]",
+              internalType: "uint256[]",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getDigest",
+          inputs: [
+            {
+              name: "owner",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "chipAddress",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "bytes32",
+              internalType: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "ownerOf",
+          inputs: [
+            {
+              name: "signer",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [
+            {
+              name: "owner",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "register",
+          inputs: [
+            {
+              name: "signer",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "owner",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "signature",
+              type: "bytes",
+              internalType: "bytes",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "signerOf",
+          inputs: [
+            {
+              name: "owner",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [
+            {
+              name: "signer",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "event",
+          name: "EIP712DomainChanged",
+          inputs: [],
+          anonymous: false,
+        },
+        {
+          type: "event",
+          name: "Registered",
+          inputs: [
+            {
+              name: "signer",
+              type: "address",
+              indexed: true,
+              internalType: "address",
+            },
+            {
+              name: "owner",
+              type: "address",
+              indexed: true,
+              internalType: "address",
+            },
+          ],
+          anonymous: false,
+        },
+        {
+          type: "error",
+          name: "ECDSAInvalidSignature",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "ECDSAInvalidSignatureLength",
+          inputs: [
+            {
+              name: "length",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+        },
+        {
+          type: "error",
+          name: "ECDSAInvalidSignatureS",
+          inputs: [
+            {
+              name: "s",
+              type: "bytes32",
+              internalType: "bytes32",
+            },
+          ],
+        },
+        {
+          type: "error",
+          name: "InvalidShortString",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "InvalidSignature",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "NotOwner",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "StringTooLong",
+          inputs: [
+            {
+              name: "str",
+              type: "string",
+              internalType: "string",
+            },
+          ],
+        },
+      ],
+      inheritedFunctions: {},
+      deployedOnBlock: 49211665,
+    },
+    SplitHubPayments: {
+      address: "0x73c50168850b2dc9efe73e584654e5f4460e0d8e",
+      abi: [
+        {
+          type: "constructor",
+          inputs: [
+            {
+              name: "_registry",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "PAYMENT_AUTH_TYPEHASH",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "bytes32",
+              internalType: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "domainSeparator",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "bytes32",
+              internalType: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "eip712Domain",
+          inputs: [],
+          outputs: [
+            {
+              name: "fields",
+              type: "bytes1",
+              internalType: "bytes1",
+            },
+            {
+              name: "name",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "version",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "chainId",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "verifyingContract",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "salt",
+              type: "bytes32",
+              internalType: "bytes32",
+            },
+            {
+              name: "extensions",
+              type: "uint256[]",
+              internalType: "uint256[]",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "executePayment",
+          inputs: [
+            {
+              name: "auth",
+              type: "tuple",
+              internalType: "struct SplitHubPayments.PaymentAuth",
+              components: [
+                {
+                  name: "payer",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "recipient",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "token",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "amount",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "nonce",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "deadline",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+              ],
+            },
+            {
+              name: "signature",
+              type: "bytes",
+              internalType: "bytes",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "getDigest",
+          inputs: [
+            {
+              name: "auth",
+              type: "tuple",
+              internalType: "struct SplitHubPayments.PaymentAuth",
+              components: [
+                {
+                  name: "payer",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "recipient",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "token",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "amount",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "nonce",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "deadline",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+              ],
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "bytes32",
+              internalType: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getNonce",
+          inputs: [
+            {
+              name: "payer",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "nonces",
+          inputs: [
+            {
+              name: "payer",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [
+            {
+              name: "nonce",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "registry",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "contract ISplitHubRegistry",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "event",
+          name: "EIP712DomainChanged",
+          inputs: [],
+          anonymous: false,
+        },
+        {
+          type: "event",
+          name: "PaymentExecuted",
+          inputs: [
+            {
+              name: "payer",
+              type: "address",
+              indexed: true,
+              internalType: "address",
+            },
+            {
+              name: "recipient",
+              type: "address",
+              indexed: true,
+              internalType: "address",
+            },
+            {
+              name: "token",
+              type: "address",
+              indexed: true,
+              internalType: "address",
+            },
+            {
+              name: "amount",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+            {
+              name: "signer",
+              type: "address",
+              indexed: false,
+              internalType: "address",
+            },
+            {
+              name: "nonce",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+          ],
+          anonymous: false,
+        },
+        {
+          type: "error",
+          name: "ECDSAInvalidSignature",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "ECDSAInvalidSignatureLength",
+          inputs: [
+            {
+              name: "length",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+        },
+        {
+          type: "error",
+          name: "ECDSAInvalidSignatureS",
+          inputs: [
+            {
+              name: "s",
+              type: "bytes32",
+              internalType: "bytes32",
+            },
+          ],
+        },
+        {
+          type: "error",
+          name: "ExpiredSignature",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "InvalidNonce",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "InvalidShortString",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "InvalidSignature",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "SafeERC20FailedOperation",
+          inputs: [
+            {
+              name: "token",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+        },
+        {
+          type: "error",
+          name: "StringTooLong",
+          inputs: [
+            {
+              name: "str",
+              type: "string",
+              internalType: "string",
+            },
+          ],
+        },
+        {
+          type: "error",
+          name: "UnauthorizedSigner",
+          inputs: [],
+        },
+      ],
+      inheritedFunctions: {},
+      deployedOnBlock: 49211665,
     },
   },
 } as const;

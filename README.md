@@ -35,7 +35,7 @@ Closed-loop stored value for arcades, festivals and resorts. Each venue has its 
 - Guests top up with a tap at the venue's top-up terminal: 1 USDC buys 10 credits, paid from their wallet
 - Stalls are priced in credits; guests tap at a stall terminal to spend them
 - Credits only work at their venue and cannot be transferred
-- The owner withdraws the USDC guests have spent; unspent credits stay backed and can be refunded
+- The owner withdraws the USDC guests have spent; unspent credits stay backed and can be refunded (by the owner, or by the guest once the venue closes)
 
 Routes: `/venues`, `/venues/$venueSlug`, `/venues/$venueSlug/topup`, `/venues/$venueSlug/$stallSlug`
 

@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { errorResponse } from "~~/lib/auth";
 import { supabase } from "~~/lib/supabase";
 import { requireVenueOwner } from "~~/services/venueAccess";
-import { parseCreditPrice, uniqueSlug } from "~~/services/venueService";
+import { InvalidInputError, parseCreditPrice, uniqueSlug } from "~~/services/venueService";
 
 /** Adds a stall to the venue (owner only). */
 async function POST(request: Request, venueId: number) {
@@ -30,6 +30,7 @@ async function POST(request: Request, venueId: number) {
     if (error) throw new Error(error.message);
     return Response.json({ stall }, { status: 201 });
   } catch (error) {
+    if (error instanceof InvalidInputError) return Response.json({ error: error.message }, { status: 400 });
     return errorResponse(error, "Failed to add stall");
   }
 }

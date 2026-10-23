@@ -172,10 +172,11 @@ packages/foundry/
 
 ## Contracts
 
-- **SplitHubRegistry**: maps chip addresses to owners
+- **SplitHubRegistry**: maps chip addresses to owners. The owner sends the registration and the chip signs it;
+  a chip signature alone cannot bind a key to someone else's wallet. A new chip revokes the owner's old one.
 - **SplitHubPayments**: executes chip-signed `PaymentAuth` transfers from the owner's wallet
 - **VenueCredits**: closed-loop credits per venue: top up with USDC, spend at stalls, owner withdraws spent USDC
-  or refunds unspent credits
+  or refunds unspent credits; guests can refund themselves once a venue is closed
 
 ## Data Layer
 

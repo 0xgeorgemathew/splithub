@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AuthError, errorResponse } from "~~/lib/auth";
 import { supabase } from "~~/lib/supabase";
 import { requireVenueOwner } from "~~/services/venueAccess";
-import { getStallWithVenue, parseCreditPrice } from "~~/services/venueService";
+import { InvalidInputError, getStallWithVenue, parseCreditPrice } from "~~/services/venueService";
 
 async function requireOwnedStall(request: Request, stallId: number) {
   const stall = await getStallWithVenue(stallId);
@@ -42,6 +42,7 @@ async function PATCH(request: Request, stallId: number) {
     if (error) throw new Error(error.message);
     return Response.json({ stall });
   } catch (error) {
+    if (error instanceof InvalidInputError) return Response.json({ error: error.message }, { status: 400 });
     return errorResponse(error, "Failed to update stall");
   }
 }

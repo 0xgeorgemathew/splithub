@@ -54,7 +54,7 @@ function Stat({ label, value }: { label: string; value: string | number }) {
 
 /** The signed-in guest's credits at this venue, with the one-time USDC approval if it is missing. */
 function GuestCredits({ venue, wallet, refreshKey }: { venue: Venue; wallet: string; refreshKey: number }) {
-  const { enableCredits } = useVenueCredits();
+  const { enableCredits, ownerWrite, recordTx } = useVenueCredits();
   const [balance, setBalance] = useState<number | null>(null);
   const [enabled, setEnabled] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -82,18 +82,29 @@ function GuestCredits({ venue, wallet, refreshKey }: { venue: Venue; wallet: str
 
   if (!venue.chain_venue_id) return null;
 
-  const enable = async () => {
+  const run = async (action: () => Promise<unknown>) => {
     setBusy(true);
     setError(null);
     try {
-      await enableCredits();
+      await action();
       await load();
     } catch (err) {
-      setError(formatWalletError(err));
+      setError(err instanceof Error && !("shortMessage" in err) ? err.message : formatWalletError(err));
     } finally {
       setBusy(false);
     }
   };
+  const enable = () => run(enableCredits);
+  // A closed venue lets guests take their unspent credits back as USDC themselves.
+  const refundSelf = () =>
+    run(async () => {
+      const txHash = await ownerWrite({
+        functionName: "refundCredits",
+        args: [BigInt(venue.chain_venue_id!), wallet as Address],
+      });
+      await recordTx(txHash);
+    });
+  const closed = venue.status !== "active";
 
   return (
     <div className="rounded-3xl border border-primary/20 bg-primary/5 p-5">
@@ -102,7 +113,13 @@ function GuestCredits({ venue, wallet, refreshKey }: { venue: Venue; wallet: str
           <div className="text-xs uppercase tracking-[0.24em] text-primary/70">Your credits here</div>
           <div className="mt-1 text-3xl font-black">{balance === null ? "…" : cr(balance)}</div>
         </div>
-        {enabled ? (
+        {closed ? (
+          balance ? (
+            <button className="btn btn-primary btn-sm" onClick={refundSelf} disabled={busy}>
+              <RotateCcw className="h-4 w-4" /> {busy ? "Refunding..." : "Refund my credits"}
+            </button>
+          ) : null
+        ) : enabled ? (
           <Link
             to="/venues/$venueSlug/topup"
             params={{ venueSlug: venue.venue_slug }}
@@ -116,7 +133,12 @@ function GuestCredits({ venue, wallet, refreshKey }: { venue: Venue; wallet: str
           </button>
         )}
       </div>
-      {!enabled && (
+      {closed && !!balance && (
+        <p className="mt-3 text-xs text-base-content/60">
+          This venue is closed. Your unspent credits come back to your wallet as USDC (1 USDC per 10 credits).
+        </p>
+      )}
+      {!enabled && !closed && (
         <p className="mt-3 text-xs text-base-content/60">
           One approval lets venues pull USDC from your wallet when you tap to top up. Your chip still has to sign every
           top-up.

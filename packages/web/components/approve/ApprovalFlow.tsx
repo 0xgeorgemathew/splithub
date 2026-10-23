@@ -102,7 +102,7 @@ const ERC20_ABI = [
 async function updateApprovalStatusWithRetry(userId: string): Promise<void> {
   // Set localStorage FIRST as safety net - prevents redirect loop even if all DB attempts fail
   try {
-    localStorage.setItem(`approval_completed_${userId}`, "true");
+    localStorage.setItem(`approval_completed_v2_${userId}`, "true");
   } catch (err) {
     console.warn("Failed to set localStorage fallback:", err);
   }

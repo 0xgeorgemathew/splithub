@@ -51,6 +51,7 @@ contract VenueCreditsTest is Test {
         address chip = vm.addr(chipPk);
         bytes32 digest = registry.getDigest(owner, chip);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(chipPk, digest);
+        vm.prank(owner);
         registry.register(chip, owner, abi.encodePacked(r, s, v));
     }
 
@@ -265,10 +266,25 @@ contract VenueCreditsTest is Test {
         assertEq(usdc.balanceOf(address(credits)), usdcBalance);
     }
 
-    function test_TransferVenueOwnership() public {
+    function test_GuestRefundsThemselvesOnlyWhenClosed() public {
+        _topUp(venueId, 4e6);
+        _spendAt(venueId, 10e6, 1); // 30 credits left
+
+        vm.prank(GUEST);
+        vm.expectRevert(VenueCredits.NotVenueOwner.selector);
+        credits.refundCredits(venueId, GUEST);
+
         vm.prank(VENUE_OWNER);
-        credits.transferVenueOwnership(venueId, OTHER_OWNER);
-        (address owner,,,) = credits.venues(venueId);
-        assertEq(owner, OTHER_OWNER);
+        credits.setVenueOpen(venueId, false);
+
+        // Someone else still cannot trigger a guest's refund.
+        vm.prank(OTHER_OWNER);
+        vm.expectRevert(VenueCredits.NotVenueOwner.selector);
+        credits.refundCredits(venueId, GUEST);
+
+        vm.prank(GUEST);
+        credits.refundCredits(venueId, GUEST);
+        assertEq(credits.creditsOf(venueId, GUEST), 0);
+        assertEq(usdc.balanceOf(GUEST), 996e6 + 3e6);
     }
 }

@@ -25,12 +25,16 @@ export function uniqueSlug(base: string, taken: string[]) {
   return slug;
 }
 
+export class InvalidInputError extends Error {}
+
 /** Stall price in credits from a request body; null means the terminal enters the amount. */
 export function parseCreditPrice(value: unknown): number | null {
   if (value === null || value === undefined || value === "") return null;
-  const price = Number(value);
-  if (!Number.isFinite(price) || price <= 0) throw new Error("Credit price must be a positive number");
-  return Math.round(price * 100) / 100;
+  const price = Math.round(Number(value) * 100) / 100;
+  if (!Number.isFinite(price) || price <= 0 || price > 1_000_000) {
+    throw new InvalidInputError("Credit price must be between 0.01 and 1,000,000 credits");
+  }
+  return price;
 }
 
 export async function listPublicVenues(): Promise<Venue[]> {
