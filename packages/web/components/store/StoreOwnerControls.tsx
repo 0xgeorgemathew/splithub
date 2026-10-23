@@ -29,7 +29,9 @@ function ItemRow({
   };
 
   const paused = item.status === "paused";
-  const changed = Number(price) !== Number(item.price) || Number(stock) !== item.stock;
+  // An empty field is not a value: Number("") is 0, which would make the item free or sold out.
+  const valid = price.trim() !== "" && stock.trim() !== "" && Number(price) >= 0 && Number(stock) >= 0;
+  const changed = valid && (Number(price) !== Number(item.price) || Number(stock) !== item.stock);
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-base-100/40 px-3 py-2">
       <div className="min-w-0 flex-1">
