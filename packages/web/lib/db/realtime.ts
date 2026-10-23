@@ -73,7 +73,9 @@ class RealtimeConnection {
     const socket = new WebSocket(url);
     this.socket = socket;
 
+    // A replaced socket (disconnect, then a quick reconnect, as in React StrictMode) must not touch the new one.
     socket.onopen = () => {
+      if (this.socket !== socket) return;
       this.retry = 0;
       this.bindings.forEach(binding => this.sendSub(binding));
       this.openListeners.forEach(listener => listener());
@@ -100,6 +102,7 @@ class RealtimeConnection {
     };
 
     socket.onclose = () => {
+      if (this.socket !== socket) return;
       if (this.pingTimer) clearInterval(this.pingTimer);
       this.pingTimer = null;
       this.socket = null;
@@ -115,6 +118,8 @@ class RealtimeConnection {
   private disconnect() {
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     this.reconnectTimer = null;
+    if (this.pingTimer) clearInterval(this.pingTimer);
+    this.pingTimer = null;
     const socket = this.socket;
     this.socket = null;
     socket?.close(1000, "no subscriptions");
