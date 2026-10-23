@@ -68,4 +68,60 @@ contract SplitHubRegistryTest is Test {
 
         console.log("\nAll assertions passed!");
     }
+
+    function _sign(uint256 chipPk, address owner) internal view returns (bytes memory) {
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(chipPk, registry.getDigest(owner, vm.addr(chipPk)));
+        return abi.encodePacked(r, s, v);
+    }
+
+    /// A chip signature alone must not bind a key to someone else's wallet (it could then authorize their payments).
+    function test_RevertWhen_RegisteringForAnotherOwner() public {
+        uint256 attackerKey = 0xA77AC;
+        address victim = address(0xBEEF);
+        bytes memory signature = _sign(attackerKey, victim);
+
+        vm.expectRevert(SplitHubRegistry.NotOwner.selector);
+        registry.register(vm.addr(attackerKey), victim, signature);
+
+        vm.prank(address(0xBAD));
+        vm.expectRevert(SplitHubRegistry.NotOwner.selector);
+        registry.register(vm.addr(attackerKey), victim, signature);
+
+        assertEq(registry.ownerOf(vm.addr(attackerKey)), address(0));
+        assertEq(registry.signerOf(victim), address(0));
+    }
+
+    function test_NewChipRevokesPreviousChip() public {
+        address owner = address(0xA11CE);
+        uint256 oldChip = 0xC1;
+        uint256 newChip = 0xC2;
+
+        bytes memory oldSig = _sign(oldChip, owner);
+        bytes memory newSig = _sign(newChip, owner);
+        vm.startPrank(owner);
+        registry.register(vm.addr(oldChip), owner, oldSig);
+        registry.register(vm.addr(newChip), owner, newSig);
+        vm.stopPrank();
+
+        assertEq(registry.ownerOf(vm.addr(oldChip)), address(0), "old chip still authorizes the owner");
+        assertEq(registry.ownerOf(vm.addr(newChip)), owner);
+        assertEq(registry.signerOf(owner), vm.addr(newChip));
+    }
+
+    function test_MovingChipUnlinksPreviousOwner() public {
+        address first = address(0xA11CE);
+        address second = address(0xB0B);
+        uint256 chip = 0xC3;
+
+        bytes memory firstSig = _sign(chip, first);
+        bytes memory secondSig = _sign(chip, second);
+        vm.prank(first);
+        registry.register(vm.addr(chip), first, firstSig);
+        vm.prank(second);
+        registry.register(vm.addr(chip), second, secondSig);
+
+        assertEq(registry.ownerOf(vm.addr(chip)), second);
+        assertEq(registry.signerOf(first), address(0));
+        assertEq(registry.signerOf(second), vm.addr(chip));
+    }
 }

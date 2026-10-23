@@ -63,7 +63,6 @@ contract VenueCredits is EIP712 {
 
     event VenueCreated(uint256 indexed venueId, address indexed owner);
     event VenueOpenChanged(uint256 indexed venueId, bool open);
-    event VenueOwnershipTransferred(uint256 indexed venueId, address indexed previousOwner, address indexed newOwner);
     event CreditsPurchased(
         uint256 indexed venueId, address indexed buyer, uint256 usdcAmount, uint256 credits, address signer
     );
@@ -107,12 +106,6 @@ contract VenueCredits is EIP712 {
         emit VenueOpenChanged(venueId, open);
     }
 
-    function transferVenueOwnership(uint256 venueId, address newOwner) external onlyVenueOwner(venueId) {
-        if (newOwner == address(0)) revert ZeroAddress();
-        emit VenueOwnershipTransferred(venueId, venues[venueId].owner, newOwner);
-        venues[venueId].owner = newOwner;
-    }
-
     /// @notice Top up a guest's credits at a venue; USDC is pulled from the guest (approved during onboarding).
     function purchaseCredits(CreditPurchase calldata purchase, bytes calldata signature) external {
         Venue storage venue = _openVenue(purchase.venueId);
@@ -149,13 +142,17 @@ contract VenueCredits is EIP712 {
         emit CreditsSpent(spend.venueId, spend.spender, spend.amount, spend.stallId, signer);
     }
 
-    /// @notice Refund all of a guest's unspent credits at the venue, in USDC (owner only).
-    function refundCredits(uint256 venueId, address guest) external onlyVenueOwner(venueId) {
+    /// @notice Refund all of a guest's unspent credits at the venue, in USDC. The owner can refund any guest;
+    ///         once the venue is closed, guests can also refund themselves, so a closed venue never strands funds.
+    function refundCredits(uint256 venueId, address guest) external {
+        Venue storage venue = venues[venueId];
+        if (venue.owner == address(0)) revert UnknownVenue();
+        if (msg.sender != venue.owner && (msg.sender != guest || venue.open)) revert NotVenueOwner();
+
         uint256 credits = creditsOf[venueId][guest];
         if (credits == 0) revert ZeroAmount();
         uint256 usdcAmount = credits / CREDITS_PER_USDC;
 
-        Venue storage venue = venues[venueId];
         creditsOf[venueId][guest] = 0;
         venue.creditsOutstanding -= credits;
         venue.usdcBalance -= usdcAmount;

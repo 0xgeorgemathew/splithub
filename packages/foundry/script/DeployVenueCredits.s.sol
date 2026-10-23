@@ -13,7 +13,7 @@ import "../contracts/VenueCredits.sol";
  */
 contract DeployVenueCredits is ScaffoldETHDeploy {
     address constant BASE_SEPOLIA_USDC = 0x0a215D8ba66387DCA84B284D18c3B4ec3de6E54a;
-    address constant BASE_SEPOLIA_REGISTRY = 0xEABdE4D7b969bdAF524C9E7A55082A51c5Eee513;
+    address constant BASE_SEPOLIA_REGISTRY = 0xF24aCfd511c56D3ba2FD31936C2CD2ecf8D58556;
 
     function run() external ScaffoldEthDeployerRunner {
         address registry = vm.envOr("REGISTRY_ADDRESS", block.chainid == 84532 ? BASE_SEPOLIA_REGISTRY : address(0));

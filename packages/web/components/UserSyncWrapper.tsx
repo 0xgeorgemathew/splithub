@@ -94,7 +94,7 @@ export const UserSyncWrapper = ({ children }: { children: React.ReactNode }) => 
          *
          * See: ApprovalFlow.tsx - updateApprovalStatusWithRetry()
          */
-        const localStorageApprovalKey = `approval_completed_${user.id}`;
+        const localStorageApprovalKey = `approval_completed_v2_${user.id}`;
         const hasLocalStorageApproval =
           typeof window !== "undefined" && localStorage.getItem(localStorageApprovalKey) === "true";
         const hasApprovals = dbUser.approval_status === "completed" || hasLocalStorageApproval;

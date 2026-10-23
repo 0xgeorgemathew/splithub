@@ -68,6 +68,7 @@ contract SplitHubPaymentsTest is Test {
         bytes32 digest = registry.getDigest(owner, chip);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(chipPk, digest);
         bytes memory signature = abi.encodePacked(r, s, v);
+        vm.prank(owner);
         registry.register(chip, owner, signature);
     }
 
