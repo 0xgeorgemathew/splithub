@@ -10,6 +10,8 @@ export type Event = {
   status: "active" | "paused" | "ended";
   start_date: string | null;
   end_date: string | null;
+  /** "venue" for events with stalls; "store_network" groups a store owner's stores. */
+  kind: "venue" | "store_network";
   // Joined data
   owner_user?: {
     name: string;

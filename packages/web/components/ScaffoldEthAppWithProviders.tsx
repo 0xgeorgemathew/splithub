@@ -1,9 +1,9 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useLocation } from "@tanstack/react-router";
 import { OneSignalProvider } from "./OneSignalProvider";
 import { UserSyncWrapper } from "./UserSyncWrapper";
 import { PrivyProvider } from "@privy-io/react-auth";
 import { WagmiProvider } from "@privy-io/wagmi";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useLocation } from "@tanstack/react-router";
 import { MotionConfig } from "framer-motion";
 import { useTheme } from "next-themes";
 import { Toaster } from "react-hot-toast";

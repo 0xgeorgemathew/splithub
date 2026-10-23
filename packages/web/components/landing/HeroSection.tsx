@@ -1,5 +1,5 @@
-import { TapReceipt } from "./TapReceipt";
 import { Link } from "@tanstack/react-router";
+import { TapReceipt } from "./TapReceipt";
 import { type Variants, motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 

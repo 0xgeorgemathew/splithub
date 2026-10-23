@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { CreateStoreModal } from "./CreateStoreModal";
 import { usePrivy } from "@privy-io/react-auth";
-import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { ChartNoAxesCombined, Plus, Shield, ShoppingBag, Sparkles, Store as StoreIcon, Wallet } from "lucide-react";
 import type { StoreDashboardData, StoreWithCatalog } from "~~/lib/store.types";
@@ -132,9 +132,9 @@ export function StoreDashboard() {
           <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
             <Wallet className="h-8 w-8" />
           </div>
-          <h2 className="text-2xl font-bold">Connect to run the Store network</h2>
+          <h2 className="text-2xl font-bold">Sign in to set up a store</h2>
           <p className="mt-2 text-base-content/60">
-            The same wallet can act as admin, manager, or shopper depending on the stores linked to it.
+            Create a store, add your catalog, and take tap payments straight into your wallet.
           </p>
           <button className="btn btn-primary mt-6" onClick={login}>
             Login with Twitter
@@ -170,8 +170,8 @@ export function StoreDashboard() {
         <div className="mt-6 grid gap-4 md:grid-cols-4">
           {[
             { label: "Public Stores", value: metrics.publicStores, icon: StoreIcon },
-            { label: "Managed Stores", value: metrics.managedStores, icon: Shield },
-            { label: "Admin Networks", value: metrics.ownedNetworks, icon: ChartNoAxesCombined },
+            { label: "Your Stores", value: metrics.managedStores, icon: Shield },
+            { label: "Store Groups", value: metrics.ownedNetworks, icon: ChartNoAxesCombined },
             { label: "Recent Orders", value: metrics.recentOrders, icon: ShoppingBag },
           ].map(metric => (
             <div key={metric.label} className="rounded-3xl border border-white/10 bg-white/5 p-4">
@@ -193,13 +193,13 @@ export function StoreDashboard() {
       )}
 
       {loading ? (
-        <div className="mt-8 text-sm text-base-content/50">Loading store network…</div>
+        <div className="mt-8 text-sm text-base-content/50">Loading stores…</div>
       ) : (
         <>
           <section className="mt-8">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-bold">Managed Stores</h2>
-              <span className="text-sm text-base-content/50">Stores this wallet receives payments for</span>
+              <h2 className="text-lg font-bold">Your Stores</h2>
+              <span className="text-sm text-base-content/50">Stores you own or manage</span>
             </div>
             <div className="grid gap-4 lg:grid-cols-2">
               {data?.managedStores.length ? (
@@ -212,11 +212,34 @@ export function StoreDashboard() {
                 ))
               ) : (
                 <div className="rounded-3xl border border-dashed border-white/10 bg-base-200/40 p-6 text-sm text-base-content/55">
-                  No manager-assigned stores yet. Create one or assign this wallet as a store manager.
+                  You haven&apos;t set up a store yet. Create one, add your catalog, and start taking tap payments.
                 </div>
               )}
             </div>
           </section>
+
+          {(() => {
+            const ownIds = new Set(data?.managedStores.map(store => store.id));
+            const browse = (data?.publicStores ?? []).filter(store => !ownIds.has(store.id));
+            if (!browse.length) return null;
+            return (
+              <section className="mt-10">
+                <div className="mb-4 flex items-center justify-between">
+                  <h2 className="text-lg font-bold">Browse Stores</h2>
+                  <span className="text-sm text-base-content/50">Open now · tap to pay</span>
+                </div>
+                <div className="grid gap-4 lg:grid-cols-2">
+                  {browse.map(store => (
+                    <StoreCard
+                      key={store.id}
+                      store={store}
+                      href={`/store/${store.network?.event_slug}/${store.stall_slug}`}
+                    />
+                  ))}
+                </div>
+              </section>
+            );
+          })()}
         </>
       )}
 
@@ -224,6 +247,7 @@ export function StoreDashboard() {
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
         adminWallet={wallet}
+        networks={data?.ownedNetworks ?? []}
         onCreated={handleStoreCreated}
       />
     </div>

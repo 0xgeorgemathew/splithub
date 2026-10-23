@@ -29,6 +29,7 @@ import { Route as StoreIndexRouteImport } from './routes/store/index'
 import { Route as ApiBalancesTokenRouteImport } from './routes/api/balances/token'
 import { Route as ApiCirclesAutoSplitRouteImport } from './routes/api/circles/auto-split'
 import { Route as ApiCirclesLeaveRouteImport } from './routes/api/circles/leave'
+import { Route as ApiEventsEventIdRouteImport } from './routes/api/events/$eventId'
 import { Route as ApiEventsCreateRouteImport } from './routes/api/events/create'
 import { Route as ApiEventsPayRouteImport } from './routes/api/events/pay'
 import { Route as ApiNotificationsSendRouteImport } from './routes/api/notifications/send'
@@ -39,9 +40,11 @@ import { Route as ApiStoresDashboardRouteImport } from './routes/api/stores/dash
 import { Route as ApiUserSyncRouteImport } from './routes/api/user/sync'
 import { Route as EventsEventSlugStallSlugRouteImport } from './routes/events/$eventSlug/$stallSlug'
 import { Route as StoreNetworkSlugStoreSlugRouteImport } from './routes/store/$networkSlug/$storeSlug'
+import { Route as ApiEventsStallsStallIdRouteImport } from './routes/api/events/stalls/$stallId'
 import { Route as ApiEventsStallsCreateRouteImport } from './routes/api/events/stalls/create'
 import { Route as ApiPaymentRequestsIdIndexRouteImport } from './routes/api/payment-requests/$id/index'
 import { Route as ApiPaymentRequestsIdRemindRouteImport } from './routes/api/payment-requests/$id/remind'
+import { Route as ApiStoresStoreIdIndexRouteImport } from './routes/api/stores/$storeId/index'
 import { Route as ApiStoresStoreIdAnalyticsRouteImport } from './routes/api/stores/$storeId/analytics'
 import { Route as ApiStoresStoreIdCheckoutRouteImport } from './routes/api/stores/$storeId/checkout'
 import { Route as ApiStoresStoreIdItemsIndexRouteImport } from './routes/api/stores/$storeId/items/index'
@@ -147,6 +150,11 @@ const ApiCirclesLeaveRoute = ApiCirclesLeaveRouteImport.update({
   path: '/api/circles/leave',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiEventsEventIdRoute = ApiEventsEventIdRouteImport.update({
+  id: '/api/events/$eventId',
+  path: '/api/events/$eventId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiEventsCreateRoute = ApiEventsCreateRouteImport.update({
   id: '/api/events/create',
   path: '/api/events/create',
@@ -199,6 +207,11 @@ const StoreNetworkSlugStoreSlugRoute =
     path: '/store/$networkSlug/$storeSlug',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiEventsStallsStallIdRoute = ApiEventsStallsStallIdRouteImport.update({
+  id: '/api/events/stalls/$stallId',
+  path: '/api/events/stalls/$stallId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiEventsStallsCreateRoute = ApiEventsStallsCreateRouteImport.update({
   id: '/api/events/stalls/create',
   path: '/api/events/stalls/create',
@@ -216,6 +229,11 @@ const ApiPaymentRequestsIdRemindRoute =
     path: '/api/payment-requests/$id/remind',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiStoresStoreIdIndexRoute = ApiStoresStoreIdIndexRouteImport.update({
+  id: '/api/stores/$storeId/',
+  path: '/api/stores/$storeId/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiStoresStoreIdAnalyticsRoute =
   ApiStoresStoreIdAnalyticsRouteImport.update({
     id: '/api/stores/$storeId/analytics',
@@ -262,6 +280,7 @@ export interface FileRoutesByFullPath {
   '/api/balances/token': typeof ApiBalancesTokenRoute
   '/api/circles/auto-split': typeof ApiCirclesAutoSplitRoute
   '/api/circles/leave': typeof ApiCirclesLeaveRoute
+  '/api/events/$eventId': typeof ApiEventsEventIdRoute
   '/api/events/create': typeof ApiEventsCreateRoute
   '/api/events/pay': typeof ApiEventsPayRoute
   '/api/notifications/send': typeof ApiNotificationsSendRoute
@@ -272,11 +291,13 @@ export interface FileRoutesByFullPath {
   '/events/$eventSlug/$stallSlug': typeof EventsEventSlugStallSlugRoute
   '/store/$networkSlug/$storeSlug': typeof StoreNetworkSlugStoreSlugRoute
   '/api/payment-requests/': typeof ApiPaymentRequestsIndexRoute
+  '/api/events/stalls/$stallId': typeof ApiEventsStallsStallIdRoute
   '/api/events/stalls/create': typeof ApiEventsStallsCreateRoute
   '/api/payment-requests/$id/remind': typeof ApiPaymentRequestsIdRemindRoute
   '/api/stores/$storeId/analytics': typeof ApiStoresStoreIdAnalyticsRoute
   '/api/stores/$storeId/checkout': typeof ApiStoresStoreIdCheckoutRoute
   '/api/payment-requests/$id/': typeof ApiPaymentRequestsIdIndexRoute
+  '/api/stores/$storeId/': typeof ApiStoresStoreIdIndexRoute
   '/api/stores/$storeId/items/$itemId': typeof ApiStoresStoreIdItemsItemIdRoute
   '/api/stores/$storeId/items/': typeof ApiStoresStoreIdItemsIndexRoute
 }
@@ -301,6 +322,7 @@ export interface FileRoutesByTo {
   '/api/balances/token': typeof ApiBalancesTokenRoute
   '/api/circles/auto-split': typeof ApiCirclesAutoSplitRoute
   '/api/circles/leave': typeof ApiCirclesLeaveRoute
+  '/api/events/$eventId': typeof ApiEventsEventIdRoute
   '/api/events/create': typeof ApiEventsCreateRoute
   '/api/events/pay': typeof ApiEventsPayRoute
   '/api/notifications/send': typeof ApiNotificationsSendRoute
@@ -311,11 +333,13 @@ export interface FileRoutesByTo {
   '/events/$eventSlug/$stallSlug': typeof EventsEventSlugStallSlugRoute
   '/store/$networkSlug/$storeSlug': typeof StoreNetworkSlugStoreSlugRoute
   '/api/payment-requests': typeof ApiPaymentRequestsIndexRoute
+  '/api/events/stalls/$stallId': typeof ApiEventsStallsStallIdRoute
   '/api/events/stalls/create': typeof ApiEventsStallsCreateRoute
   '/api/payment-requests/$id/remind': typeof ApiPaymentRequestsIdRemindRoute
   '/api/stores/$storeId/analytics': typeof ApiStoresStoreIdAnalyticsRoute
   '/api/stores/$storeId/checkout': typeof ApiStoresStoreIdCheckoutRoute
   '/api/payment-requests/$id': typeof ApiPaymentRequestsIdIndexRoute
+  '/api/stores/$storeId': typeof ApiStoresStoreIdIndexRoute
   '/api/stores/$storeId/items/$itemId': typeof ApiStoresStoreIdItemsItemIdRoute
   '/api/stores/$storeId/items': typeof ApiStoresStoreIdItemsIndexRoute
 }
@@ -341,6 +365,7 @@ export interface FileRoutesById {
   '/api/balances/token': typeof ApiBalancesTokenRoute
   '/api/circles/auto-split': typeof ApiCirclesAutoSplitRoute
   '/api/circles/leave': typeof ApiCirclesLeaveRoute
+  '/api/events/$eventId': typeof ApiEventsEventIdRoute
   '/api/events/create': typeof ApiEventsCreateRoute
   '/api/events/pay': typeof ApiEventsPayRoute
   '/api/notifications/send': typeof ApiNotificationsSendRoute
@@ -351,11 +376,13 @@ export interface FileRoutesById {
   '/events/$eventSlug/$stallSlug': typeof EventsEventSlugStallSlugRoute
   '/store/$networkSlug/$storeSlug': typeof StoreNetworkSlugStoreSlugRoute
   '/api/payment-requests/': typeof ApiPaymentRequestsIndexRoute
+  '/api/events/stalls/$stallId': typeof ApiEventsStallsStallIdRoute
   '/api/events/stalls/create': typeof ApiEventsStallsCreateRoute
   '/api/payment-requests/$id/remind': typeof ApiPaymentRequestsIdRemindRoute
   '/api/stores/$storeId/analytics': typeof ApiStoresStoreIdAnalyticsRoute
   '/api/stores/$storeId/checkout': typeof ApiStoresStoreIdCheckoutRoute
   '/api/payment-requests/$id/': typeof ApiPaymentRequestsIdIndexRoute
+  '/api/stores/$storeId/': typeof ApiStoresStoreIdIndexRoute
   '/api/stores/$storeId/items/$itemId': typeof ApiStoresStoreIdItemsItemIdRoute
   '/api/stores/$storeId/items/': typeof ApiStoresStoreIdItemsIndexRoute
 }
@@ -382,6 +409,7 @@ export interface FileRouteTypes {
     | '/api/balances/token'
     | '/api/circles/auto-split'
     | '/api/circles/leave'
+    | '/api/events/$eventId'
     | '/api/events/create'
     | '/api/events/pay'
     | '/api/notifications/send'
@@ -392,11 +420,13 @@ export interface FileRouteTypes {
     | '/events/$eventSlug/$stallSlug'
     | '/store/$networkSlug/$storeSlug'
     | '/api/payment-requests/'
+    | '/api/events/stalls/$stallId'
     | '/api/events/stalls/create'
     | '/api/payment-requests/$id/remind'
     | '/api/stores/$storeId/analytics'
     | '/api/stores/$storeId/checkout'
     | '/api/payment-requests/$id/'
+    | '/api/stores/$storeId/'
     | '/api/stores/$storeId/items/$itemId'
     | '/api/stores/$storeId/items/'
   fileRoutesByTo: FileRoutesByTo
@@ -421,6 +451,7 @@ export interface FileRouteTypes {
     | '/api/balances/token'
     | '/api/circles/auto-split'
     | '/api/circles/leave'
+    | '/api/events/$eventId'
     | '/api/events/create'
     | '/api/events/pay'
     | '/api/notifications/send'
@@ -431,11 +462,13 @@ export interface FileRouteTypes {
     | '/events/$eventSlug/$stallSlug'
     | '/store/$networkSlug/$storeSlug'
     | '/api/payment-requests'
+    | '/api/events/stalls/$stallId'
     | '/api/events/stalls/create'
     | '/api/payment-requests/$id/remind'
     | '/api/stores/$storeId/analytics'
     | '/api/stores/$storeId/checkout'
     | '/api/payment-requests/$id'
+    | '/api/stores/$storeId'
     | '/api/stores/$storeId/items/$itemId'
     | '/api/stores/$storeId/items'
   id:
@@ -460,6 +493,7 @@ export interface FileRouteTypes {
     | '/api/balances/token'
     | '/api/circles/auto-split'
     | '/api/circles/leave'
+    | '/api/events/$eventId'
     | '/api/events/create'
     | '/api/events/pay'
     | '/api/notifications/send'
@@ -470,11 +504,13 @@ export interface FileRouteTypes {
     | '/events/$eventSlug/$stallSlug'
     | '/store/$networkSlug/$storeSlug'
     | '/api/payment-requests/'
+    | '/api/events/stalls/$stallId'
     | '/api/events/stalls/create'
     | '/api/payment-requests/$id/remind'
     | '/api/stores/$storeId/analytics'
     | '/api/stores/$storeId/checkout'
     | '/api/payment-requests/$id/'
+    | '/api/stores/$storeId/'
     | '/api/stores/$storeId/items/$itemId'
     | '/api/stores/$storeId/items/'
   fileRoutesById: FileRoutesById
@@ -500,6 +536,7 @@ export interface RootRouteChildren {
   ApiBalancesTokenRoute: typeof ApiBalancesTokenRoute
   ApiCirclesAutoSplitRoute: typeof ApiCirclesAutoSplitRoute
   ApiCirclesLeaveRoute: typeof ApiCirclesLeaveRoute
+  ApiEventsEventIdRoute: typeof ApiEventsEventIdRoute
   ApiEventsCreateRoute: typeof ApiEventsCreateRoute
   ApiEventsPayRoute: typeof ApiEventsPayRoute
   ApiNotificationsSendRoute: typeof ApiNotificationsSendRoute
@@ -510,11 +547,13 @@ export interface RootRouteChildren {
   EventsEventSlugStallSlugRoute: typeof EventsEventSlugStallSlugRoute
   StoreNetworkSlugStoreSlugRoute: typeof StoreNetworkSlugStoreSlugRoute
   ApiPaymentRequestsIndexRoute: typeof ApiPaymentRequestsIndexRoute
+  ApiEventsStallsStallIdRoute: typeof ApiEventsStallsStallIdRoute
   ApiEventsStallsCreateRoute: typeof ApiEventsStallsCreateRoute
   ApiPaymentRequestsIdRemindRoute: typeof ApiPaymentRequestsIdRemindRoute
   ApiStoresStoreIdAnalyticsRoute: typeof ApiStoresStoreIdAnalyticsRoute
   ApiStoresStoreIdCheckoutRoute: typeof ApiStoresStoreIdCheckoutRoute
   ApiPaymentRequestsIdIndexRoute: typeof ApiPaymentRequestsIdIndexRoute
+  ApiStoresStoreIdIndexRoute: typeof ApiStoresStoreIdIndexRoute
   ApiStoresStoreIdItemsItemIdRoute: typeof ApiStoresStoreIdItemsItemIdRoute
   ApiStoresStoreIdItemsIndexRoute: typeof ApiStoresStoreIdItemsIndexRoute
 }
@@ -661,6 +700,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCirclesLeaveRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/events/$eventId': {
+      id: '/api/events/$eventId'
+      path: '/api/events/$eventId'
+      fullPath: '/api/events/$eventId'
+      preLoaderRoute: typeof ApiEventsEventIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/events/create': {
       id: '/api/events/create'
       path: '/api/events/create'
@@ -731,6 +777,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StoreNetworkSlugStoreSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/events/stalls/$stallId': {
+      id: '/api/events/stalls/$stallId'
+      path: '/api/events/stalls/$stallId'
+      fullPath: '/api/events/stalls/$stallId'
+      preLoaderRoute: typeof ApiEventsStallsStallIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/events/stalls/create': {
       id: '/api/events/stalls/create'
       path: '/api/events/stalls/create'
@@ -750,6 +803,13 @@ declare module '@tanstack/react-router' {
       path: '/api/payment-requests/$id/remind'
       fullPath: '/api/payment-requests/$id/remind'
       preLoaderRoute: typeof ApiPaymentRequestsIdRemindRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/stores/$storeId/': {
+      id: '/api/stores/$storeId/'
+      path: '/api/stores/$storeId'
+      fullPath: '/api/stores/$storeId/'
+      preLoaderRoute: typeof ApiStoresStoreIdIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/stores/$storeId/analytics': {
@@ -804,6 +864,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiBalancesTokenRoute: ApiBalancesTokenRoute,
   ApiCirclesAutoSplitRoute: ApiCirclesAutoSplitRoute,
   ApiCirclesLeaveRoute: ApiCirclesLeaveRoute,
+  ApiEventsEventIdRoute: ApiEventsEventIdRoute,
   ApiEventsCreateRoute: ApiEventsCreateRoute,
   ApiEventsPayRoute: ApiEventsPayRoute,
   ApiNotificationsSendRoute: ApiNotificationsSendRoute,
@@ -814,11 +875,13 @@ const rootRouteChildren: RootRouteChildren = {
   EventsEventSlugStallSlugRoute: EventsEventSlugStallSlugRoute,
   StoreNetworkSlugStoreSlugRoute: StoreNetworkSlugStoreSlugRoute,
   ApiPaymentRequestsIndexRoute: ApiPaymentRequestsIndexRoute,
+  ApiEventsStallsStallIdRoute: ApiEventsStallsStallIdRoute,
   ApiEventsStallsCreateRoute: ApiEventsStallsCreateRoute,
   ApiPaymentRequestsIdRemindRoute: ApiPaymentRequestsIdRemindRoute,
   ApiStoresStoreIdAnalyticsRoute: ApiStoresStoreIdAnalyticsRoute,
   ApiStoresStoreIdCheckoutRoute: ApiStoresStoreIdCheckoutRoute,
   ApiPaymentRequestsIdIndexRoute: ApiPaymentRequestsIdIndexRoute,
+  ApiStoresStoreIdIndexRoute: ApiStoresStoreIdIndexRoute,
   ApiStoresStoreIdItemsItemIdRoute: ApiStoresStoreIdItemsItemIdRoute,
   ApiStoresStoreIdItemsIndexRoute: ApiStoresStoreIdItemsIndexRoute,
 }

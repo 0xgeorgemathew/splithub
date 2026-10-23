@@ -5,3 +5,4 @@ export * from "./storeCheckout";
 export * from "./storeQueries";
 export * from "./store";
 export * from "./storeSetup";
+export * from "./storeAccess";

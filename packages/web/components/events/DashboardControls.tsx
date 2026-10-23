@@ -1,12 +1,13 @@
 import { useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { EventModal } from "./EventModal";
 import { StallModal } from "./StallModal";
 import { StallSection } from "./StallSection";
-import { Link } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   CalendarDays,
   ChevronRight,
+  Coins,
   Copy,
   DollarSign,
   Edit2,
@@ -20,7 +21,7 @@ import {
 } from "lucide-react";
 import type { ActiveContext, DashboardMode, EventWithRevenue } from "~~/hooks/useDashboardRealtime";
 import type { Event, Stall } from "~~/lib/events.types";
-import { deleteEvent, updateEvent } from "~~/services/eventsService";
+import { venueApi } from "~~/lib/venueApi";
 
 interface DashboardControlsProps {
   mode: DashboardMode;
@@ -164,16 +165,24 @@ const OperatorStallsSection = ({ stalls, isCollapsible = true }: { stalls: Stall
   );
 };
 
-// Subtle link to discover active stalls - just redirects, no inline component
+// Subtle links to discover active stalls and to venue credits
 const DiscoverStallsLink = () => {
   return (
-    <div className="pt-3 flex justify-center">
+    <div className="pt-3 flex justify-center gap-5">
       <Link
         to="/events/discover"
         className="flex items-center gap-1.5 text-xs text-base-content/40 hover:text-base-content/60 transition-colors"
       >
         <Radio className="w-3 h-3" />
         <span>Browse active stalls</span>
+        <ChevronRight className="w-3 h-3" />
+      </Link>
+      <Link
+        to="/credits"
+        className="flex items-center gap-1.5 text-xs text-base-content/40 hover:text-base-content/60 transition-colors"
+      >
+        <Coins className="w-3 h-3" />
+        <span>Venue credits</span>
         <ChevronRight className="w-3 h-3" />
       </Link>
     </div>
@@ -245,7 +254,7 @@ const EventsSection = ({
           className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/15 hover:bg-primary/25 text-primary rounded-full text-xs font-semibold transition-colors shadow-sm"
         >
           <Plus className="w-3.5 h-3.5" />
-          New Event
+          New Venue
         </motion.button>
       </div>
 
@@ -368,7 +377,7 @@ const EventsSection = ({
                                   ? "bg-warning/10 hover:bg-warning/20"
                                   : "bg-emerald-500/10 hover:bg-emerald-500/20"
                               }`}
-                              title={event.status === "active" ? "Pause event" : "Activate event"}
+                              title={event.status === "active" ? "Pause venue" : "Activate venue"}
                             >
                               {event.status === "active" ? (
                                 <Pause className="w-3 h-3 text-warning" />
@@ -386,7 +395,7 @@ const EventsSection = ({
                                 onEditEvent(event);
                               }}
                               className="w-6 h-6 rounded-lg bg-base-300/50 hover:bg-base-300 flex items-center justify-center transition-colors"
-                              title="Edit event"
+                              title="Edit venue"
                             >
                               <Edit2 className="w-3 h-3 text-base-content/50" />
                             </motion.button>
@@ -400,7 +409,7 @@ const EventsSection = ({
                                 onDeleteEvent(event);
                               }}
                               className="w-6 h-6 rounded-lg bg-base-300/50 hover:bg-error/20 flex items-center justify-center transition-colors group"
-                              title="Delete event"
+                              title="Delete venue"
                             >
                               <Trash2 className="w-3 h-3 text-base-content/40 group-hover:text-error" />
                             </motion.button>
@@ -479,7 +488,7 @@ export const DashboardControls = ({
   const handleToggleEventStatus = async (event: Event) => {
     try {
       const newStatus = event.status === "active" ? "paused" : "active";
-      await updateEvent(event.id, { status: newStatus });
+      await venueApi.updateVenue(event.id, { status: newStatus });
       onRefresh();
     } catch (error) {
       console.error("Failed to update event status:", error);
@@ -493,7 +502,7 @@ export const DashboardControls = ({
   const confirmDeleteEvent = async () => {
     if (!deletingEvent) return;
     try {
-      await deleteEvent(deletingEvent.id);
+      await venueApi.deleteVenue(deletingEvent.id);
       setDeletingEvent(null);
       onRefresh();
     } catch (error) {

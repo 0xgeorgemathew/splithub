@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { useNavigate } from "@tanstack/react-router";
+import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { AlertCircle, Check, Coins, Loader2, Shield } from "lucide-react";
 import { createWalletClient, custom, parseUnits } from "viem";
 import { baseSepolia } from "viem/chains";

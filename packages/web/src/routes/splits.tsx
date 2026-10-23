@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
-import { usePrivy } from "@privy-io/react-auth";
 import { createFileRoute } from "@tanstack/react-router";
+import { usePrivy } from "@privy-io/react-auth";
 import { motion } from "framer-motion";
 import { Sparkles, Wallet } from "lucide-react";
 import { ExpenseModal } from "~~/components/expense/ExpenseModal";

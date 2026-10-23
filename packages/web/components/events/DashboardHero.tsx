@@ -100,7 +100,7 @@ const HeroCard = ({ metrics, activeContext, mode, hasDualRole }: HeroCardProps) 
     }
     return {
       amount: metrics.totalRevenue,
-      label: "Event Revenue",
+      label: "Venue Revenue",
       icon: CalendarDays,
     };
   };
@@ -142,7 +142,7 @@ const HeroCard = ({ metrics, activeContext, mode, hasDualRole }: HeroCardProps) 
         {userRole === "dual-role" && (
           <div className="flex items-center gap-2 mb-3">
             <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full bg-white/5 text-base-content/50">
-              {effectiveContext === "owner" ? "Event Owner View" : "Stall Operator View"}
+              {effectiveContext === "owner" ? "Venue Owner View" : "Stall Operator View"}
             </span>
           </div>
         )}
@@ -180,7 +180,7 @@ const HeroCard = ({ metrics, activeContext, mode, hasDualRole }: HeroCardProps) 
               <div className="flex items-center gap-1.5">
                 <CalendarDays className="w-4 h-4 text-base-content/50" />
                 <span className="text-sm font-medium text-base-content/70">
-                  {metrics.eventCount} {metrics.eventCount === 1 ? "event" : "events"}
+                  {metrics.eventCount} {metrics.eventCount === 1 ? "venue" : "venues"}
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
@@ -265,7 +265,7 @@ export const EmptyStateCreateEvent = ({ onCreateEvent }: { onCreateEvent?: () =>
         className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/15 hover:bg-primary/25 text-primary rounded-full text-xs font-semibold transition-colors shadow-sm"
       >
         <Plus className="w-3.5 h-3.5" />
-        New Event
+        New Venue
       </motion.button>
     </motion.div>
   );

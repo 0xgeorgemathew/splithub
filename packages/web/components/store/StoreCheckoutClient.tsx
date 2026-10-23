@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useRouter } from "@tanstack/react-router";
 import { StoreActivityLogCard } from "./StoreActivityLogCard";
 import { StoreCatalogGrid } from "./StoreCatalogGrid";
 import { StoreCheckoutPanel } from "./StoreCheckoutPanel";
@@ -9,6 +10,7 @@ import { usePrivy } from "@privy-io/react-auth";
 import type { Address } from "viem";
 import { useCurrentUser } from "~~/hooks/useCurrentUser";
 import { type TapPaymentStep, useTapPayment } from "~~/hooks/useTapPayment";
+import { apiFetch } from "~~/lib/apiFetch";
 import type { CheckoutQuote, StoreWithCatalog } from "~~/lib/store.types";
 
 const STEP_LOGS: Record<TapPaymentStep, string> = {
@@ -23,6 +25,9 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
   const wallet = user?.wallet?.address;
   const { chipAddress } = useCurrentUser();
   const { pay } = useTapPayment();
+  const router = useRouter();
+  // Reload the route loader so catalog, stock and status reflect manager changes.
+  const refreshStore = () => void router.invalidate();
   const [quantities, setQuantities] = useState<Record<number, number>>({});
   const [logs, setLogs] = useState<CheckoutLog[]>([]);
   const [checkoutBusy, setCheckoutBusy] = useState(false);
@@ -130,6 +135,7 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
       }
       setReceipt({ txHash, orderId: confirmResult.order.id });
       setQuantities({});
+      refreshStore();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Checkout failed";
       setCheckoutError(message);
@@ -143,9 +149,8 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
     setManagerBusy(true);
     setManagerError(null);
     try {
-      const response = await fetch(`/api/stores/${store.id}/items`, {
+      const response = await apiFetch(`/api/stores/${store.id}/items`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           sku: itemForm.sku,
           name: itemForm.name,
@@ -157,7 +162,8 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
       if (!response.ok) {
         throw new Error(result.error || "Failed to add item");
       }
-      window.location.reload();
+      setItemForm({ sku: "", name: "", price: "", stock: "" });
+      refreshStore();
     } catch (error) {
       setManagerError(error instanceof Error ? error.message : "Failed to add item");
     } finally {
@@ -174,6 +180,8 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
           <StoreCatalogGrid items={store.items} quantities={quantities} onUpdateQuantity={updateQuantity} />
           {canManage && (
             <StoreManagerControls
+              store={store}
+              onChanged={refreshStore}
               itemForm={itemForm}
               onItemFormChange={setItemForm}
               managerBusy={managerBusy}

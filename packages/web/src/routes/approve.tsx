@@ -1,6 +1,6 @@
 import { useEffect } from "react";
-import { usePrivy } from "@privy-io/react-auth";
 import { Navigate, createFileRoute } from "@tanstack/react-router";
+import { usePrivy } from "@privy-io/react-auth";
 import { Loader2 } from "lucide-react";
 import { clientOnly } from "~~/utils/clientOnly";
 

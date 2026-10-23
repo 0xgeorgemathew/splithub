@@ -81,18 +81,31 @@ export async function getStoreAnalytics(stallId: number): Promise<StoreAnalytics
 export async function getStoreDashboardData(wallet: string): Promise<StoreDashboardData> {
   const normalizedWallet = wallet.toLowerCase();
 
-  const [ownedNetworksResult, managedStoresResult, publicStores, ordersResult] = await Promise.all([
-    supabase.from("events").select("*").eq("owner_wallet", normalizedWallet).order("created_at", { ascending: false }),
+  const storeSelect = `
+        *,
+        event:events!event_id!inner(*),
+        operator_user:users!operator_wallet(*)
+      `;
+  const [ownedNetworksResult, managedResult, ownedStoresResult, publicStores, ordersResult] = await Promise.all([
+    supabase
+      .from("events")
+      .select("*")
+      .eq("owner_wallet", normalizedWallet)
+      .eq("kind", "store_network")
+      .order("created_at", { ascending: false }),
+    // Stores this wallet manages (receives checkout payments for)
     supabase
       .from("stalls")
-      .select(
-        `
-        *,
-        event:events!event_id(*),
-        operator_user:users!operator_wallet(*)
-      `,
-      )
+      .select(storeSelect)
       .eq("operator_wallet", normalizedWallet)
+      .eq("event.kind", "store_network")
+      .order("created_at", { ascending: false }),
+    // Stores in networks this wallet owns
+    supabase
+      .from("stalls")
+      .select(storeSelect)
+      .eq("event.owner_wallet", normalizedWallet)
+      .eq("event.kind", "store_network")
       .order("created_at", { ascending: false }),
     getPublicStores(12),
     supabase
@@ -106,14 +119,18 @@ export async function getStoreDashboardData(wallet: string): Promise<StoreDashbo
   if (ownedNetworksResult.error) {
     throw new Error(`Failed to fetch owned networks: ${ownedNetworksResult.error.message}`);
   }
-  if (managedStoresResult.error) {
-    throw new Error(`Failed to fetch managed stores: ${managedStoresResult.error.message}`);
+  for (const result of [managedResult, ownedStoresResult]) {
+    if (result.error) throw new Error(`Failed to fetch your stores: ${result.error.message}`);
   }
   if (ordersResult.error) {
     throw new Error(`Failed to fetch orders: ${ordersResult.error.message}`);
   }
 
-  const managedStoresRaw = (managedStoresResult.data || []) as any[];
+  const managedStoresRaw = [
+    ...new Map(
+      [...(managedResult.data || []), ...(ownedStoresResult.data || [])].map((store: any) => [store.id, store]),
+    ).values(),
+  ] as any[];
   const managedStores = await Promise.all(
     managedStoresRaw.map(async store => ({
       ...store,

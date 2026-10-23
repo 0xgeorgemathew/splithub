@@ -45,6 +45,7 @@ export async function getEventsByOwner(ownerWallet: string): Promise<Event[]> {
     `,
     )
     .eq("owner_wallet", ownerWallet.toLowerCase())
+    .eq("kind", "venue")
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(`Failed to fetch events: ${error.message}`);
@@ -72,6 +73,22 @@ export async function getEventBySlug(slug: string): Promise<Event | null> {
 
   if (error) return null;
   return data as Event;
+}
+
+/**
+ * Get a venue by id (owner checks in API routes)
+ */
+export async function getEventById(eventId: number): Promise<Event | null> {
+  const { data } = await supabase.from("events").select("*").eq("id", eventId).maybeSingle();
+  return (data as Event) || null;
+}
+
+/**
+ * Get a stall with its event (owner checks in API routes)
+ */
+export async function getStallWithEvent(stallId: number): Promise<(Stall & { event: Event }) | null> {
+  const { data } = await supabase.from("stalls").select("*, event:events!event_id(*)").eq("id", stallId).maybeSingle();
+  return (data as Stall & { event: Event }) || null;
 }
 
 /**
@@ -187,11 +204,12 @@ export async function getStallsByOperator(operatorWallet: string): Promise<Stall
     .select(
       `
       *,
-      event:events!event_id(id, event_name, event_slug, owner_wallet, status),
+      event:events!event_id!inner(id, event_name, event_slug, owner_wallet, status, kind),
       operator_user:users!operator_wallet(name, twitter_handle, twitter_profile_url)
     `,
     )
     .eq("operator_wallet", operatorWallet.toLowerCase())
+    .eq("event.kind", "venue")
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(`Failed to fetch operator stalls: ${error.message}`);

@@ -119,6 +119,7 @@ export const useDashboardRealtime = (): UseDashboardRealtimeReturn => {
           `,
           )
           .eq("owner_wallet", wallet)
+          .eq("kind", "venue")
           .order("created_at", { ascending: false }),
 
         // Fetch stalls where user is operator
@@ -127,11 +128,12 @@ export const useDashboardRealtime = (): UseDashboardRealtimeReturn => {
           .select(
             `
             *,
-            event:events!event_id(id, event_name, event_slug, owner_wallet, status),
+            event:events!event_id!inner(id, event_name, event_slug, owner_wallet, status, kind),
             operator_user:users!operator_wallet(name, twitter_handle, twitter_profile_url)
           `,
           )
           .eq("operator_wallet", wallet)
+          .eq("event.kind", "venue")
           .order("created_at", { ascending: false }),
       ]);
 

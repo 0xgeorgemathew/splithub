@@ -1,16 +1,15 @@
 import { useEffect, useState } from "react";
-import { usePrivy } from "@privy-io/react-auth";
 import { Link, useLocation } from "@tanstack/react-router";
+import { usePrivy } from "@privy-io/react-auth";
 import { AnimatePresence, motion } from "framer-motion";
-import { Bell, Home, Split, Store } from "lucide-react";
+import { Bell, Home, MapPin, Split, Store } from "lucide-react";
 import { useRequestNotifications } from "~~/hooks/useRequestNotifications";
 
 const mainNavItems = [
   { label: "Home", href: "/", icon: Home },
   { label: "Splits", href: "/splits", icon: Split },
-  { label: "Store", href: "/store", icon: Store },
-  // { label: "Events", href: "/events", icon: CalendarDays },
-  // { label: "Credits", href: "/credits", icon: Coins },
+  { label: "Stores", href: "/store", icon: Store },
+  { label: "Venues", href: "/events", icon: MapPin },
   { label: "Requests", href: "/requests", icon: Bell },
 ] as const;
 

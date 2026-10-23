@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { usePrivy } from "@privy-io/react-auth";
 import { createFileRoute } from "@tanstack/react-router";
+import { usePrivy } from "@privy-io/react-auth";
 import { motion } from "framer-motion";
 import { CalendarDays, Sparkles } from "lucide-react";
 import { DashboardControls } from "~~/components/events/DashboardControls";
@@ -72,7 +72,7 @@ function EventsPage() {
             transition={{ delay: 0.2 }}
             className="text-base-content/60 text-lg mb-5 font-medium"
           >
-            Connect your wallet to manage events
+            Sign in to set up and manage venues
           </motion.p>
           <motion.button
             initial={{ opacity: 0, y: 10 }}

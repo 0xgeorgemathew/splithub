@@ -52,8 +52,8 @@
  * users.approval_status - "pending" | "completed" | null
  */
 import { useEffect, useRef } from "react";
-import { usePrivy } from "@privy-io/react-auth";
 import { useLocation, useNavigate } from "@tanstack/react-router";
+import { usePrivy } from "@privy-io/react-auth";
 import { getUserByPrivyId, syncPrivyUser } from "~~/services/userService";
 
 export const UserSyncWrapper = ({ children }: { children: React.ReactNode }) => {
