@@ -3,12 +3,12 @@ import { DbError, schema } from "./schema";
 
 /**
  * What browser code may do through POST /api/db. Reads are open (parity with the old Supabase anon
- * key); writes are limited to the tables and actions client components actually perform. Venues,
+ * key); writes are limited to the tables and actions client components actually perform. Users (via
+ * /api/user/*), venues,
  * stalls and stores change through authenticated API routes (owner checks in lib/auth.ts), and stall
  * payments and settlements are recorded by the server after it verifies the on-chain payment.
  */
 const BROWSER_WRITES: Record<string, QueryAction[]> = {
-  users: ["insert", "update"],
   circles: ["insert", "update", "delete"],
   circle_members: ["insert", "delete"],
   expense: ["insert", "delete"],

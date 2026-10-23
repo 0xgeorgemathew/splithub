@@ -1,8 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AuthError, errorResponse, requireUser, sameWallet } from "~~/lib/auth";
 import type { Stall } from "~~/lib/events.types";
-import { supabase } from "~~/lib/supabase";
-import { deleteStall, getStallWithEvent, updateStall } from "~~/services/eventsService";
+import { deleteStall, getOperatorByWallet, getStallWithEvent, updateStall } from "~~/services/eventsService";
 
 async function requireOwnedStall(request: Request, stallId: number) {
   const { wallet } = await requireUser(request);
@@ -34,15 +33,12 @@ async function PATCH(request: Request, stallId: number) {
       }
       updates.split_percentage = split;
     }
-    if (body.operator_twitter_handle) {
-      // Payments go to the operator's wallet, so re-resolve it whenever the operator changes.
-      const { data: operator } = await supabase
-        .from("users")
-        .select("wallet_address")
-        .eq("twitter_handle", body.operator_twitter_handle)
-        .maybeSingle();
-      updates.operator_twitter_handle = body.operator_twitter_handle;
-      updates.operator_wallet = operator?.wallet_address ?? null;
+    if (body.operator_wallet) {
+      // Payments go to the operator's wallet; it must be an existing SplitHub user picked by the owner.
+      const operator = await getOperatorByWallet(body.operator_wallet);
+      if (!operator) return Response.json({ error: "Stall operator must be a SplitHub user" }, { status: 400 });
+      updates.operator_wallet = operator.wallet_address;
+      updates.operator_twitter_handle = operator.twitter_handle || operator.name;
     }
 
     const stall = await updateStall(stallId, updates);

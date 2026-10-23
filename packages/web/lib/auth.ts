@@ -21,18 +21,26 @@ export class AuthError extends Error {
 
 export type AuthedUser = { privyUserId: string; wallet: string };
 
-/** Verifies the request's Privy token and returns the caller's wallet; throws AuthError otherwise. */
-export async function requireUser(request: Request): Promise<AuthedUser> {
+/** Verifies the request's Privy access token and returns the Privy user id (DID). */
+export async function verifyPrivyRequest(request: Request): Promise<string> {
   const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
   if (!token) throw new AuthError("Sign in to continue", 401);
-
-  let privyUserId: string;
   try {
     const { payload } = await jwtVerify(token, jwks, { issuer: "privy.io", audience: PRIVY_APP_ID });
-    privyUserId = String(payload.sub);
+    if (!payload.sub) throw new Error("missing sub");
+    return payload.sub;
   } catch {
     throw new AuthError("Your session has expired. Sign in again.", 401);
   }
+}
+
+/**
+ * Verifies the request's Privy token and returns the caller's wallet; throws AuthError otherwise.
+ * The Privy user is linked to a wallet only by /api/user/sync after a wallet signature, so this mapping
+ * cannot be claimed by someone else.
+ */
+export async function requireUser(request: Request): Promise<AuthedUser> {
+  const privyUserId = await verifyPrivyRequest(request);
 
   const { data: user } = await supabase
     .from("users")

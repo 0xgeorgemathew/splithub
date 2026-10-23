@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { isAddress } from "viem";
 import { TOKENS } from "~~/config/tokens";
 import { errorResponse, requireUser, sameWallet } from "~~/lib/auth";
 import type { CreateStallData } from "~~/lib/events.types";
@@ -10,8 +11,11 @@ async function POST(request: Request) {
     const { wallet } = await requireUser(request);
     const body: Partial<CreateStallData> = await request.json();
 
-    if (!body.event_id || !body.stall_name?.trim() || !body.stall_slug?.trim() || !body.operator_twitter_handle) {
+    if (!body.event_id || !body.stall_name?.trim() || !body.stall_slug?.trim() || !body.operator_wallet) {
       return Response.json({ error: "Missing required fields" }, { status: 400 });
+    }
+    if (!isAddress(body.operator_wallet)) {
+      return Response.json({ error: "Invalid operator wallet" }, { status: 400 });
     }
 
     const event = await getEventById(body.event_id);
@@ -32,7 +36,7 @@ async function POST(request: Request) {
       stall_name: body.stall_name.trim(),
       stall_slug: body.stall_slug.trim(),
       stall_description: body.stall_description,
-      operator_twitter_handle: body.operator_twitter_handle,
+      operator_wallet: body.operator_wallet,
       split_percentage: split,
       token_address: TOKENS.USDC,
     });

@@ -80,7 +80,9 @@ export type CreateStallData = {
   stall_name: string;
   stall_slug: string;
   stall_description?: string;
-  operator_twitter_handle: string;
+  /** Wallet that receives the stall's payments (a SplitHub user picked by the venue owner). */
+  operator_wallet: string;
+  operator_twitter_handle?: string;
   split_percentage: number;
   token_address: string;
 };

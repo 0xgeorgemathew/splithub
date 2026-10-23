@@ -73,7 +73,6 @@ function RegisterPage() {
           ) : (
             <div className="bg-base-200/50 backdrop-blur-sm rounded-2xl p-6 border border-base-300/50 shadow-lg">
               <RegisterChipForm
-                userId={user.id}
                 embeddedWallet={embeddedWallet}
                 twitterHandle={twitterHandle}
                 twitterName={twitterName}

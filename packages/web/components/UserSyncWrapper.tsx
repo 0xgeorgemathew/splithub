@@ -53,11 +53,12 @@
  */
 import { useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
-import { usePrivy } from "@privy-io/react-auth";
-import { getUserByPrivyId, syncPrivyUser } from "~~/services/userService";
+import { usePrivy, useSignMessage } from "@privy-io/react-auth";
+import { syncAccount } from "~~/lib/accountSync";
 
 export const UserSyncWrapper = ({ children }: { children: React.ReactNode }) => {
   const { ready, authenticated, user } = usePrivy();
+  const { signMessage } = useSignMessage();
   const navigate = useNavigate();
   const pathname = useLocation({ select: location => location.pathname });
   const hasSynced = useRef(false);
@@ -73,11 +74,11 @@ export const UserSyncWrapper = ({ children }: { children: React.ReactNode }) => 
       hasSynced.current = true;
 
       try {
-        // Sync user data to Supabase (only once per session)
-        await syncPrivyUser(user);
-
-        // Check user's onboarding status
-        const dbUser = await getUserByPrivyId(user.id);
+        // Sync the user row (only once per session); the first sync links the wallet with a silent signature
+        const dbUser = await syncAccount(user, async (message, address) => {
+          const { signature } = await signMessage({ message }, { address, uiOptions: { showWalletUIs: false } });
+          return signature;
+        });
 
         if (!dbUser) return;
 
@@ -126,7 +127,7 @@ export const UserSyncWrapper = ({ children }: { children: React.ReactNode }) => 
     };
 
     checkAndSyncUser();
-  }, [ready, authenticated, user, pathname, navigate]);
+  }, [ready, authenticated, user, pathname, navigate, signMessage]);
 
   return <>{children}</>;
 };

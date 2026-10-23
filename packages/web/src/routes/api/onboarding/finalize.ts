@@ -1,8 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { type Address, isAddress, isAddressEqual } from "viem";
+import { AuthError, errorResponse, requireUser } from "~~/lib/auth";
+import { createBaseSepoliaPublicClient } from "~~/lib/baseSepolia";
 import { supabase } from "~~/lib/supabase";
+import { resolveChipOwner } from "~~/lib/tapPayment";
 
 interface FinalizeRequest {
-  userId: string;
   action: "skip" | "register";
   chipAddress?: string;
 }
@@ -27,19 +30,23 @@ interface FinalizeResponse {
  */
 async function POST(request: Request) {
   try {
+    const { privyUserId: userId, wallet } = await requireUser(request);
     const body: FinalizeRequest = await request.json();
-    const { userId, action, chipAddress } = body;
-
-    if (!userId) {
-      return Response.json({ error: "userId is required" }, { status: 400 });
-    }
+    const { action, chipAddress } = body;
 
     if (action !== "skip" && action !== "register") {
       return Response.json({ error: "action must be 'skip' or 'register'" }, { status: 400 });
     }
 
-    if (action === "register" && !chipAddress) {
+    if (action === "register" && (!chipAddress || !isAddress(chipAddress))) {
       return Response.json({ error: "chipAddress is required for register action" }, { status: 400 });
+    }
+    if (action === "register") {
+      // The chip registry onchain is the source of truth: only record a chip registered to this wallet.
+      const owner = await resolveChipOwner(createBaseSepoliaPublicClient(), chipAddress as Address).catch(() => null);
+      if (!owner || !isAddressEqual(owner, wallet as Address)) {
+        throw new AuthError("This chip is not registered to your wallet", 403);
+      }
     }
 
     // Emit telemetry event
@@ -95,12 +102,8 @@ async function POST(request: Request) {
     };
 
     return Response.json(response);
-  } catch (error: any) {
-    console.error("[onboarding_finalize_failure]", {
-      error: error.message,
-      result: "unexpected_error",
-    });
-    return Response.json({ error: "Internal server error" }, { status: 500 });
+  } catch (error: unknown) {
+    return errorResponse(error, "[onboarding_finalize_failure]");
   }
 }
 

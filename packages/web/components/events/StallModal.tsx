@@ -179,7 +179,7 @@ export const StallModal = ({ isOpen, onClose, onSuccess, eventId, eventSlug, edi
         stall_name: stallName.trim(),
         stall_slug: stallSlug.trim(),
         stall_description: description.trim() || undefined,
-        operator_twitter_handle: selectedOperator.twitter_handle || selectedOperator.name,
+        operator_wallet: selectedOperator.wallet_address,
         split_percentage: Number(operatorShare),
         token_address: TOKENS.USDC,
       };

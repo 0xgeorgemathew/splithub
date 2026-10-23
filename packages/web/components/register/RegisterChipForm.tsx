@@ -6,6 +6,7 @@ import { BASE_SEPOLIA_CHAIN_ID, NFC_TAP_COOLDOWN_MS, ONBOARDING_MIN_DISPLAY_MS }
 import { useHaloChip } from "~~/hooks/halochip-arx/useHaloChip";
 import { useDeployedContractInfo } from "~~/hooks/scaffold-eth";
 import { useEmbeddedWalletClient } from "~~/hooks/useEmbeddedWalletClient";
+import { apiFetch } from "~~/lib/apiFetch";
 import { baseSepolia, createBaseSepoliaPublicClient } from "~~/lib/baseSepolia";
 import { SPLIT_HUB_REGISTRY_ABI } from "~~/lib/contractAbis";
 import { supabase } from "~~/lib/supabase";
@@ -39,14 +40,12 @@ import { formatAPIError, formatNFCError } from "~~/utils/errorFormatting";
 type FlowState = "idle" | "tapping" | "registering" | "finalizing" | "error";
 
 interface RegisterChipFormProps {
-  userId: string;
   embeddedWallet: string;
   twitterHandle?: string | null;
   twitterName?: string | null;
 }
 
 export function RegisterChipForm({
-  userId,
   embeddedWallet,
   twitterHandle: _twitterHandle,
   twitterName: _twitterName,
@@ -101,11 +100,9 @@ export function RegisterChipForm({
       // Start minimum display time and API call in parallel
       const startTime = Date.now();
 
-      const response = await fetch("/api/onboarding/finalize", {
+      const response = await apiFetch("/api/onboarding/finalize", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId,
           action,
           chipAddress: detectedChipAddress,
         }),

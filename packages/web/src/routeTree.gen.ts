@@ -37,6 +37,7 @@ import { Route as ApiOnboardingFinalizeRouteImport } from './routes/api/onboardi
 import { Route as ApiPaymentRequestsIndexRouteImport } from './routes/api/payment-requests/index'
 import { Route as ApiStoresCreateRouteImport } from './routes/api/stores/create'
 import { Route as ApiStoresDashboardRouteImport } from './routes/api/stores/dashboard'
+import { Route as ApiUserApprovalRouteImport } from './routes/api/user/approval'
 import { Route as ApiUserSyncRouteImport } from './routes/api/user/sync'
 import { Route as EventsEventSlugStallSlugRouteImport } from './routes/events/$eventSlug/$stallSlug'
 import { Route as StoreNetworkSlugStoreSlugRouteImport } from './routes/store/$networkSlug/$storeSlug'
@@ -190,6 +191,11 @@ const ApiStoresDashboardRoute = ApiStoresDashboardRouteImport.update({
   path: '/api/stores/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiUserApprovalRoute = ApiUserApprovalRouteImport.update({
+  id: '/api/user/approval',
+  path: '/api/user/approval',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiUserSyncRoute = ApiUserSyncRouteImport.update({
   id: '/api/user/sync',
   path: '/api/user/sync',
@@ -287,6 +293,7 @@ export interface FileRoutesByFullPath {
   '/api/onboarding/finalize': typeof ApiOnboardingFinalizeRoute
   '/api/stores/create': typeof ApiStoresCreateRoute
   '/api/stores/dashboard': typeof ApiStoresDashboardRoute
+  '/api/user/approval': typeof ApiUserApprovalRoute
   '/api/user/sync': typeof ApiUserSyncRoute
   '/events/$eventSlug/$stallSlug': typeof EventsEventSlugStallSlugRoute
   '/store/$networkSlug/$storeSlug': typeof StoreNetworkSlugStoreSlugRoute
@@ -329,6 +336,7 @@ export interface FileRoutesByTo {
   '/api/onboarding/finalize': typeof ApiOnboardingFinalizeRoute
   '/api/stores/create': typeof ApiStoresCreateRoute
   '/api/stores/dashboard': typeof ApiStoresDashboardRoute
+  '/api/user/approval': typeof ApiUserApprovalRoute
   '/api/user/sync': typeof ApiUserSyncRoute
   '/events/$eventSlug/$stallSlug': typeof EventsEventSlugStallSlugRoute
   '/store/$networkSlug/$storeSlug': typeof StoreNetworkSlugStoreSlugRoute
@@ -372,6 +380,7 @@ export interface FileRoutesById {
   '/api/onboarding/finalize': typeof ApiOnboardingFinalizeRoute
   '/api/stores/create': typeof ApiStoresCreateRoute
   '/api/stores/dashboard': typeof ApiStoresDashboardRoute
+  '/api/user/approval': typeof ApiUserApprovalRoute
   '/api/user/sync': typeof ApiUserSyncRoute
   '/events/$eventSlug/$stallSlug': typeof EventsEventSlugStallSlugRoute
   '/store/$networkSlug/$storeSlug': typeof StoreNetworkSlugStoreSlugRoute
@@ -416,6 +425,7 @@ export interface FileRouteTypes {
     | '/api/onboarding/finalize'
     | '/api/stores/create'
     | '/api/stores/dashboard'
+    | '/api/user/approval'
     | '/api/user/sync'
     | '/events/$eventSlug/$stallSlug'
     | '/store/$networkSlug/$storeSlug'
@@ -458,6 +468,7 @@ export interface FileRouteTypes {
     | '/api/onboarding/finalize'
     | '/api/stores/create'
     | '/api/stores/dashboard'
+    | '/api/user/approval'
     | '/api/user/sync'
     | '/events/$eventSlug/$stallSlug'
     | '/store/$networkSlug/$storeSlug'
@@ -500,6 +511,7 @@ export interface FileRouteTypes {
     | '/api/onboarding/finalize'
     | '/api/stores/create'
     | '/api/stores/dashboard'
+    | '/api/user/approval'
     | '/api/user/sync'
     | '/events/$eventSlug/$stallSlug'
     | '/store/$networkSlug/$storeSlug'
@@ -543,6 +555,7 @@ export interface RootRouteChildren {
   ApiOnboardingFinalizeRoute: typeof ApiOnboardingFinalizeRoute
   ApiStoresCreateRoute: typeof ApiStoresCreateRoute
   ApiStoresDashboardRoute: typeof ApiStoresDashboardRoute
+  ApiUserApprovalRoute: typeof ApiUserApprovalRoute
   ApiUserSyncRoute: typeof ApiUserSyncRoute
   EventsEventSlugStallSlugRoute: typeof EventsEventSlugStallSlugRoute
   StoreNetworkSlugStoreSlugRoute: typeof StoreNetworkSlugStoreSlugRoute
@@ -756,6 +769,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiStoresDashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/user/approval': {
+      id: '/api/user/approval'
+      path: '/api/user/approval'
+      fullPath: '/api/user/approval'
+      preLoaderRoute: typeof ApiUserApprovalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/user/sync': {
       id: '/api/user/sync'
       path: '/api/user/sync'
@@ -871,6 +891,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiOnboardingFinalizeRoute: ApiOnboardingFinalizeRoute,
   ApiStoresCreateRoute: ApiStoresCreateRoute,
   ApiStoresDashboardRoute: ApiStoresDashboardRoute,
+  ApiUserApprovalRoute: ApiUserApprovalRoute,
   ApiUserSyncRoute: ApiUserSyncRoute,
   EventsEventSlugStallSlugRoute: EventsEventSlugStallSlugRoute,
   StoreNetworkSlugStoreSlugRoute: StoreNetworkSlugStoreSlugRoute,
