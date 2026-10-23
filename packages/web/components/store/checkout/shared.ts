@@ -8,13 +8,6 @@ export type CheckoutLog = {
   tone: "info" | "success" | "error";
 };
 
-export type ItemFormState = {
-  sku: string;
-  name: string;
-  price: string;
-  stock: string;
-};
-
 export type CartEntry = {
   itemId: number;
   quantity: number;

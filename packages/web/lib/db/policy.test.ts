@@ -32,6 +32,10 @@ describe("browser write policy", () => {
     expect(() => assertBrowserPlanAllowed(plan("users", "update", { name: "x" }))).toThrow("permission denied");
     expect(() => assertBrowserPlanAllowed(plan("events", "delete"))).toThrow("permission denied");
     expect(() => assertBrowserPlanAllowed(plan("stall_payments", "insert", {}))).toThrow("permission denied");
+    for (const table of ["stores", "store_items", "store_orders", "store_order_items"]) {
+      expect(() => assertBrowserPlanAllowed(plan(table, "insert", {}))).toThrow("permission denied");
+      expect(() => assertBrowserPlanAllowed(plan(table, "update", {}))).toThrow("permission denied");
+    }
   });
 
   test("a broad delete fails if any matched row belongs to someone else", async () => {

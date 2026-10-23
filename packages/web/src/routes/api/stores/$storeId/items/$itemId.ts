@@ -1,32 +1,26 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { errorResponse } from "~~/lib/auth";
 import { supabase } from "~~/lib/supabase";
-import { requireStoreManager, updateStoreItem } from "~~/services/storeService";
+import { parseStoreItemFields, requireStoreOwner, updateStoreItem } from "~~/services/storeService";
 
+/** Edits a catalog item (owner only): name, price, description, image, stock, or active/paused. */
 async function PATCH(request: Request, { params }: { params: { storeId: string; itemId: string } }) {
   try {
-    const { storeId, itemId } = params;
-    await requireStoreManager(request, Number(storeId));
+    const storeId = Number(params.storeId);
+    const itemId = Number(params.itemId);
+    await requireStoreOwner(request, storeId);
     const { data: owned } = await supabase
       .from("store_items")
       .select("id")
-      .eq("id", Number(itemId))
-      .eq("stall_id", Number(storeId))
+      .eq("id", itemId)
+      .eq("store_id", storeId)
       .maybeSingle();
     if (!owned) return Response.json({ error: "Item not found in this store" }, { status: 404 });
-    const body = await request.json();
 
-    const item = await updateStoreItem(Number(itemId), {
-      name: body.name,
-      description: body.description,
-      price: body.price !== undefined ? Number(body.price) : undefined,
-      status: body.status,
-      imageUrl: body.imageUrl,
-      currentStock: body.currentStock !== undefined ? Number(body.currentStock) : undefined,
-      reorderThreshold: body.reorderThreshold !== undefined ? Number(body.reorderThreshold) : undefined,
-      targetStock: body.targetStock !== undefined ? Number(body.targetStock) : undefined,
-    });
+    const parsed = parseStoreItemFields(await request.json(), false);
+    if ("error" in parsed) return Response.json({ error: parsed.error }, { status: 400 });
 
+    const item = await updateStoreItem(itemId, parsed.fields);
     return Response.json({ item });
   } catch (error) {
     return errorResponse(error, "Failed to update store item");

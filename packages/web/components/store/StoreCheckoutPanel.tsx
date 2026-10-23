@@ -6,6 +6,7 @@ export function StoreCheckoutPanel({
   cart,
   cartTotal,
   authenticated,
+  storeOpen,
   checkoutBusy,
   checkoutError,
   receipt,
@@ -14,6 +15,7 @@ export function StoreCheckoutPanel({
   cart: CartEntry[];
   cartTotal: number;
   authenticated: boolean;
+  storeOpen: boolean;
   checkoutBusy: boolean;
   checkoutError: string | null;
   receipt: { txHash: string; orderId: number } | null;
@@ -52,11 +54,17 @@ export function StoreCheckoutPanel({
           <span className="text-xl font-black text-primary">{formatUsd(cartTotal)}</span>
         </div>
         <div className="mt-2 text-xs text-base-content/60">
-          Current contract flow requires 3 taps: discover chip, sign manager payout, sign admin payout.
+          {storeOpen
+            ? "One chip tap pays the store from your wallet. On the owner's device, the buyer taps twice: once to identify, once to sign."
+            : "This store is paused and is not taking orders right now."}
         </div>
       </div>
 
-      <button className="btn btn-primary mt-4 w-full" onClick={onCheckout} disabled={checkoutBusy || cart.length === 0}>
+      <button
+        className="btn btn-primary mt-4 w-full"
+        onClick={onCheckout}
+        disabled={checkoutBusy || !storeOpen || cart.length === 0}
+      >
         {checkoutBusy ? "Processing checkout..." : authenticated ? "Tap to Checkout" : "Login to Checkout"}
       </button>
 

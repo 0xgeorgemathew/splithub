@@ -1,22 +1,62 @@
-import { type StoreItemWithInventory } from "./storeQueries";
 import type { CreateStoreItemInput, UpdateStoreItemInput } from "~~/lib/store.types";
-import type { StoreInventory, StoreItem } from "~~/lib/supabase";
+import type { StoreItem } from "~~/lib/supabase";
 import { supabase } from "~~/lib/supabase";
 
-export async function createStoreItem(
-  input: CreateStoreItemInput,
-): Promise<StoreItemWithInventory & { inventory: StoreInventory | null }> {
+/**
+ * Validates item fields from a request body. Returns the parsed fields or an error message. With
+ * `requireCore`, name and price must be present (creating an item).
+ */
+export function parseStoreItemFields(
+  body: Record<string, unknown>,
+  requireCore: boolean,
+): { fields: UpdateStoreItemInput } | { error: string } {
+  const fields: UpdateStoreItemInput = {};
+
+  if (body.name !== undefined || requireCore) {
+    if (typeof body.name !== "string" || !body.name.trim()) return { error: "Item name is required" };
+    fields.name = body.name;
+  }
+  if (body.price !== undefined || requireCore) {
+    const price = Number(body.price);
+    if (body.price === "" || body.price === null || !Number.isFinite(price) || price < 0) {
+      return { error: "Price must be zero or more" };
+    }
+    fields.price = price;
+  }
+  if (body.stock !== undefined) {
+    const stock = Number(body.stock);
+    if (!Number.isInteger(stock) || stock < 0) return { error: "Stock must be a whole number, zero or more" };
+    fields.stock = stock;
+  }
+  if (body.description !== undefined) {
+    if (body.description !== null && typeof body.description !== "string") return { error: "Invalid description" };
+    fields.description = body.description;
+  }
+  if (body.imageUrl !== undefined) {
+    if (body.imageUrl !== null && typeof body.imageUrl !== "string") return { error: "Invalid image URL" };
+    if (body.imageUrl && !/^https?:\/\//i.test(body.imageUrl.trim())) {
+      return { error: "Image URL must start with http:// or https://" };
+    }
+    fields.imageUrl = body.imageUrl;
+  }
+  if (body.status !== undefined) {
+    if (body.status !== "active" && body.status !== "paused") return { error: "Status must be active or paused" };
+    fields.status = body.status;
+  }
+  return { fields };
+}
+
+export async function createStoreItem(input: CreateStoreItemInput): Promise<StoreItem> {
   const { data: item, error } = await supabase
     .from("store_items")
     .insert({
-      stall_id: input.stallId,
-      sku: input.sku.trim(),
+      store_id: input.storeId,
       name: input.name.trim(),
-      description: input.description || null,
+      description: input.description?.trim() || null,
       price: input.price,
-      token_address: input.tokenAddress.toLowerCase(),
+      stock: input.stock ?? 0,
       status: "active",
-      image_url: input.imageUrl || null,
+      image_url: input.imageUrl?.trim() || null,
     })
     .select("*")
     .single();
@@ -24,103 +64,24 @@ export async function createStoreItem(
   if (error || !item) {
     throw new Error(`Failed to create store item: ${error?.message}`);
   }
-
-  const inventory = await upsertStoreInventory(item.id, {
-    currentStock: input.currentStock ?? 0,
-    reorderThreshold: input.reorderThreshold ?? 3,
-    targetStock: input.targetStock ?? 10,
-  });
-
-  return {
-    ...(item as StoreItem),
-    inventory,
-  };
+  return item as StoreItem;
 }
 
-export async function upsertStoreInventory(
-  itemId: number,
-  input: {
-    currentStock: number;
-    reorderThreshold: number;
-    targetStock: number;
-    lastRestockedAt?: string | null;
-  },
-): Promise<StoreInventory> {
-  const { data, error } = await supabase
-    .from("store_inventory")
-    .upsert(
-      {
-        item_id: itemId,
-        current_stock: input.currentStock,
-        reorder_threshold: input.reorderThreshold,
-        target_stock: input.targetStock,
-        last_restocked_at: input.lastRestockedAt || null,
-      },
-      { onConflict: "item_id" },
-    )
-    .select("*")
-    .single();
+export async function updateStoreItem(itemId: number, input: UpdateStoreItemInput): Promise<StoreItem> {
+  const updates: Record<string, unknown> = {};
+  if (input.name !== undefined) updates.name = input.name.trim();
+  if (input.description !== undefined) updates.description = input.description?.trim() || null;
+  if (input.price !== undefined) updates.price = input.price;
+  if (input.stock !== undefined) updates.stock = input.stock;
+  if (input.status !== undefined) updates.status = input.status;
+  if (input.imageUrl !== undefined) updates.image_url = input.imageUrl?.trim() || null;
 
+  const query = Object.keys(updates).length
+    ? supabase.from("store_items").update(updates).eq("id", itemId).select("*").single()
+    : supabase.from("store_items").select("*").eq("id", itemId).single();
+  const { data, error } = await query;
   if (error || !data) {
-    throw new Error(`Failed to update inventory: ${error?.message}`);
+    throw new Error(`Failed to update item: ${error?.message}`);
   }
-
-  return data as StoreInventory;
-}
-
-export async function updateStoreItem(
-  itemId: number,
-  input: UpdateStoreItemInput,
-): Promise<StoreItemWithInventory & { inventory: StoreInventory | null }> {
-  const itemUpdates: Record<string, any> = {};
-  if (input.name !== undefined) itemUpdates.name = input.name;
-  if (input.description !== undefined) itemUpdates.description = input.description;
-  if (input.price !== undefined) itemUpdates.price = input.price;
-  if (input.status !== undefined) itemUpdates.status = input.status;
-  if (input.imageUrl !== undefined) itemUpdates.image_url = input.imageUrl;
-
-  let updatedItem: StoreItem | null = null;
-  if (Object.keys(itemUpdates).length > 0) {
-    const { data, error } = await supabase
-      .from("store_items")
-      .update(itemUpdates)
-      .eq("id", itemId)
-      .select("*")
-      .single();
-    if (error || !data) {
-      throw new Error(`Failed to update item: ${error?.message}`);
-    }
-    updatedItem = data as StoreItem;
-  }
-
-  let inventory: StoreInventory | null = null;
-  if (input.currentStock !== undefined || input.reorderThreshold !== undefined || input.targetStock !== undefined) {
-    const { data: existingInventory } = await supabase
-      .from("store_inventory")
-      .select("*")
-      .eq("item_id", itemId)
-      .single();
-    inventory = await upsertStoreInventory(itemId, {
-      currentStock: input.currentStock ?? existingInventory?.current_stock ?? 0,
-      reorderThreshold: input.reorderThreshold ?? existingInventory?.reorder_threshold ?? 3,
-      targetStock: input.targetStock ?? existingInventory?.target_stock ?? 10,
-      lastRestockedAt: existingInventory?.last_restocked_at ?? null,
-    });
-  } else {
-    const { data } = await supabase.from("store_inventory").select("*").eq("item_id", itemId).single();
-    inventory = (data as StoreInventory) || null;
-  }
-
-  if (!updatedItem) {
-    const { data, error } = await supabase.from("store_items").select("*").eq("id", itemId).single();
-    if (error || !data) {
-      throw new Error(`Failed to reload item: ${error?.message}`);
-    }
-    updatedItem = data as StoreItem;
-  }
-
-  return {
-    ...updatedItem,
-    inventory,
-  };
+  return data as StoreItem;
 }

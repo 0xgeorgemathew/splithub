@@ -133,34 +133,22 @@ export type CircleWithMembersAndOwnership = CircleWithMembers & {
 
 export type StoreItem = {
   id: number;
-  stall_id: number;
-  sku: string;
+  store_id: number;
   name: string;
   description: string | null;
   price: number;
-  token_address: string;
-  status: "active" | "paused" | "out_of_stock" | "archived";
+  stock: number;
+  status: "active" | "paused";
   image_url: string | null;
   created_at: string;
   updated_at: string;
 };
 
-export type StoreInventory = {
-  item_id: number;
-  current_stock: number;
-  reorder_threshold: number;
-  target_stock: number;
-  last_restocked_at: string | null;
-  updated_at: string;
-};
-
 export type StoreOrder = {
   id: number;
-  stall_id: number;
+  store_id: number;
   buyer_wallet: string;
   subtotal: number;
-  manager_amount: number;
-  admin_amount: number;
   token_address: string;
   tx_hash: string | null;
   status: "pending" | "completed" | "failed";

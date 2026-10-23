@@ -1,15 +1,28 @@
-import type { Event, Stall } from "~~/lib/events.types";
-import type { StoreInventory, StoreItem, StoreOrder, StoreOrderItem, User } from "~~/lib/supabase";
+import type { StoreItem, StoreOrder } from "~~/lib/supabase";
 
-export type Store = Stall & {
-  network?: Event;
-  manager_user?: User;
+/** Active items at or below this stock count show as low stock. */
+export const LOW_STOCK_THRESHOLD = 3;
+
+/** A store: set up by one signed-in user, whose wallet receives every checkout payment. */
+export type Store = {
+  id: number;
+  owner_wallet: string;
+  store_name: string;
+  store_slug: string;
+  store_description: string | null;
+  status: "active" | "paused";
+  created_at: string;
+  updated_at: string;
+  // Joined data
+  owner_user?: {
+    name: string;
+    twitter_handle?: string | null;
+    twitter_profile_url?: string | null;
+  } | null;
 };
 
 export type StoreWithCatalog = Store & {
-  items: (StoreItem & {
-    inventory?: StoreInventory | null;
-  })[];
+  items: StoreItem[];
 };
 
 export type CartLineInput = {
@@ -19,18 +32,10 @@ export type CartLineInput = {
 
 export type CheckoutQuote = {
   storeId: number;
-  eventId: number;
   tokenAddress: string;
   subtotal: string;
   subtotalMicros: string;
-  managerAmount: string;
-  managerAmountMicros: string;
-  adminAmount: string;
-  adminAmountMicros: string;
-  /** Accounting split: the manager share of the subtotal (the rest is the network admin's). */
-  managerRecipient: `0x${string}`;
-  adminRecipient: `0x${string}`;
-  /** The single on-chain payment the buyer authorizes with their chip. */
+  /** The single on-chain payment the buyer authorizes with their chip: the whole subtotal to the store owner. */
   payoutRecipient: `0x${string}`;
   payoutAmountMicros: string;
   cart: Array<{
@@ -41,7 +46,7 @@ export type CheckoutQuote = {
     unitPriceMicros: string;
     lineTotal: string;
     lineTotalMicros: string;
-    currentStock: number;
+    stock: number;
   }>;
 };
 
@@ -49,60 +54,43 @@ export type StoreAnalytics = {
   storeId: number;
   totalRevenue: number;
   totalOrders: number;
-  managerRevenue: number;
-  adminRevenue: number;
-  lowStockItems: number;
   activeItems: number;
-  failedOrders: number;
+  lowStockItems: number;
   topItems: Array<{
     itemId: number;
     name: string;
     quantitySold: number;
     revenue: number;
   }>;
+  recentOrders: Array<
+    Pick<StoreOrder, "id" | "buyer_wallet" | "subtotal" | "tx_hash" | "created_at"> & {
+      buyer_name: string | null;
+      itemCount: number;
+    }
+  >;
 };
 
 export type StoreDashboardData = {
-  ownedNetworks: Event[];
-  managedStores: StoreWithCatalog[];
+  /** Stores the given wallet owns (empty when no wallet is given). */
+  myStores: StoreWithCatalog[];
+  /** Open stores anyone can browse. */
   publicStores: StoreWithCatalog[];
-  recentOrders: StoreOrder[];
-  recentOrderItems: StoreOrderItem[];
-};
-
-export type CreateStoreInput = {
-  adminWallet: string;
-  networkName: string;
-  networkSlug: string;
-  storeName: string;
-  storeSlug: string;
-  storeDescription?: string;
-  managerWallet?: string;
-  managerTwitterHandle?: string;
-  splitPercentage?: number;
-  tokenAddress: string;
 };
 
 export type CreateStoreItemInput = {
-  stallId: number;
-  sku: string;
+  storeId: number;
   name: string;
-  description?: string;
+  description?: string | null;
   price: number;
-  tokenAddress: string;
-  imageUrl?: string;
-  currentStock?: number;
-  reorderThreshold?: number;
-  targetStock?: number;
+  stock?: number;
+  imageUrl?: string | null;
 };
 
 export type UpdateStoreItemInput = Partial<{
   name: string;
-  description: string;
+  description: string | null;
   price: number;
+  stock: number;
   status: StoreItem["status"];
   imageUrl: string | null;
-  currentStock: number;
-  reorderThreshold: number;
-  targetStock: number;
 }>;

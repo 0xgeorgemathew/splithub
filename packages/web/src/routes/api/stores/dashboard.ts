@@ -2,13 +2,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import { isAddress } from "viem";
 import { getStoreDashboardData } from "~~/services/storeService";
 
+/** Public store list, plus the stores owned by `?wallet=` when given (read-only). */
 async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const wallet = searchParams.get("wallet");
-
-    if (!wallet || !isAddress(wallet)) {
-      return Response.json({ error: "Valid wallet query param is required" }, { status: 400 });
+    const wallet = new URL(request.url).searchParams.get("wallet");
+    if (wallet && !isAddress(wallet)) {
+      return Response.json({ error: "wallet must be a valid address" }, { status: 400 });
     }
 
     const dashboard = await getStoreDashboardData(wallet);

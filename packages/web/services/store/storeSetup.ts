@@ -1,36 +1,53 @@
-import { createSlug, findOrCreateNetwork, normalizeAddress, resolveManager } from "./shared";
-import type { Event, Stall } from "~~/lib/events.types";
-import type { CreateStoreInput } from "~~/lib/store.types";
+import { createSlug } from "./shared";
+import type { Store } from "~~/lib/store.types";
 import { supabase } from "~~/lib/supabase";
 
-/**
- * Creates a store inside one of the admin's networks. Checkout pays the store manager's wallet, so the
- * manager defaults to the admin when no other manager is given.
- */
-export async function createStore(input: CreateStoreInput): Promise<{ network: Event; store: Stall }> {
-  const network = await findOrCreateNetwork(input.adminWallet, input.networkName, input.networkSlug);
-  const manager = await resolveManager(input);
-  const operatorWallet = normalizeAddress(manager?.wallet_address || input.managerWallet || input.adminWallet);
+async function slugTaken(slug: string) {
+  const { data } = await supabase.from("stores").select("id").eq("store_slug", slug).maybeSingle();
+  return Boolean(data);
+}
 
-  const { data: store, error } = await supabase
-    .from("stalls")
-    .insert({
-      event_id: network.id,
-      stall_name: input.storeName.trim(),
-      stall_slug: createSlug(input.storeSlug || input.storeName),
-      stall_description: input.storeDescription || null,
-      operator_twitter_handle: manager?.twitter_handle || input.managerTwitterHandle?.replace(/^@/, "") || "unassigned",
-      operator_wallet: operatorWallet,
-      split_percentage: input.splitPercentage ?? 80,
-      status: "active",
-      token_address: input.tokenAddress.toLowerCase(),
-    })
+/** A globally unique slug from the store name: `coffee`, then `coffee-2`, `coffee-3`, ... */
+async function uniqueStoreSlug(name: string) {
+  const base = createSlug(name) || "store";
+  if (!(await slugTaken(base))) return base;
+  for (let n = 2; n < 20; n++) {
+    if (!(await slugTaken(`${base}-${n}`))) return `${base}-${n}`;
+  }
+  return `${base}-${crypto.randomUUID().slice(0, 6)}`;
+}
+
+/** Creates a store owned by `ownerWallet`; checkout pays that wallet directly. */
+export async function createStore(input: {
+  ownerWallet: string;
+  storeName: string;
+  storeDescription?: string | null;
+}): Promise<Store> {
+  const row = {
+    owner_wallet: input.ownerWallet.toLowerCase(),
+    store_name: input.storeName.trim(),
+    store_description: input.storeDescription?.trim() || null,
+    status: "active",
+  };
+
+  let slug = await uniqueStoreSlug(input.storeName);
+  let result = await supabase
+    .from("stores")
+    .insert({ ...row, store_slug: slug })
     .select("*")
     .single();
-
-  if (error || !store) {
-    throw new Error(`Failed to create store: ${error?.message}`);
+  if (result.error?.code === "23505") {
+    // Another store took the slug between the check and the insert.
+    slug = `${slug}-${crypto.randomUUID().slice(0, 6)}`;
+    result = await supabase
+      .from("stores")
+      .insert({ ...row, store_slug: slug })
+      .select("*")
+      .single();
   }
 
-  return { network, store: store as Stall };
+  if (result.error || !result.data) {
+    throw new Error(`Failed to create store: ${result.error?.message}`);
+  }
+  return result.data as Store;
 }

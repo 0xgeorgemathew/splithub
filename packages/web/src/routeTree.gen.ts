@@ -26,6 +26,7 @@ import { Route as RequestCreateRouteImport } from './routes/request/create'
 import { Route as SettleIndexRouteImport } from './routes/settle/index'
 import { Route as SettleRequestIdRouteImport } from './routes/settle/$requestId'
 import { Route as StoreIndexRouteImport } from './routes/store/index'
+import { Route as StoreStoreSlugRouteImport } from './routes/store/$storeSlug'
 import { Route as ApiBalancesTokenRouteImport } from './routes/api/balances/token'
 import { Route as ApiCirclesAutoSplitRouteImport } from './routes/api/circles/auto-split'
 import { Route as ApiCirclesLeaveRouteImport } from './routes/api/circles/leave'
@@ -40,7 +41,6 @@ import { Route as ApiStoresDashboardRouteImport } from './routes/api/stores/dash
 import { Route as ApiUserApprovalRouteImport } from './routes/api/user/approval'
 import { Route as ApiUserSyncRouteImport } from './routes/api/user/sync'
 import { Route as EventsEventSlugStallSlugRouteImport } from './routes/events/$eventSlug/$stallSlug'
-import { Route as StoreNetworkSlugStoreSlugRouteImport } from './routes/store/$networkSlug/$storeSlug'
 import { Route as ApiEventsStallsStallIdRouteImport } from './routes/api/events/stalls/$stallId'
 import { Route as ApiEventsStallsCreateRouteImport } from './routes/api/events/stalls/create'
 import { Route as ApiPaymentRequestsIdIndexRouteImport } from './routes/api/payment-requests/$id/index'
@@ -136,6 +136,11 @@ const StoreIndexRoute = StoreIndexRouteImport.update({
   path: '/store/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StoreStoreSlugRoute = StoreStoreSlugRouteImport.update({
+  id: '/store/$storeSlug',
+  path: '/store/$storeSlug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiBalancesTokenRoute = ApiBalancesTokenRouteImport.update({
   id: '/api/balances/token',
   path: '/api/balances/token',
@@ -207,12 +212,6 @@ const EventsEventSlugStallSlugRoute =
     path: '/events/$eventSlug/$stallSlug',
     getParentRoute: () => rootRouteImport,
   } as any)
-const StoreNetworkSlugStoreSlugRoute =
-  StoreNetworkSlugStoreSlugRouteImport.update({
-    id: '/store/$networkSlug/$storeSlug',
-    path: '/store/$networkSlug/$storeSlug',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const ApiEventsStallsStallIdRoute = ApiEventsStallsStallIdRouteImport.update({
   id: '/api/events/stalls/$stallId',
   path: '/api/events/stalls/$stallId',
@@ -280,6 +279,7 @@ export interface FileRoutesByFullPath {
   '/expense/add': typeof ExpenseAddRoute
   '/request/create': typeof RequestCreateRoute
   '/settle/$requestId': typeof SettleRequestIdRoute
+  '/store/$storeSlug': typeof StoreStoreSlugRoute
   '/events/': typeof EventsIndexRoute
   '/settle/': typeof SettleIndexRoute
   '/store/': typeof StoreIndexRoute
@@ -296,7 +296,6 @@ export interface FileRoutesByFullPath {
   '/api/user/approval': typeof ApiUserApprovalRoute
   '/api/user/sync': typeof ApiUserSyncRoute
   '/events/$eventSlug/$stallSlug': typeof EventsEventSlugStallSlugRoute
-  '/store/$networkSlug/$storeSlug': typeof StoreNetworkSlugStoreSlugRoute
   '/api/payment-requests/': typeof ApiPaymentRequestsIndexRoute
   '/api/events/stalls/$stallId': typeof ApiEventsStallsStallIdRoute
   '/api/events/stalls/create': typeof ApiEventsStallsCreateRoute
@@ -323,6 +322,7 @@ export interface FileRoutesByTo {
   '/expense/add': typeof ExpenseAddRoute
   '/request/create': typeof RequestCreateRoute
   '/settle/$requestId': typeof SettleRequestIdRoute
+  '/store/$storeSlug': typeof StoreStoreSlugRoute
   '/events': typeof EventsIndexRoute
   '/settle': typeof SettleIndexRoute
   '/store': typeof StoreIndexRoute
@@ -339,7 +339,6 @@ export interface FileRoutesByTo {
   '/api/user/approval': typeof ApiUserApprovalRoute
   '/api/user/sync': typeof ApiUserSyncRoute
   '/events/$eventSlug/$stallSlug': typeof EventsEventSlugStallSlugRoute
-  '/store/$networkSlug/$storeSlug': typeof StoreNetworkSlugStoreSlugRoute
   '/api/payment-requests': typeof ApiPaymentRequestsIndexRoute
   '/api/events/stalls/$stallId': typeof ApiEventsStallsStallIdRoute
   '/api/events/stalls/create': typeof ApiEventsStallsCreateRoute
@@ -367,6 +366,7 @@ export interface FileRoutesById {
   '/expense/add': typeof ExpenseAddRoute
   '/request/create': typeof RequestCreateRoute
   '/settle/$requestId': typeof SettleRequestIdRoute
+  '/store/$storeSlug': typeof StoreStoreSlugRoute
   '/events/': typeof EventsIndexRoute
   '/settle/': typeof SettleIndexRoute
   '/store/': typeof StoreIndexRoute
@@ -383,7 +383,6 @@ export interface FileRoutesById {
   '/api/user/approval': typeof ApiUserApprovalRoute
   '/api/user/sync': typeof ApiUserSyncRoute
   '/events/$eventSlug/$stallSlug': typeof EventsEventSlugStallSlugRoute
-  '/store/$networkSlug/$storeSlug': typeof StoreNetworkSlugStoreSlugRoute
   '/api/payment-requests/': typeof ApiPaymentRequestsIndexRoute
   '/api/events/stalls/$stallId': typeof ApiEventsStallsStallIdRoute
   '/api/events/stalls/create': typeof ApiEventsStallsCreateRoute
@@ -412,6 +411,7 @@ export interface FileRouteTypes {
     | '/expense/add'
     | '/request/create'
     | '/settle/$requestId'
+    | '/store/$storeSlug'
     | '/events/'
     | '/settle/'
     | '/store/'
@@ -428,7 +428,6 @@ export interface FileRouteTypes {
     | '/api/user/approval'
     | '/api/user/sync'
     | '/events/$eventSlug/$stallSlug'
-    | '/store/$networkSlug/$storeSlug'
     | '/api/payment-requests/'
     | '/api/events/stalls/$stallId'
     | '/api/events/stalls/create'
@@ -455,6 +454,7 @@ export interface FileRouteTypes {
     | '/expense/add'
     | '/request/create'
     | '/settle/$requestId'
+    | '/store/$storeSlug'
     | '/events'
     | '/settle'
     | '/store'
@@ -471,7 +471,6 @@ export interface FileRouteTypes {
     | '/api/user/approval'
     | '/api/user/sync'
     | '/events/$eventSlug/$stallSlug'
-    | '/store/$networkSlug/$storeSlug'
     | '/api/payment-requests'
     | '/api/events/stalls/$stallId'
     | '/api/events/stalls/create'
@@ -498,6 +497,7 @@ export interface FileRouteTypes {
     | '/expense/add'
     | '/request/create'
     | '/settle/$requestId'
+    | '/store/$storeSlug'
     | '/events/'
     | '/settle/'
     | '/store/'
@@ -514,7 +514,6 @@ export interface FileRouteTypes {
     | '/api/user/approval'
     | '/api/user/sync'
     | '/events/$eventSlug/$stallSlug'
-    | '/store/$networkSlug/$storeSlug'
     | '/api/payment-requests/'
     | '/api/events/stalls/$stallId'
     | '/api/events/stalls/create'
@@ -542,6 +541,7 @@ export interface RootRouteChildren {
   ExpenseAddRoute: typeof ExpenseAddRoute
   RequestCreateRoute: typeof RequestCreateRoute
   SettleRequestIdRoute: typeof SettleRequestIdRoute
+  StoreStoreSlugRoute: typeof StoreStoreSlugRoute
   EventsIndexRoute: typeof EventsIndexRoute
   SettleIndexRoute: typeof SettleIndexRoute
   StoreIndexRoute: typeof StoreIndexRoute
@@ -558,7 +558,6 @@ export interface RootRouteChildren {
   ApiUserApprovalRoute: typeof ApiUserApprovalRoute
   ApiUserSyncRoute: typeof ApiUserSyncRoute
   EventsEventSlugStallSlugRoute: typeof EventsEventSlugStallSlugRoute
-  StoreNetworkSlugStoreSlugRoute: typeof StoreNetworkSlugStoreSlugRoute
   ApiPaymentRequestsIndexRoute: typeof ApiPaymentRequestsIndexRoute
   ApiEventsStallsStallIdRoute: typeof ApiEventsStallsStallIdRoute
   ApiEventsStallsCreateRoute: typeof ApiEventsStallsCreateRoute
@@ -692,6 +691,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StoreIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/store/$storeSlug': {
+      id: '/store/$storeSlug'
+      path: '/store/$storeSlug'
+      fullPath: '/store/$storeSlug'
+      preLoaderRoute: typeof StoreStoreSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/balances/token': {
       id: '/api/balances/token'
       path: '/api/balances/token'
@@ -790,13 +796,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EventsEventSlugStallSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/store/$networkSlug/$storeSlug': {
-      id: '/store/$networkSlug/$storeSlug'
-      path: '/store/$networkSlug/$storeSlug'
-      fullPath: '/store/$networkSlug/$storeSlug'
-      preLoaderRoute: typeof StoreNetworkSlugStoreSlugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/events/stalls/$stallId': {
       id: '/api/events/stalls/$stallId'
       path: '/api/events/stalls/$stallId'
@@ -878,6 +877,7 @@ const rootRouteChildren: RootRouteChildren = {
   ExpenseAddRoute: ExpenseAddRoute,
   RequestCreateRoute: RequestCreateRoute,
   SettleRequestIdRoute: SettleRequestIdRoute,
+  StoreStoreSlugRoute: StoreStoreSlugRoute,
   EventsIndexRoute: EventsIndexRoute,
   SettleIndexRoute: SettleIndexRoute,
   StoreIndexRoute: StoreIndexRoute,
@@ -894,7 +894,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiUserApprovalRoute: ApiUserApprovalRoute,
   ApiUserSyncRoute: ApiUserSyncRoute,
   EventsEventSlugStallSlugRoute: EventsEventSlugStallSlugRoute,
-  StoreNetworkSlugStoreSlugRoute: StoreNetworkSlugStoreSlugRoute,
   ApiPaymentRequestsIndexRoute: ApiPaymentRequestsIndexRoute,
   ApiEventsStallsStallIdRoute: ApiEventsStallsStallIdRoute,
   ApiEventsStallsCreateRoute: ApiEventsStallsCreateRoute,
