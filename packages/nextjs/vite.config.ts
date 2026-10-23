@@ -29,12 +29,6 @@ export default defineConfig({
     include: ["pino", "pino/browser.js"],
   },
   resolve: {
-    alias: [
-      { find: /^~~\//, replacement: `${root}` },
-      // ethers v5 expects the aes-js 3.x API; the shim adapts aes-js 4 (see lib/shims/aes-js-compat.ts).
-      { find: /^aes-js$/, replacement: `${root}lib/shims/aes-js-compat.ts` },
-      // depd generates code with new Function(), which Workers forbids (see lib/shims/depd.cjs).
-      { find: /^depd$/, replacement: `${root}lib/shims/depd.cjs` },
-    ],
+    alias: [{ find: /^~~\//, replacement: `${root}` }],
   },
 });

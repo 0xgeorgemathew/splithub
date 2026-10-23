@@ -102,6 +102,18 @@ export const SPLIT_HUB_PAYMENTS_ABI = [
     outputs: [],
     stateMutability: "nonpayable",
   },
+  {
+    type: "event",
+    name: "PaymentExecuted",
+    inputs: [
+      { name: "payer", type: "address", indexed: true },
+      { name: "recipient", type: "address", indexed: true },
+      { name: "token", type: "address", indexed: true },
+      { name: "amount", type: "uint256", indexed: false },
+      { name: "signer", type: "address", indexed: false },
+      { name: "nonce", type: "uint256", indexed: false },
+    ],
+  },
 ] as const;
 
 export const CREDIT_TOKEN_ABI = [

@@ -1,13 +1,15 @@
 # SplitHub
 
-SplitHub is a tap-to-pay onchain payments product with four active feature pillars:
+SplitHub is a tap-to-pay onchain payments product with three feature pillars:
 
-- `Stores` for merchant checkout, analytics, and autonomous store operations
-- `DeFi` for Vincent-connected treasury management and Aave deployment
-- `Agent Pay` for just-in-time liquidity and tap-limit-backed payment readiness
+- `Stores` for merchant checkout, catalog and inventory, and sales analytics
+- `Venues` for events and venues with stalls, operators, revenue splits, and venue credits
 - `Splits` for shared expenses, payment requests, circles, and settlement
 
-The physical tap experience is powered by Arx Halo NFC chips, but the chip is not treated as the place where meaningful value lives. Capital can stay in wallets and DeFi until payment time.
+The physical tap experience is powered by Arx Halo NFC chips. The chip is an authorization device: it signs
+an EIP-712 `PaymentAuth`, and `SplitHubPayments` pulls the funds from the chip owner's wallet (approved
+during onboarding). The chip never holds the money and there is no relayer: whichever wallet is signed in on
+the device submits the transaction.
 
 ## Stack
 
@@ -15,25 +17,31 @@ The physical tap experience is powered by Arx Halo NFC chips, but the chip is no
 - **Hosting:** Cloudflare Workers (`splithub` Worker on `splithub.space`), configured in `packages/nextjs/cloudflare.config.ts`
 - **Wallet/Auth:** Privy, Wagmi, Viem
 - **NFC:** `@arx-research/libhalo`
-- **Backend/Data:** Cloudflare D1 (SQLite) behind a supabase-js compatible layer (`lib/db`), Durable Object realtime, R2
-- **Agent Infra:** Vincent, OpenAI, Cloudflare Workflows + Cron Triggers
+- **Backend/Data:** Cloudflare D1 (SQLite) behind a supabase-js compatible layer (`lib/db`), Durable Object realtime
 - **Contracts:** Foundry, Solidity 0.8.19, OpenZeppelin, Base Sepolia (`84532`)
 - **Runtime:** Bun workspaces
+
+## Tap Payments
+
+Every payment surface goes through the same primitive:
+
+- `packages/nextjs/lib/tapPayment.ts`: `PaymentAuth` typed data, chip owner lookup (`SplitHubRegistry.ownerOf`),
+  nonce read, and `verifyPaymentTx` (server-side check of the `PaymentExecuted` event)
+- `packages/nextjs/hooks/useTapPayment.ts`: one tap when the payer is the signed-in user, two taps on a
+  merchant or stall terminal (identify chip owner, then sign); the device wallet submits `executePayment`
+
+Server routes never trust a client-reported payment: they verify the transaction before recording an order or
+stall payment. Multi-settle collects several chip signatures and submits them in one Multicall3 transaction.
 
 ## Product Surfaces
 
 ### 1. Stores
 
-Merchant and venue commerce surface.
-
-- store creation and operator dashboard
+- store creation and management by the store's admin and manager wallets
 - public store browsing
 - catalog and inventory management
-- split-recipient checkout between manager and admin
+- tap checkout: one onchain payment to the store's payout wallet, with the manager/admin split recorded on the order
 - store analytics
-- manager agents with run history and validations
-- supplier restock integration
-- scheduled store health scans via Cron Trigger, agent runs via Workflows
 
 Primary routes:
 
@@ -44,63 +52,34 @@ Primary code:
 
 - `packages/nextjs/app/api/stores`
 - `packages/nextjs/services/store`
-- `packages/nextjs/worker`
+- `packages/nextjs/components/store`
 
-### 2. DeFi
+### 2. Venues
 
-Treasury and yield surface.
+- events and venues owned by a wallet
+- stalls with operators and revenue split percentages
+- stall payment terminal
+- venue credits (`CreditToken`)
 
-- Vincent wallet session handling
-- wallet snapshot across Privy, agent wallet, and Aave
-- OpenAI planner with deterministic fallback
-- open position / withdraw flows
-- capital deployment to Aave
+Primary routes:
 
-Primary route:
-
-- `/defi`
-
-Primary code:
-
-- `packages/nextjs/app/api/vincent`
-- `packages/nextjs/services/agentPlannerService.ts`
-- `packages/nextjs/services/internalTreasuryService.ts`
-- `packages/nextjs/services/vincentExecutionService.ts`
-- `packages/nextjs/services/vincentWalletService.ts`
-
-### 3. Agent Pay
-
-Just-in-time payment liquidity layer.
-
-- payment readiness evaluation
-- per-user tap-limit support
-- top-up and withdraw decisioning
-- JIT funding before payment
-- payment reasoning UX
-
-Primary route:
-
-- `/agents-pay`
+- `/events`
+- `/events/[eventSlug]/[stallSlug]`
+- `/credits`
 
 Primary code:
 
-- `packages/nextjs/services/paymentReadinessService.ts`
-- `packages/nextjs/services/jitPaymentService.ts`
-- `packages/nextjs/services/jitReasoningService.ts`
-- `packages/nextjs/app/api/user/tap-limit/route.ts`
-- `packages/nextjs/app/api/vincent/prepare-payment/route.ts`
-- `packages/nextjs/app/api/vincent/readiness/route.ts`
+- `packages/nextjs/app/api/events`
+- `packages/nextjs/services/eventsService.ts`
+- `packages/nextjs/components/events`, `components/stall`, `components/credits`
 
-### 4. Splits and Tap Payments
-
-Original social payment surface, still active.
+### 3. Splits and Tap Payments
 
 - group expenses
 - live balances
 - payment requests
 - circles and auto-splitting
 - settle and multi-settle flows
-- chip-driven tap authorization
 
 Primary routes:
 
@@ -117,33 +96,28 @@ Primary routes:
 ```text
 packages/nextjs/
   app/
-    store/                  Store product routes
-    defi/                   DeFi route
-    agents-pay/             Agent Pay route
+    store/                  Store routes
+    events/, credits/       Venue routes
     splits/, settle/        Social payment routes
     api/stores/             Store backend APIs
-    api/vincent/            DeFi + Agent Pay APIs
+    api/events/             Event, stall and stall payment APIs
     api/payment-requests/   Payment request APIs
-    api/events/             Event + stall APIs
-    api/supplier/           Supplier adapter endpoint
   components/
-    store/                  Store UI and agent run UI
+    store/                  Store UI
+    events/, stall/         Venue and stall terminal UI
     splits/                 Balance and settlement UI
     settle/                 Payment settlement flows
     credits/                Venue credit UI
-    events/                 Event and stall management UI
+  hooks/useTapPayment.ts    Chip-authorized payment hook
+  lib/tapPayment.ts         PaymentAuth, chip owner lookup, payment verification
   services/
-    store/                  Store, checkout, analytics, agents, supplier logic
-    agentPlannerService.ts  DeFi planning
-    jitPaymentService.ts    Agent Pay JIT top-up logic
-    paymentReadinessService.ts
-    vincentExecutionService.ts
+    store/                  Store, checkout, analytics logic
+    eventsService.ts        Events, stalls, stall payments
   lib/db/                   D1 query layer (supabase-js compatible), realtime client, browser policy
   migrations/               D1 schema migrations (source of truth; mirrored by lib/db/schema.ts)
   worker/
-    index.ts                Worker entry: realtime upgrade, cron handler, exports
+    index.ts                Worker entry: realtime upgrade, exports
     realtime-hub.ts         RealtimeHub Durable Object (postgres_changes replacement)
-    store-agent-workflow.ts StoreAgentRunWorkflow
 
 packages/foundry/
   contracts/
@@ -155,7 +129,7 @@ packages/foundry/
 ## Contracts
 
 - **SplitHubRegistry**: maps chip addresses to owners
-- **SplitHubPayments**: payment execution and auth checks
+- **SplitHubPayments**: executes chip-signed `PaymentAuth` transfers from the owner's wallet
 - **CreditToken**: venue credits token
 
 ## Data Layer
@@ -166,8 +140,7 @@ packages/foundry/
   (reads open, writes only for the tables/actions client code performs).
 - `supabase.channel().on("postgres_changes", ...)` is served by the `RealtimeHub` Durable Object; every write
   through `lib/db` publishes changes.
-- Schema changes: add a file under `migrations/`, update `lib/db/schema.ts`, run `bun run test` (checks they match).
-- ERC-8004 evidence documents whose hashes go onchain are stored verbatim in R2 (`services/store/evidenceStore.ts`).
+- Schema changes: add a file under `migrations/`, update `lib/db/schema.ts`, run `bun run next:test` (checks they match).
 
 ## Database Areas
 
@@ -181,7 +154,9 @@ packages/foundry/
 - `circles`
 - `circle_members`
 
-### Events and stores
+### Venues and stores
+
+Stores and venue stalls share the `events`/`stalls` tables: a store is a stall inside its admin's network event.
 
 - `events`
 - `stalls`
@@ -191,99 +166,38 @@ packages/foundry/
 - `store_orders`
 - `store_order_items`
 
-### Store agents
-
-- `manager_agents`
-- `agent_runs`
-- `agent_validations`
-
 ## Important Flows
 
 ### Store checkout
 
-1. Build a quote for the cart.
-2. Split payout between manager and admin recipients.
-3. Collect signed payment legs from the buyer flow.
-4. Persist the order.
-5. Complete checkout and decrement inventory.
+1. Build a server-side quote for the cart.
+2. The buyer taps their chip; the device wallet submits one `executePayment` to the store's payout wallet.
+3. The checkout route verifies the `PaymentExecuted` event against the quote.
+4. Persist the order (with the manager/admin split) and decrement inventory.
 
 Relevant files:
 
 - `packages/nextjs/app/api/stores/[storeId]/checkout/route.ts`
 - `packages/nextjs/services/store/storeCheckout.ts`
+- `packages/nextjs/components/store/StoreCheckoutClient.tsx`
 
-### Store automation
+### Stall payment
 
-1. A manager agent is created for a store.
-2. Manual or scheduled runs are queued.
-3. The agent inspects store state and analytics.
-4. Safe actions can be taken through structured tools.
-5. Restock requests can be sent to a supplier adapter.
-
-Relevant files:
-
-- `packages/nextjs/services/store/storeAgentRuntime.ts`
-- `packages/nextjs/services/store/storeAgentQueue.ts`
-- `packages/nextjs/worker/store-agent-workflow.ts`
-- `packages/nextjs/services/store/supplierService.ts`
-
-### DeFi deployment
-
-1. User connects Vincent-backed session.
-2. Wallet snapshot is fetched.
-3. Planner computes valid capital actions.
-4. Funds can move from Privy wallet to agent wallet.
-5. Idle funds can be deployed to Aave or withdrawn back.
+1. The guest taps their chip on the stall terminal (identify, then sign).
+2. The terminal wallet submits the payment to the stall operator.
+3. `/api/events/pay` verifies the transaction and records the payment with the venue/operator split.
 
 Relevant files:
 
-- `packages/nextjs/app/defi/page.tsx`
-- `packages/nextjs/services/agentPlannerService.ts`
-- `packages/nextjs/services/internalTreasuryService.ts`
-
-### Agent Pay
-
-1. User configures a tap limit.
-2. SplitHub computes readiness from chip wallet, agent liquidity, and Aave reserve.
-3. JIT funding path is chosen.
-4. Funds move only when required for payment.
-
-Relevant files:
-
-- `packages/nextjs/app/agents-pay/page.tsx`
-- `packages/nextjs/services/paymentReadinessService.ts`
-- `packages/nextjs/services/jitPaymentService.ts`
+- `packages/nextjs/hooks/useStallPayment.ts`
+- `packages/nextjs/app/api/events/pay/route.ts`
 
 ## Product Constraints
 
-- Treat `Stores`, `DeFi`, and `Agent Pay` as first-class product features.
-- Do not describe the app as only bill splitting; that is now incomplete.
-- The chip should be described as an authorization device, not a stored-value vault.
-- Prefer saying the product enables payment without keeping idle balance parked for checkout readiness.
-- Current product messaging should emphasize:
-  - merchant/store commerce
-  - DeFi-backed treasury management
-  - just-in-time liquidity for tap payments
-
-## Key Files
-
-- `packages/nextjs/app/store/page.tsx`
-- `packages/nextjs/app/defi/page.tsx`
-- `packages/nextjs/app/agents-pay/page.tsx`
-- `packages/nextjs/app/api/stores/dashboard/route.ts`
-- `packages/nextjs/app/api/stores/[storeId]/checkout/route.ts`
-- `packages/nextjs/app/api/stores/[storeId]/agent/create/route.ts`
-- `packages/nextjs/app/api/stores/[storeId]/agent/pause/route.ts`
-- `packages/nextjs/app/api/stores/[storeId]/agent/runs/trigger/route.ts`
-- `packages/nextjs/services/store/storeAnalytics.ts`
-- `packages/nextjs/services/store/storeAgentRuntime.ts`
-- `packages/nextjs/services/paymentReadinessService.ts`
-- `packages/nextjs/services/jitPaymentService.ts`
-- `packages/nextjs/services/agentPlannerService.ts`
-- `packages/nextjs/services/store/storeAgentQueue.ts`
-- `packages/nextjs/worker/index.ts`
-- `packages/nextjs/lib/db/engine.ts`
-- `packages/nextjs/cloudflare.config.ts`
+- Treat `Stores`, `Venues`, and `Splits` as the product's features.
+- Do not describe the app as only bill splitting.
+- The chip is an authorization device, not a stored-value vault. Funds stay in the user's wallet until payment.
+- Do not add a relayer or server-held signing keys for payments; the user's tap plus a device wallet is enough.
 
 ## Commands
 
@@ -308,15 +222,18 @@ bun run db:migrate:remote   # production D1
 bun run deploy              # vite build + cf deploy (do not run plain `cf deploy`: it runs `next build`)
 ```
 
+## Contributing
+
+- Every commit credits Liz Merin George (@lizgeorge1) as co-author; `.husky/commit-msg` adds the trailer.
+- Pushes are mirrored to `TaraxioT/splithub` by `.github/workflows/mirror.yml`.
+
 ## Routes Worth Checking
 
 - `/store`
-- `/defi`
-- `/agents-pay`
+- `/events`
+- `/credits`
 - `/splits`
 - `/settle`
-- `/credits`
-- `/events`
 - `/request/create`
 - `/requests`
 - `/register`

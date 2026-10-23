@@ -4,11 +4,9 @@ import { useCallback, useMemo, useState } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { motion } from "framer-motion";
 import { Sparkles, Wallet } from "lucide-react";
-import { parseUnits } from "viem";
 import { ExpenseModal } from "~~/components/expense/ExpenseModal";
 import { SettleModal } from "~~/components/settle/SettleModal";
 import { type PaymentParams } from "~~/components/settle/types";
-import { AiDefiPanel } from "~~/components/splits/AiDefiPanel";
 import { BalanceTransferModal } from "~~/components/splits/BalanceTransferModal";
 import { BalancesLiveFeed } from "~~/components/splits/BalancesLiveFeed";
 import { ChipBalanceCard } from "~~/components/splits/ChipBalanceCard";
@@ -16,16 +14,13 @@ import { SplitsHero } from "~~/components/splits/SplitsHero";
 import { TOKENS, TOKEN_DECIMALS } from "~~/config/tokens";
 import { ANIMATION_DELAYS } from "~~/constants/ui";
 import { useHaloChip } from "~~/hooks/halochip-arx/useHaloChip";
-import { useAiDefiPlan } from "~~/hooks/useAiDefiPlan";
 import { useCurrentUser } from "~~/hooks/useCurrentUser";
-import { useEmbeddedWalletClient } from "~~/hooks/useEmbeddedWalletClient";
 import { useFriendBalancesRealtime } from "~~/hooks/useFriendBalancesRealtime";
 import { usePaymentRequestsRealtime } from "~~/hooks/usePaymentRequestsRealtime";
 import { useUSDCBalance } from "~~/hooks/useUSDCBalance";
-import { baseSepolia, createBaseSepoliaPublicClient } from "~~/lib/baseSepolia";
+import { createBaseSepoliaPublicClient } from "~~/lib/baseSepolia";
 import { broadcastRawChipTokenTransfer } from "~~/lib/chipTransactions";
 import { dispatchClientRefreshEvents } from "~~/lib/clientTransactionUtils";
-import { ERC20_ABI } from "~~/lib/contractAbis";
 import { type FriendBalance } from "~~/lib/supabase";
 import { canSettle, formatAmount } from "~~/utils/format";
 
@@ -34,7 +29,6 @@ export default function SplitsPage() {
   const { balances, overallBalance, loading, error, refresh: refreshBalances } = useFriendBalancesRealtime();
   const { chipAddress, isLoading: isCurrentUserLoading } = useCurrentUser();
   const { signDigest, isLoading: isHaloChipLoading } = useHaloChip();
-  const { getWalletClient } = useEmbeddedWalletClient();
   const {
     formattedBalance: walletBalance,
     isLoading: isWalletBalanceLoading,
@@ -57,14 +51,6 @@ export default function SplitsPage() {
   const [successFriendWallet, setSuccessFriendWallet] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
-  const [transferDirection, setTransferDirection] = useState<"cardToWallet" | "walletToCard">("walletToCard");
-  const {
-    loading: aiPlanLoading,
-    data: aiPlanData,
-    error: aiPlanError,
-    fetchPlan,
-    reset: resetAiPlan,
-  } = useAiDefiPlan();
 
   const walletAddress = user?.wallet?.address;
   const publicClient = useMemo(() => createBaseSepoliaPublicClient(), []);
@@ -259,42 +245,9 @@ export default function SplitsPage() {
     ]);
   }, [refetchWalletBalance, chipAddress, refetchCardBalance, refreshBalances, refreshRequests]);
 
-  const openWalletToCardModal = useCallback(() => {
-    setTransferDirection("walletToCard");
-    setIsTransferModalOpen(true);
-  }, []);
-
   const openCardToWalletModal = useCallback(() => {
-    setTransferDirection("cardToWallet");
     setIsTransferModalOpen(true);
   }, []);
-
-  const handleWalletToCard = useCallback(
-    async (amount: string) => {
-      if (!chipAddress) {
-        throw new Error("Register your card first.");
-      }
-
-      const walletClient = await getWalletClient();
-      const hash = await walletClient.writeContract({
-        account: walletClient.account!,
-        address: TOKENS.USDC,
-        abi: ERC20_ABI,
-        chain: baseSepolia,
-        functionName: "transfer",
-        args: [chipAddress, parseUnits(amount, TOKEN_DECIMALS.USDC)],
-      });
-
-      const receipt = await publicClient.waitForTransactionReceipt({ hash });
-      if (receipt.status !== "success") {
-        throw new Error("Wallet to card transfer failed on-chain.");
-      }
-
-      await refreshAppState();
-      return { txHash: hash };
-    },
-    [chipAddress, getWalletClient, publicClient, refreshAppState],
-  );
 
   const handleCardToWallet = useCallback(
     async (amount: string) => {
@@ -316,17 +269,6 @@ export default function SplitsPage() {
       return { txHash: result.txHash };
     },
     [chipAddress, walletAddress, publicClient, signDigest, refreshAppState],
-  );
-
-  const handleTransferConfirm = useCallback(
-    async (amount: string) => {
-      if (transferDirection === "cardToWallet") {
-        return handleCardToWallet(amount);
-      }
-
-      return handleWalletToCard(amount);
-    },
-    [transferDirection, handleCardToWallet, handleWalletToCard],
   );
 
   // Loading state - Privy not ready
@@ -468,16 +410,12 @@ export default function SplitsPage() {
         isWalletLoading={isWalletBalanceLoading}
         friendCount={balances.length}
         onAddExpense={() => setIsExpenseModalOpen(true)}
-        onAiAllocate={fetchPlan}
       />
-
-      <AiDefiPanel loading={aiPlanLoading} data={aiPlanData} error={aiPlanError} onClose={resetAiPlan} />
 
       <ChipBalanceCard
         chipAddress={chipAddress}
         chipBalance={cardBalance}
         isLoading={isCurrentUserLoading || (!!chipAddress && isCardBalanceLoading)}
-        onMoveToCard={openWalletToCardModal}
         onMoveToWallet={openCardToWalletModal}
       />
 
@@ -515,11 +453,11 @@ export default function SplitsPage() {
 
       <BalanceTransferModal
         isOpen={isTransferModalOpen}
-        direction={transferDirection}
-        maxBalance={transferDirection === "cardToWallet" ? cardBalance : walletBalance}
-        isNfcSigning={transferDirection === "cardToWallet" && isHaloChipLoading}
+        direction="cardToWallet"
+        maxBalance={cardBalance}
+        isNfcSigning={isHaloChipLoading}
         onClose={() => setIsTransferModalOpen(false)}
-        onConfirm={handleTransferConfirm}
+        onConfirm={handleCardToWallet}
       />
 
       {/* Error Toast */}

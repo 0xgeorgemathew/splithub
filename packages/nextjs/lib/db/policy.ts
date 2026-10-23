@@ -4,7 +4,8 @@ import { DbError, schema } from "./schema";
 /**
  * What browser code may do through POST /api/db. Reads are open (parity with the old Supabase anon
  * key); writes are limited to the tables and actions client components actually perform. Store,
- * agent, trust and settlement tables are only writable from server code.
+ * stall payment and settlement tables are only writable from server code (they are recorded after the
+ * server verifies the on-chain payment).
  */
 const BROWSER_WRITES: Record<string, QueryAction[]> = {
   users: ["insert", "update"],
@@ -12,7 +13,6 @@ const BROWSER_WRITES: Record<string, QueryAction[]> = {
   circle_members: ["insert", "delete"],
   events: ["insert", "update", "delete"],
   stalls: ["insert", "update", "delete"],
-  stall_payments: ["insert", "update"],
   expense: ["insert", "delete"],
   expense_participants: ["insert"],
   payment_requests: ["delete"],

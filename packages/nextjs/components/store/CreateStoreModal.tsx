@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "~~/components/ui/Modal";
-import { DEMO_OPERATOR_WALLET } from "~~/services/store/shared";
 
 interface CreateStoreModalProps {
   isOpen: boolean;
@@ -17,7 +16,7 @@ export function CreateStoreModal({ isOpen, onClose, adminWallet, onCreated }: Cr
   const [networkName, setNetworkName] = useState("SplitHub Store Network");
   const [storeName, setStoreName] = useState("");
   const [storeDescription, setStoreDescription] = useState("");
-  const [managerWallet, setManagerWallet] = useState(DEMO_OPERATOR_WALLET);
+  const [managerWallet, setManagerWallet] = useState(adminWallet);
   const [splitPercentage, setSplitPercentage] = useState("80");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +24,7 @@ export function CreateStoreModal({ isOpen, onClose, adminWallet, onCreated }: Cr
   const reset = () => {
     setStoreName("");
     setStoreDescription("");
-    setManagerWallet(DEMO_OPERATOR_WALLET);
+    setManagerWallet(adminWallet);
     setSplitPercentage("80");
     setError(null);
   };

@@ -11,12 +11,10 @@ type ReceiptLine = { time?: string; tag?: string; text: string; amount?: string 
 // One tap, as the payment terminal would print it
 const LINES: ReceiptLine[] = [
   { time: "14:02:11", tag: "TAP", text: "chip 0x7a3f…91c2" },
-  { text: "signed on chip", amount: "ok" },
-  { time: "14:02:11", tag: "CHECK", text: "wallet balance", amount: "$3.20" },
-  { text: "payment needs", amount: "$18.50" },
-  { time: "14:02:12", tag: "FUND", text: "Aave → wallet", amount: "$15.30" },
-  { time: "14:02:12", tag: "PAY", text: "Blockhouse Café", amount: "$18.50" },
-  { text: "manager 90% · admin 10%" },
+  { text: "owner 0x51d0…e4a8", amount: "found" },
+  { time: "14:02:12", tag: "SIGN", text: "payment authorized", amount: "ok" },
+  { time: "14:02:12", tag: "PAY", text: "wallet → Blockhouse Café", amount: "$18.50" },
+  { text: "manager 90% · venue 10%" },
 ];
 
 const LINE_INTERVAL = 650;
@@ -126,11 +124,11 @@ export function TapReceipt() {
                 >
                   <div className="my-3 border-t border-dashed border-[#1b1b1b]/30" />
                   <div className="flex items-baseline justify-between text-[11px] font-bold">
-                    <span>STILL EARNING IN AAVE</span>
-                    <span className="tabular-nums">$2,481.70</span>
+                    <span>PAID FROM WALLET</span>
+                    <span className="tabular-nums">$18.50</span>
                   </div>
                   <div className="flex items-baseline justify-between text-[11px] text-[#1b1b1b]/55 mt-1">
-                    <span>parked for checkout</span>
+                    <span>held on the chip</span>
                     <span className="tabular-nums">$0.00</span>
                   </div>
                 </motion.div>

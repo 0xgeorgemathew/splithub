@@ -281,7 +281,7 @@ describe("mutations", () => {
     ]);
   });
 
-  test("json columns and upsert onConflict", async () => {
+  test("upsert onConflict", async () => {
     const { data: event } = await from("events")
       .insert({ event_name: "N", event_slug: "n", owner_wallet: alice })
       .select()
@@ -297,26 +297,6 @@ describe("mutations", () => {
       })
       .select()
       .single();
-    const { data: agent } = await from("manager_agents")
-      .insert({ stall_id: stall.id, agent_name: "A", operator_wallet: alice, allowed_skus: ["sku-1"] })
-      .select()
-      .single();
-    expect(agent.allowed_skus).toEqual(["sku-1"]);
-    expect(agent.allowed_supplier_urls).toEqual([]);
-
-    const { data: run } = await from("agent_runs")
-      .insert({
-        agent_id: agent.id,
-        run_type: "scan",
-        trigger_source: "manual",
-        state: "planning",
-        output_json: { actions: [{ sku: "a" }] },
-      })
-      .select("*")
-      .single();
-    expect(run.output_json).toEqual({ actions: [{ sku: "a" }] });
-    expect(run.tool_calls_json).toEqual([]);
-
     const { data: item } = await from("store_items")
       .insert({ stall_id: stall.id, sku: "a", name: "A", price: 1.5, token_address: "0x" })
       .select()

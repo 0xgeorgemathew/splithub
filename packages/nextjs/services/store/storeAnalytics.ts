@@ -1,8 +1,7 @@
-import { getManagerAgentByStore, getPublicStores, getStoreItems } from "./storeQueries";
-import { resolveStoreOperatorWallet } from "./shared";
+import { getPublicStores, getStoreItems } from "./storeQueries";
 import type { Event } from "~~/lib/events.types";
 import type { StoreAnalytics, StoreDashboardData, StoreWithCatalog } from "~~/lib/store.types";
-import type { AgentRun, AgentValidation, ManagerAgent, StoreOrder, StoreOrderItem } from "~~/lib/supabase";
+import type { StoreOrder, StoreOrderItem } from "~~/lib/supabase";
 import { supabase } from "~~/lib/supabase";
 
 export async function getStoreAnalytics(stallId: number): Promise<StoreAnalytics> {
@@ -81,7 +80,6 @@ export async function getStoreAnalytics(stallId: number): Promise<StoreAnalytics
 
 export async function getStoreDashboardData(wallet: string): Promise<StoreDashboardData> {
   const normalizedWallet = wallet.toLowerCase();
-  const operatorWallet = resolveStoreOperatorWallet();
 
   const [ownedNetworksResult, managedStoresResult, publicStores, ordersResult] = await Promise.all([
     supabase.from("events").select("*").eq("owner_wallet", normalizedWallet).order("created_at", { ascending: false }),
@@ -94,7 +92,7 @@ export async function getStoreDashboardData(wallet: string): Promise<StoreDashbo
         operator_user:users!operator_wallet(*)
       `,
       )
-      .eq("operator_wallet", operatorWallet)
+      .eq("operator_wallet", normalizedWallet)
       .order("created_at", { ascending: false }),
     getPublicStores(12),
     supabase
@@ -122,7 +120,6 @@ export async function getStoreDashboardData(wallet: string): Promise<StoreDashbo
       network: store.event,
       manager_user: store.operator_user,
       items: await getStoreItems(store.id),
-      manager_agent: await getManagerAgentByStore(store.id),
     })),
   );
 
@@ -132,35 +129,11 @@ export async function getStoreDashboardData(wallet: string): Promise<StoreDashbo
     ? (((await supabase.from("store_order_items").select("*").in("order_id", orderIds)).data || []) as StoreOrderItem[])
     : [];
 
-  const storeIds = managedStores.map(store => store.id);
-  const agents = storeIds.length
-    ? (((await supabase.from("manager_agents").select("*").in("stall_id", storeIds)).data || []) as ManagerAgent[])
-    : [];
-  const agentIds = agents.map(agent => agent.id);
-  const agentRuns = agentIds.length
-    ? (((
-        await supabase
-          .from("agent_runs")
-          .select("*")
-          .in("agent_id", agentIds)
-          .order("started_at", { ascending: false })
-          .limit(20)
-      ).data || []) as AgentRun[])
-    : [];
-
-  const runIds = agentRuns.map(run => run.id);
-  const validations = runIds.length
-    ? (((await supabase.from("agent_validations").select("*").in("agent_run_id", runIds)).data ||
-        []) as AgentValidation[])
-    : [];
-
   return {
     ownedNetworks: (ownedNetworksResult.data || []) as Event[],
     managedStores: managedStores as StoreWithCatalog[],
     publicStores,
     recentOrders,
     recentOrderItems: orderItems,
-    agentRuns,
-    validations,
   };
 }

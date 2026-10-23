@@ -1,33 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isAddress } from "viem";
-import {
-  buildCheckoutQuote,
-  completeStoreOrder,
-  createStoreOrderRecord,
-  decrementInventoryForQuote,
-  failStoreOrder,
-} from "~~/services/storeService";
+import { type Address, type Hex, isHash } from "viem";
+import { createBaseSepoliaPublicClient } from "~~/lib/baseSepolia";
+import { supabase } from "~~/lib/supabase";
+import { verifyPaymentTx } from "~~/lib/tapPayment";
+import { buildCheckoutQuote, createStoreOrderRecord, decrementInventoryForQuote } from "~~/services/storeService";
 import { ensureUserExists } from "~~/services/userService";
 
 export const dynamic = "force-dynamic";
 
-interface SignedPayment {
-  payer: `0x${string}`;
-  recipient: `0x${string}`;
-  token: `0x${string}`;
-  amount: string;
-  nonce: string;
-  deadline: string;
-  signature: string;
-}
-
-const normalizeAddress = (value: string) => value.toLowerCase();
-
+/**
+ * intent "quote": price the cart server-side; the client pays `quote.payoutAmountMicros` to
+ * `quote.payoutRecipient` with a chip-authorized SplitHubPayments transfer.
+ * intent "confirm": re-quote, verify the on-chain payment in `txHash`, then record the order.
+ */
 export async function POST(request: NextRequest, { params }: { params: Promise<{ storeId: string }> }) {
   try {
     const { storeId } = await params;
     const body = await request.json();
-    const { intent = "quote", cart = [], buyerWallet, payments = [] } = body;
+    const { intent = "quote", cart = [], txHash } = body;
 
     if (!Array.isArray(cart) || cart.length === 0) {
       return NextResponse.json({ error: "A non-empty cart is required" }, { status: 400 });
@@ -39,109 +29,41 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ quote });
     }
 
-    if (!buyerWallet || !isAddress(buyerWallet)) {
-      return NextResponse.json({ error: "Valid buyerWallet is required for checkout confirmation" }, { status: 400 });
+    if (typeof txHash !== "string" || !isHash(txHash)) {
+      return NextResponse.json({ error: "A payment txHash is required to confirm checkout" }, { status: 400 });
     }
 
-    await ensureUserExists(buyerWallet);
-
-    if (!Array.isArray(payments) || payments.length !== 2) {
-      return NextResponse.json({ error: "Exactly two signed payments are required" }, { status: 400 });
+    const { data: existing } = await supabase.from("store_orders").select("id").eq("tx_hash", txHash).maybeSingle();
+    if (existing) {
+      return NextResponse.json({ error: "This payment has already been used for an order" }, { status: 409 });
     }
 
-    const [managerPayment, adminPayment] = payments as SignedPayment[];
-    const expectedRecipients = [quote.managerRecipient.toLowerCase(), quote.adminRecipient.toLowerCase()].sort();
-    const receivedRecipients = [managerPayment.recipient.toLowerCase(), adminPayment.recipient.toLowerCase()].sort();
-
-    if (expectedRecipients.join(":") !== receivedRecipients.join(":")) {
-      return NextResponse.json(
-        { error: "Signed recipients do not match the current store payout recipients" },
-        { status: 400 },
-      );
-    }
-
-    const normalizedBuyer = normalizeAddress(buyerWallet);
-    const microsTotal = BigInt(quote.subtotalMicros);
-    const microsSigned = BigInt(managerPayment.amount) + BigInt(adminPayment.amount);
-
-    if (microsSigned !== microsTotal) {
-      return NextResponse.json(
-        { error: "Signed payment amounts do not match the current quote total" },
-        { status: 400 },
-      );
-    }
-
-    const payoutByRecipient = new Map<string, bigint>([
-      [quote.managerRecipient.toLowerCase(), BigInt(quote.managerAmountMicros)],
-      [quote.adminRecipient.toLowerCase(), BigInt(quote.adminAmountMicros)],
-    ]);
-
-    for (const payment of payments as SignedPayment[]) {
-      if (!isAddress(payment.payer) || !isAddress(payment.recipient) || !isAddress(payment.token)) {
-        return NextResponse.json({ error: "Each signed payment must include valid addresses" }, { status: 400 });
-      }
-
-      if (payment.payer.toLowerCase() !== normalizedBuyer) {
-        return NextResponse.json({ error: "Signed payment payer does not match buyerWallet" }, { status: 400 });
-      }
-
-      if (payment.token.toLowerCase() !== quote.tokenAddress.toLowerCase()) {
-        return NextResponse.json({ error: "Signed payment token does not match store quote token" }, { status: 400 });
-      }
-
-      const expectedAmount = payoutByRecipient.get(payment.recipient.toLowerCase());
-      if (expectedAmount === undefined || BigInt(payment.amount) !== expectedAmount) {
-        return NextResponse.json(
-          { error: `Signed amount for ${payment.recipient} does not match the server quote` },
-          { status: 400 },
-        );
-      }
-    }
-
-    const orderRecord = await createStoreOrderRecord({
-      stallId: Number(storeId),
-      buyerWallet,
-      quote,
-      status: "pending",
+    const payment = await verifyPaymentTx(createBaseSepoliaPublicClient(), txHash as Hex, {
+      recipient: quote.payoutRecipient as Address,
+      token: quote.tokenAddress as Address,
+      amount: BigInt(quote.payoutAmountMicros),
     });
 
+    await ensureUserExists(payment.payer);
+
+    const { order } = await createStoreOrderRecord({
+      stallId: Number(storeId),
+      buyerWallet: payment.payer,
+      quote,
+      status: "completed",
+      txHash,
+    });
+
+    let inventoryWarning: string | null = null;
     try {
-      const relayResponse = await fetch(`${request.nextUrl.origin}/api/relay/batch-payment`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          payments,
-        }),
-      });
-
-      const relayResult = await relayResponse.json();
-      if (!relayResponse.ok) {
-        await failStoreOrder(orderRecord.order.id);
-        return NextResponse.json({ error: relayResult.error || "Batch payment failed" }, { status: 500 });
-      }
-
-      const completedOrder = await completeStoreOrder(orderRecord.order.id, relayResult.txHash);
-
-      let inventoryWarning: string | null = null;
-      try {
-        await decrementInventoryForQuote(quote);
-      } catch (inventoryError) {
-        console.error("Inventory decrement warning:", inventoryError);
-        inventoryWarning =
-          inventoryError instanceof Error ? inventoryError.message : "Inventory could not be decremented automatically";
-      }
-
-      return NextResponse.json({
-        success: true,
-        txHash: relayResult.txHash,
-        order: completedOrder,
-        quote,
-        inventoryWarning,
-      });
-    } catch (relayError) {
-      await failStoreOrder(orderRecord.order.id);
-      throw relayError;
+      await decrementInventoryForQuote(quote);
+    } catch (inventoryError) {
+      console.error("Inventory decrement warning:", inventoryError);
+      inventoryWarning =
+        inventoryError instanceof Error ? inventoryError.message : "Inventory could not be decremented automatically";
     }
+
+    return NextResponse.json({ success: true, txHash, order, quote, inventoryWarning });
   } catch (error) {
     console.error("Store checkout error:", error);
     return NextResponse.json(

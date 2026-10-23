@@ -9,22 +9,15 @@ const products = [
     name: "Stores",
     href: "/store",
     description:
-      "Run a store that takes tap payments. Each sale splits between manager and admin at checkout, and a store agent watches stock and restocks from suppliers.",
-    details: ["Catalog & inventory", "Split payouts", "Store agents"],
+      "Open a store, add your catalog and stock, and take payments with a tap. Buyers pay straight from their wallet; each sale is recorded with its manager and admin split.",
+    details: ["Catalog & inventory", "Tap checkout", "Sales analytics"],
   },
   {
-    name: "Agent Pay",
-    href: "/agents-pay",
+    name: "Venues",
+    href: "/events",
     description:
-      "Set a tap limit. Before each payment, SplitHub checks your wallet, agent wallet, and Aave reserve, then tops up only what's missing.",
-    details: ["Tap limits", "Just-in-time funding", "Payment readiness"],
-  },
-  {
-    name: "DeFi",
-    href: "/defi",
-    description:
-      "See your Privy wallet, agent wallet, and Aave position in one place. Deploy idle USDC to Aave or pull it back with a planner that shows each step.",
-    details: ["Vincent agent wallet", "Aave deposits", "Withdraw anytime"],
+      "Set up a venue or event, add stalls, and assign operators. Guests tap to pay at any stall and revenue splits between the venue and each operator.",
+    details: ["Stalls & operators", "Revenue splits", "Live dashboard"],
   },
   {
     name: "Splits",
@@ -49,10 +42,10 @@ export function ProductIndex() {
           <h2 className="font-wide text-3xl sm:text-4xl lg:text-5xl font-extrabold uppercase tracking-[-0.02em] leading-[0.95] m-0">
             One chip.
             <br />
-            Four ways to use it.
+            Three ways to use it.
           </h2>
           <p className="font-[family-name:var(--font-outfit)] m-0 max-w-sm text-base-content/55 font-light leading-relaxed">
-            The same tap pays a merchant, settles a dinner split, or pulls funds from your treasury.
+            The same tap pays a store, a stall at a venue, or settles a dinner split with friends.
           </p>
         </motion.div>
 

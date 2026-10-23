@@ -1,63 +1,30 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { StoreActivityLogCard } from "./StoreActivityLogCard";
-import { StoreAgentGuardrailsCard } from "./StoreAgentGuardrailsCard";
 import { StoreCatalogGrid } from "./StoreCatalogGrid";
 import { StoreCheckoutPanel } from "./StoreCheckoutPanel";
 import { StoreHero } from "./StoreHero";
 import { StoreManagerControls } from "./StoreManagerControls";
-import { StoreRecentAgentRunsCard } from "./StoreRecentAgentRunsCard";
-import { StoreTrustPanel } from "./StoreTrustPanel";
-import type { AgentFeedback, CheckoutLog, ItemFormState } from "./checkout/shared";
+import type { CheckoutLog, ItemFormState } from "./checkout/shared";
 import { usePrivy } from "@privy-io/react-auth";
-import { createPublicClient, http } from "viem";
-import { baseSepolia, sepolia } from "viem/chains";
-import deployedContracts from "~~/contracts/deployedContracts";
-import { useHaloChip } from "~~/hooks/halochip-arx/useHaloChip";
-import { useEmbeddedWalletClient } from "~~/hooks/useEmbeddedWalletClient";
-import { ERC8004_DEFAULT_IDENTITY_REGISTRY } from "~~/lib/erc8004";
-import type { StoreTrustSnapshot, StoreWithCatalog } from "~~/lib/store.types";
-import type { AgentRun, AgentValidation } from "~~/lib/supabase";
+import type { Address } from "viem";
+import { useCurrentUser } from "~~/hooks/useCurrentUser";
+import { type TapPaymentStep, useTapPayment } from "~~/hooks/useTapPayment";
+import type { CheckoutQuote, StoreWithCatalog } from "~~/lib/store.types";
 
-const CHAIN_ID = 84532;
-
-const PAYMENT_AUTH_TYPES = {
-  PaymentAuth: [
-    { name: "payer", type: "address" },
-    { name: "recipient", type: "address" },
-    { name: "token", type: "address" },
-    { name: "amount", type: "uint256" },
-    { name: "nonce", type: "uint256" },
-    { name: "deadline", type: "uint256" },
-  ],
+const STEP_LOGS: Record<TapPaymentStep, string> = {
+  identifying: "Tap the buyer's chip to identify their wallet.",
+  tapping: "Tap again to authorize the payment.",
+  submitting: "Submitting the chip-authorized payment to Base Sepolia.",
+  confirming: "Waiting for the payment to confirm.",
 };
-
-const REGISTRY_ABI = [
-  {
-    type: "function",
-    name: "ownerOf",
-    inputs: [{ name: "signer", type: "address" }],
-    outputs: [{ name: "", type: "address" }],
-    stateMutability: "view",
-  },
-] as const;
-
-const PAYMENTS_ABI = [
-  {
-    type: "function",
-    name: "nonces",
-    inputs: [{ name: "payer", type: "address" }],
-    outputs: [{ name: "", type: "uint256" }],
-    stateMutability: "view",
-  },
-] as const;
 
 export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
   const { authenticated, login, user } = usePrivy();
   const wallet = user?.wallet?.address;
-  const { signTypedData } = useHaloChip();
-  const { sendTransaction } = useEmbeddedWalletClient();
+  const { chipAddress } = useCurrentUser();
+  const { pay } = useTapPayment();
   const [quantities, setQuantities] = useState<Record<number, number>>({});
   const [logs, setLogs] = useState<CheckoutLog[]>([]);
   const [checkoutBusy, setCheckoutBusy] = useState(false);
@@ -65,12 +32,6 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
   const [receipt, setReceipt] = useState<{ txHash: string; orderId: number } | null>(null);
   const [managerBusy, setManagerBusy] = useState(false);
   const [managerError, setManagerError] = useState<string | null>(null);
-  const [agentFeedback, setAgentFeedback] = useState<AgentFeedback | null>(null);
-  const [recentAgentRuns, setRecentAgentRuns] = useState<AgentRun[]>([]);
-  const [recentValidations, setRecentValidations] = useState<AgentValidation[]>([]);
-  const [trustSnapshot, setTrustSnapshot] = useState<StoreTrustSnapshot | null>(null);
-  const [agentRunsLoading, setAgentRunsLoading] = useState(false);
-  const [queuedRunRequestedAt, setQueuedRunRequestedAt] = useState<number | null>(null);
   const [itemForm, setItemForm] = useState<ItemFormState>({
     sku: "",
     name: "",
@@ -78,40 +39,9 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
     stock: "",
   });
 
-  const chainContracts = deployedContracts[CHAIN_ID] as Record<string, { address: string }> | undefined;
-  const paymentsAddress = chainContracts?.SplitHubPayments?.address as `0x${string}` | undefined;
-  const registryAddress = chainContracts?.SplitHubRegistry?.address as `0x${string}` | undefined;
-
-  const publicClient = useMemo(
-    () =>
-      createPublicClient({
-        chain: baseSepolia,
-        transport: http(),
-      }),
-    [],
-  );
-
   const isManager = wallet?.toLowerCase() === store.operator_wallet?.toLowerCase();
   const isAdmin = wallet?.toLowerCase() === store.network?.owner_wallet?.toLowerCase();
   const canManage = Boolean(isManager || isAdmin);
-  const currentIdentityRegistryAddress = (
-    process.env.NEXT_PUBLIC_ERC8004_IDENTITY_REGISTRY_ADDRESS || ERC8004_DEFAULT_IDENTITY_REGISTRY
-  ).toLowerCase();
-  const managerTrustRegisteredOnCurrentRegistry = Boolean(
-    trustSnapshot?.managerTrustAgent?.registry_agent_id &&
-      trustSnapshot.managerTrustAgent.identity_registry_address?.toLowerCase() === currentIdentityRegistryAddress,
-  );
-  const managerTrustAutomationEnabled = Boolean(trustSnapshot?.managerAutomationEnabled);
-  const needsManagerTrustRegistration = Boolean(store.manager_agent && !managerTrustRegisteredOnCurrentRegistry);
-  const needsValidationSignature = Boolean(
-    !managerTrustAutomationEnabled &&
-      isManager &&
-      managerTrustRegisteredOnCurrentRegistry &&
-      trustSnapshot?.latestValidation &&
-      !trustSnapshot.latestValidation.request_tx_hash &&
-      trustSnapshot.latestValidation.status === "pending",
-  );
-  const latestRun = recentAgentRuns[0] || null;
 
   const cart = useMemo(
     () =>
@@ -126,28 +56,7 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
   );
 
   const cartTotal = cart.reduce((sum, line) => sum + Number(line.item.price) * line.quantity, 0);
-
-  const fetchAgentLogs = useCallback(async () => {
-    if (!store.manager_agent?.id) return;
-
-    setAgentRunsLoading(true);
-    try {
-      const response = await fetch(`/api/agents/${store.manager_agent.id}/logs`, {
-        cache: "no-store",
-      });
-      const result = await response.json();
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to fetch agent logs");
-      }
-      setRecentAgentRuns(result.runs || []);
-      setRecentValidations(result.validations || []);
-      setTrustSnapshot(result.trust || null);
-    } catch (error) {
-      console.error("Failed to refresh agent logs:", error);
-    } finally {
-      setAgentRunsLoading(false);
-    }
-  }, [store.manager_agent?.id]);
+  const cartLines = cart.map(line => ({ itemId: line.itemId, quantity: line.quantity }));
 
   const pushLog = (message: string, tone: CheckoutLog["tone"] = "info") => {
     setLogs(prev => [
@@ -167,96 +76,9 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
     }));
   };
 
-  useEffect(() => {
-    if (!store.manager_agent?.id) {
-      setRecentAgentRuns([]);
-      setRecentValidations([]);
-      setTrustSnapshot(null);
-      return;
-    }
-
-    void fetchAgentLogs();
-
-    const interval = window.setInterval(
-      () => {
-        void fetchAgentLogs();
-      },
-      agentFeedback?.queued ? 3000 : 10000,
-    );
-
-    return () => window.clearInterval(interval);
-  }, [agentFeedback?.queued, fetchAgentLogs, store.manager_agent?.id]);
-
-  useEffect(() => {
-    if (!agentFeedback?.queued || !queuedRunRequestedAt || recentAgentRuns.length === 0) {
-      return;
-    }
-
-    const latestRun = recentAgentRuns[0];
-    const latestRunStartedAt = Date.parse(latestRun.started_at);
-    if (Number.isNaN(latestRunStartedAt) || latestRunStartedAt < queuedRunRequestedAt - 5000) {
-      return;
-    }
-
-    const validation = recentValidations.find(candidate => candidate.agent_run_id === latestRun.id);
-
-    if (latestRun.state !== "submitted" && latestRun.state !== "failed") {
-      setAgentFeedback({
-        state: latestRun.state,
-        summary:
-          latestRun.decision_summary ||
-          `The queued store agent run is now ${latestRun.state}. Recent runs below will keep refreshing automatically.`,
-        actionCount: 0,
-        validationStatus: validation?.status,
-        queued: true,
-        currentStepLabel: "Trigger manager action",
-        nextStepLabel: "Wait for the manager run to complete",
-        nextStepAutomatic: true,
-      });
-      return;
-    }
-
-    const actionCount = Array.isArray(latestRun.output_json?.actions) ? latestRun.output_json.actions.length : 0;
-    const validationRequestSubmitted = Boolean(validation?.request_tx_hash);
-    const waitingForAutomaticValidation = Boolean(
-      managerTrustAutomationEnabled && validation && !validation.request_tx_hash && validation.status === "pending",
-    );
-    setAgentFeedback({
-      state: latestRun.state,
-      summary: latestRun.decision_summary || "Agent run completed.",
-      actionCount,
-      validationStatus: validation?.status,
-      queued: false,
-      currentStepLabel:
-        latestRun.state === "failed"
-          ? "Trigger manager action"
-          : validationRequestSubmitted
-            ? "Validation request submitted automatically"
-            : waitingForAutomaticValidation
-              ? "Validation request submits automatically"
-            : "Trigger manager action",
-      nextStepLabel:
-        latestRun.state === "failed"
-          ? "Review the failed run"
-          : validationRequestSubmitted
-            ? "Validator verifies automatically"
-            : waitingForAutomaticValidation
-              ? "Validation request submits automatically"
-            : "Submit validation onchain",
-      nextStepAutomatic: Boolean(validationRequestSubmitted || waitingForAutomaticValidation),
-      requiresManualAction: !managerTrustAutomationEnabled && !validationRequestSubmitted,
-    });
-    setQueuedRunRequestedAt(null);
-  }, [agentFeedback?.queued, managerTrustAutomationEnabled, queuedRunRequestedAt, recentAgentRuns, recentValidations]);
-
   const handleCheckout = async () => {
     if (!authenticated || !wallet) {
       login();
-      return;
-    }
-
-    if (!paymentsAddress || !registryAddress) {
-      setCheckoutError("Payment contracts are not configured on this network");
       return;
     }
 
@@ -270,130 +92,45 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
       const quoteResponse = await fetch(`/api/stores/${store.id}/checkout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          intent: "quote",
-          cart: cart.map(line => ({ itemId: line.itemId, quantity: line.quantity })),
-        }),
+        body: JSON.stringify({ intent: "quote", cart: cartLines }),
       });
       const quoteResult = await quoteResponse.json();
       if (!quoteResponse.ok) {
         throw new Error(quoteResult.error || "Failed to quote cart");
       }
-      const quote = quoteResult.quote;
+      const quote = quoteResult.quote as CheckoutQuote;
 
-      const domain = {
-        name: "SplitHubPayments",
-        version: "1",
-        chainId: BigInt(CHAIN_ID),
-        verifyingContract: paymentsAddress,
-      };
-
-      const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
-
-      pushLog("Tap 1 of 3: discovering the Halo chip owner.");
-      const discovery = await signTypedData({
-        domain,
-        types: PAYMENT_AUTH_TYPES,
-        primaryType: "PaymentAuth",
-        message: {
-          payer: "0x0000000000000000000000000000000000000000",
-          recipient: quote.managerRecipient,
-          token: quote.tokenAddress,
-          amount: BigInt(quote.managerAmountMicros),
-          nonce: 0n,
-          deadline,
+      // Staff checking out a customer on this device identify the buyer by chip; everyone else pays
+      // with their own registered chip in a single tap.
+      const payer = !canManage && chipAddress ? (wallet as Address) : undefined;
+      const { txHash } = await pay(
+        {
+          payer,
+          recipient: quote.payoutRecipient,
+          token: quote.tokenAddress as Address,
+          amount: BigInt(quote.payoutAmountMicros),
         },
-      });
+        step => pushLog(STEP_LOGS[step]),
+      );
 
-      const chipAddress = discovery.address as `0x${string}`;
-      const payerWallet = (await publicClient.readContract({
-        address: registryAddress,
-        abi: REGISTRY_ABI,
-        functionName: "ownerOf",
-        args: [chipAddress],
-      })) as `0x${string}`;
-
-      if (!payerWallet || payerWallet === "0x0000000000000000000000000000000000000000") {
-        throw new Error("Chip is not registered to a payer wallet");
-      }
-
-      const nonce = (await publicClient.readContract({
-        address: paymentsAddress,
-        abi: PAYMENTS_ABI,
-        functionName: "nonces",
-        args: [payerWallet],
-      })) as bigint;
-
-      pushLog("Tap 2 of 3: signing manager payout.");
-      const managerSignature = await signTypedData({
-        domain,
-        types: PAYMENT_AUTH_TYPES,
-        primaryType: "PaymentAuth",
-        message: {
-          payer: payerWallet,
-          recipient: quote.managerRecipient,
-          token: quote.tokenAddress,
-          amount: BigInt(quote.managerAmountMicros),
-          nonce,
-          deadline,
-        },
-      });
-
-      pushLog("Tap 3 of 3: signing admin payout.");
-      const adminSignature = await signTypedData({
-        domain,
-        types: PAYMENT_AUTH_TYPES,
-        primaryType: "PaymentAuth",
-        message: {
-          payer: payerWallet,
-          recipient: quote.adminRecipient,
-          token: quote.tokenAddress,
-          amount: BigInt(quote.adminAmountMicros),
-          nonce: nonce + 1n,
-          deadline,
-        },
-      });
-
-      pushLog("Submitting split checkout to the batch relayer.");
+      pushLog("Payment confirmed. Recording the order.");
       const confirmResponse = await fetch(`/api/stores/${store.id}/checkout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          intent: "confirm",
-          buyerWallet: payerWallet,
-          cart: cart.map(line => ({ itemId: line.itemId, quantity: line.quantity })),
-          payments: [
-            {
-              payer: payerWallet,
-              recipient: quote.managerRecipient,
-              token: quote.tokenAddress,
-              amount: quote.managerAmountMicros,
-              nonce: nonce.toString(),
-              deadline: deadline.toString(),
-              signature: managerSignature.signature,
-            },
-            {
-              payer: payerWallet,
-              recipient: quote.adminRecipient,
-              token: quote.tokenAddress,
-              amount: quote.adminAmountMicros,
-              nonce: (nonce + 1n).toString(),
-              deadline: deadline.toString(),
-              signature: adminSignature.signature,
-            },
-          ],
-        }),
+        body: JSON.stringify({ intent: "confirm", cart: cartLines, txHash }),
       });
       const confirmResult = await confirmResponse.json();
       if (!confirmResponse.ok) {
-        throw new Error(confirmResult.error || "Failed to confirm checkout");
+        throw new Error(
+          `${confirmResult.error || "Failed to confirm checkout"} (payment ${txHash.slice(0, 10)}… is on-chain)`,
+        );
       }
 
       pushLog("Checkout confirmed on-chain and recorded in the store ledger.", "success");
       if (confirmResult.inventoryWarning) {
         pushLog(confirmResult.inventoryWarning, "error");
       }
-      setReceipt({ txHash: confirmResult.txHash, orderId: confirmResult.order.id });
+      setReceipt({ txHash, orderId: confirmResult.order.id });
       setQuantities({});
     } catch (error) {
       const message = error instanceof Error ? error.message : "Checkout failed";
@@ -430,200 +167,6 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
     }
   };
 
-  const handleAgentRun = async () => {
-    setManagerBusy(true);
-    setManagerError(null);
-    setAgentFeedback(null);
-    try {
-      const response = await fetch(`/api/stores/${store.id}/agent/runs/trigger`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ triggerSource: "detail_page_manual" }),
-      });
-      const result = await response.json();
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to run store agent");
-      }
-      setQueuedRunRequestedAt(Date.now());
-      setAgentFeedback({
-        state: result.queued ? "queued" : result.run?.state || "submitted",
-        summary: result.queued
-          ? "The autonomous store run has been queued in Trigger.dev. Check agent activity or refresh in a moment for the completed run."
-          : result.run?.decision_summary || "Agent run completed.",
-        actionCount: result.queued ? 0 : result.actions?.length || 0,
-        validationStatus: result.queued ? undefined : result.run ? "pending" : undefined,
-        queued: Boolean(result.queued),
-      });
-    } catch (error) {
-      setManagerError(error instanceof Error ? error.message : "Failed to run store agent");
-    } finally {
-      setManagerBusy(false);
-    }
-  };
-
-  const handleCreateAgent = async () => {
-    setManagerBusy(true);
-    setManagerError(null);
-    try {
-      const response = await fetch(`/api/stores/${store.id}/agent/create`, {
-        method: "POST",
-      });
-      const result = await response.json();
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to create store agent");
-      }
-      window.location.reload();
-    } catch (error) {
-      setManagerError(error instanceof Error ? error.message : "Failed to create store agent");
-    } finally {
-      setManagerBusy(false);
-    }
-  };
-
-  const handleAgentPause = async (status: "active" | "paused") => {
-    setManagerBusy(true);
-    setManagerError(null);
-    try {
-      const response = await fetch(`/api/stores/${store.id}/agent/pause`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      });
-      const result = await response.json();
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to update agent state");
-      }
-      window.location.reload();
-    } catch (error) {
-      setManagerError(error instanceof Error ? error.message : "Failed to update agent state");
-    } finally {
-      setManagerBusy(false);
-    }
-  };
-
-  const handleRegisterManagerTrust = async () => {
-    setManagerBusy(true);
-    setManagerError(null);
-    try {
-      const confirmed = await submitTrustTransaction({
-        prepareUrl: `/api/stores/${store.id}/agent/trust/register/prepare`,
-        confirmUrl: `/api/stores/${store.id}/agent/trust/register/confirm`,
-        prepareError: "Failed to prepare manager trust registration",
-        confirmError: "Failed to confirm manager trust registration",
-        buildConfirmBody: txHash => ({ txHash }),
-      });
-      if (!confirmed) {
-        return;
-      }
-
-      await fetchAgentLogs();
-      setAgentFeedback({
-        state: "registered",
-        summary: "Manager trust identity registered on Ethereum Sepolia.",
-        actionCount: 0,
-        queued: false,
-        currentStepLabel: "Register manager identity",
-        nextStepLabel: "Run the manager agent",
-        requiresManualAction: true,
-      });
-    } catch (error) {
-      setManagerError(error instanceof Error ? error.message : "Failed to register manager trust identity");
-    } finally {
-      setManagerBusy(false);
-    }
-  };
-
-  const handleSubmitValidationRequest = async () => {
-    setManagerBusy(true);
-    setManagerError(null);
-    try {
-      const confirmed = await submitTrustTransaction({
-        prepareUrl: `/api/stores/${store.id}/agent/trust/validation-request/prepare`,
-        confirmUrl: `/api/stores/${store.id}/agent/trust/validation-request/confirm`,
-        prepareError: "Failed to prepare validation request",
-        confirmError: "Failed to confirm validation request",
-        requireValidation: true,
-        buildConfirmBody: (txHash, prepared) => ({ validationId: prepared.validation.id, txHash }),
-      });
-      if (!confirmed) {
-        return;
-      }
-
-      await fetchAgentLogs();
-      setAgentFeedback({
-        state: confirmed.validation?.status || "submitted",
-        summary:
-          confirmed.validation?.status === "verified"
-            ? "Validation request submitted and the trust pipeline completed successfully."
-            : "Validation request submitted on Ethereum Sepolia.",
-        actionCount: 0,
-        validationStatus: confirmed.validation?.status,
-        queued: false,
-        currentStepLabel: "Submit validation onchain",
-        nextStepLabel:
-          confirmed.validation?.status === "verified"
-            ? "Reviewer writes reputation automatically"
-            : "Validator verifies automatically",
-        nextStepAutomatic: true,
-      });
-    } catch (error) {
-      setManagerError(error instanceof Error ? error.message : "Failed to submit validation request");
-    } finally {
-      setManagerBusy(false);
-    }
-  };
-
-  const submitTrustTransaction = useCallback(
-    async ({
-      prepareUrl,
-      confirmUrl,
-      prepareError,
-      confirmError,
-      requireValidation = false,
-      buildConfirmBody,
-    }: {
-      prepareUrl: string;
-      confirmUrl: string;
-      prepareError: string;
-      confirmError: string;
-      requireValidation?: boolean;
-      buildConfirmBody: (txHash: `0x${string}`, prepared: any) => Record<string, unknown>;
-    }) => {
-      const prepareResponse = await fetch(prepareUrl, { method: "POST" });
-      const prepared = await prepareResponse.json();
-      if (!prepareResponse.ok) {
-        throw new Error(prepared.error || prepareError);
-      }
-      if (requireValidation && !prepared.validation) {
-        throw new Error("No validation request is ready");
-      }
-      if (!prepared.txRequest) {
-        await fetchAgentLogs();
-        return null;
-      }
-
-      const txHash = await sendTransaction({
-        to: prepared.txRequest.to,
-        data: prepared.txRequest.data,
-        value: BigInt(prepared.txRequest.value || "0"),
-        chain: sepolia,
-      });
-
-      const confirmResponse = await fetch(confirmUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildConfirmBody(txHash, prepared)),
-      });
-      const confirmed = await confirmResponse.json();
-      if (!confirmResponse.ok) {
-        throw new Error(confirmed.error || confirmError);
-      }
-
-      return confirmed;
-    },
-    [fetchAgentLogs, sendTransaction],
-  );
-
   return (
     <div className="mx-auto max-w-6xl px-4 py-4 pb-24 md:px-6 lg:px-8">
       <StoreHero store={store} />
@@ -633,33 +176,11 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
           <StoreCatalogGrid items={store.items} quantities={quantities} onUpdateQuantity={updateQuantity} />
           {canManage && (
             <StoreManagerControls
-              store={store}
               itemForm={itemForm}
               onItemFormChange={setItemForm}
               managerBusy={managerBusy}
               managerError={managerError}
-              agentFeedback={agentFeedback}
-              canSignTrust={Boolean(isManager)}
-              managerTrustAutomationEnabled={managerTrustAutomationEnabled}
-              needsManagerTrustRegistration={needsManagerTrustRegistration}
-              needsValidationSignature={needsValidationSignature}
               onAddItem={handleAddItem}
-              onCreateAgent={handleCreateAgent}
-              onAgentRun={handleAgentRun}
-              onAgentPause={handleAgentPause}
-              onRegisterManagerTrust={handleRegisterManagerTrust}
-              onSubmitValidationRequest={handleSubmitValidationRequest}
-            />
-          )}
-          {store.manager_agent && (
-            <StoreTrustPanel
-              trust={trustSnapshot}
-              loading={agentRunsLoading}
-              latestRun={latestRun}
-              canSignTrust={Boolean(isManager)}
-              managerTrustAutomationEnabled={managerTrustAutomationEnabled}
-              needsManagerTrustRegistration={needsManagerTrustRegistration}
-              needsValidationSignature={needsValidationSignature}
             />
           )}
         </div>
@@ -674,16 +195,6 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
             receipt={receipt}
             onCheckout={handleCheckout}
           />
-          <StoreAgentGuardrailsCard store={store} />
-          {store.manager_agent && (
-            <StoreRecentAgentRunsCard
-              runs={recentAgentRuns}
-              validations={recentValidations}
-              reputationEvents={trustSnapshot?.reputationEvents || []}
-              managerTrustAutomationEnabled={managerTrustAutomationEnabled}
-              loading={agentRunsLoading}
-            />
-          )}
           <StoreActivityLogCard logs={logs} />
         </div>
       </div>

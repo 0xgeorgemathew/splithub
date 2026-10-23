@@ -1,102 +1,73 @@
 import { NextRequest, NextResponse } from "next/server";
+import { type Address, type Hex, formatUnits, isHash } from "viem";
 import { TOKEN_DECIMALS } from "~~/config/tokens";
+import { createBaseSepoliaPublicClient } from "~~/lib/baseSepolia";
+import { supabase } from "~~/lib/supabase";
+import { verifyPaymentTx } from "~~/lib/tapPayment";
 import { safeProcessCircleAutoSplit } from "~~/services/circleAutoSplitService";
-import { createStallPayment, updatePaymentStatus } from "~~/services/eventsService";
+import { createStallPayment } from "~~/services/eventsService";
+import { ensureUserExists } from "~~/services/userService";
 
 export const dynamic = "force-dynamic";
 
-interface CreateStallPaymentRequest {
-  action: "create";
-  stallId: number;
-  eventId: number;
-  payerWallet: string;
-  tokenAddress: string;
-  splitPercentage: number;
-  amount: string;
-}
-
-interface CompleteStallPaymentRequest {
-  action: "complete";
-  paymentId: number;
-  txHash: string;
-  authAmountWei?: string;
-  tokenDecimals?: number;
-}
-
-interface FailStallPaymentRequest {
-  action: "fail";
-  paymentId: number;
-}
-
-type StallPaymentRequest = CreateStallPaymentRequest | CompleteStallPaymentRequest | FailStallPaymentRequest;
-
-function isCreateRequest(body: StallPaymentRequest): body is CreateStallPaymentRequest {
-  return body.action === "create";
-}
-
-function isCompleteRequest(body: StallPaymentRequest): body is CompleteStallPaymentRequest {
-  return body.action === "complete";
-}
-
-function isFailRequest(body: StallPaymentRequest): body is FailStallPaymentRequest {
-  return body.action === "fail";
-}
-
+/**
+ * Records a stall payment after the terminal submitted a chip-authorized SplitHubPayments transfer.
+ * The payer, amount and split are taken from the verified on-chain payment, not from the client.
+ */
 export async function POST(request: NextRequest) {
   try {
-    const body: StallPaymentRequest = await request.json();
+    const { stallId, txHash } = (await request.json()) as { stallId?: number; txHash?: string };
 
-    if (isCreateRequest(body)) {
-      const totalAmount = parseFloat(body.amount);
-      const operatorAmount = (totalAmount * body.splitPercentage) / 100;
-      const ownerAmount = totalAmount - operatorAmount;
-
-      const payment = await createStallPayment({
-        stall_id: body.stallId,
-        event_id: body.eventId,
-        payer_wallet: body.payerWallet.toLowerCase(),
-        amount: totalAmount,
-        token_address: body.tokenAddress.toLowerCase(),
-        operator_amount: operatorAmount,
-        owner_amount: ownerAmount,
-      });
-
-      return NextResponse.json({
-        success: true,
-        paymentId: payment.id,
-      });
+    if (!stallId || typeof txHash !== "string" || !isHash(txHash)) {
+      return NextResponse.json({ error: "stallId and a payment txHash are required" }, { status: 400 });
     }
 
-    if (isCompleteRequest(body)) {
-      const updatedPayment = await updatePaymentStatus(body.paymentId, "completed", body.txHash);
-
-      const circleSplit = await safeProcessCircleAutoSplit({
-        userWallet: updatedPayment.payer_wallet,
-        amount:
-          body.authAmountWei ??
-          Math.round(updatedPayment.amount * 10 ** (body.tokenDecimals ?? TOKEN_DECIMALS.USDC)).toString(),
-        tokenAddress: updatedPayment.token_address,
-        decimals: body.tokenDecimals ?? TOKEN_DECIMALS.USDC,
-      });
-
-      return NextResponse.json({
-        success: true,
-        paymentId: updatedPayment.id,
-        txHash: body.txHash,
-        circleSplit,
-      });
+    const { data: stall, error: stallError } = await supabase
+      .from("stalls")
+      .select("id, event_id, operator_wallet, token_address, split_percentage")
+      .eq("id", stallId)
+      .single();
+    if (stallError || !stall?.operator_wallet) {
+      return NextResponse.json({ error: "Stall not found or has no operator wallet" }, { status: 404 });
     }
 
-    if (isFailRequest(body)) {
-      const updatedPayment = await updatePaymentStatus(body.paymentId, "failed");
-
-      return NextResponse.json({
-        success: true,
-        paymentId: updatedPayment.id,
-      });
+    const { data: existing } = await supabase.from("stall_payments").select("id").eq("tx_hash", txHash).maybeSingle();
+    if (existing) {
+      return NextResponse.json({ error: "This payment has already been recorded" }, { status: 409 });
     }
 
-    return NextResponse.json({ error: "Unsupported stall payment action" }, { status: 400 });
+    const payment = await verifyPaymentTx(createBaseSepoliaPublicClient(), txHash as Hex, {
+      recipient: stall.operator_wallet as Address,
+      token: stall.token_address as Address,
+    });
+
+    const payerWallet = payment.payer.toLowerCase();
+    await ensureUserExists(payerWallet);
+
+    const totalAmount = Number(formatUnits(payment.amount, TOKEN_DECIMALS.USDC));
+    const operatorAmount = (totalAmount * Number(stall.split_percentage)) / 100;
+
+    const recorded = await createStallPayment({
+      stall_id: stall.id,
+      event_id: stall.event_id,
+      payer_wallet: payerWallet,
+      amount: totalAmount,
+      token_address: stall.token_address.toLowerCase(),
+      operator_amount: operatorAmount,
+      owner_amount: totalAmount - operatorAmount,
+      tx_hash: txHash,
+      status: "completed",
+      completed_at: new Date().toISOString(),
+    });
+
+    const circleSplit = await safeProcessCircleAutoSplit({
+      userWallet: payerWallet,
+      amount: payment.amount.toString(),
+      tokenAddress: stall.token_address,
+      decimals: TOKEN_DECIMALS.USDC,
+    });
+
+    return NextResponse.json({ success: true, paymentId: recorded.id, txHash, circleSplit });
   } catch (error: unknown) {
     console.error("Stall payment error:", error);
     const message = error instanceof Error ? error.message : "Payment failed";

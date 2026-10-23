@@ -2,13 +2,12 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowDownLeft, ArrowUpRight, CreditCard, Plus } from "lucide-react";
+import { ArrowUpRight, CreditCard, Plus } from "lucide-react";
 
 interface ChipBalanceCardProps {
   chipAddress: `0x${string}` | null;
   chipBalance: number;
   isLoading: boolean;
-  onMoveToCard: () => void;
   onMoveToWallet: () => void;
 }
 
@@ -18,14 +17,14 @@ const formatCurrency = (amount: number) =>
     maximumFractionDigits: 2,
   });
 
-export function ChipBalanceCard({
-  chipAddress,
-  chipBalance,
-  isLoading,
-  onMoveToCard,
-  onMoveToWallet,
-}: ChipBalanceCardProps) {
+export function ChipBalanceCard({ chipAddress, chipBalance, isLoading, onMoveToWallet }: ChipBalanceCardProps) {
   const hasChip = !!chipAddress;
+
+  // Payments come from the wallet, so the chip card only shows up to register a chip or to move a
+  // balance left on the chip address by older versions back into the wallet.
+  if (hasChip && (isLoading || chipBalance <= 0)) {
+    return null;
+  }
 
   return (
     <motion.div
@@ -50,18 +49,13 @@ export function ChipBalanceCard({
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <CreditCard className="w-4 h-4 text-sky-300" />
-            <span className="text-xs font-bold text-sky-300 uppercase tracking-wider">Card Balance</span>
+            <span className="text-xs font-bold text-sky-300 uppercase tracking-wider">
+              {hasChip ? "Left on your chip" : "Tap card"}
+            </span>
           </div>
 
           {hasChip ? (
             <div className="flex items-center gap-1.5">
-              <button
-                onClick={onMoveToCard}
-                className="flex items-center gap-1 px-2.5 py-1 bg-sky-300/10 hover:bg-sky-300/20 text-sky-200 rounded-full text-[11px] font-semibold transition-colors"
-              >
-                <ArrowDownLeft className="w-3 h-3" />
-                To Card
-              </button>
               <button
                 onClick={onMoveToWallet}
                 className="flex items-center gap-1 px-2.5 py-1 bg-rose-400/10 hover:bg-rose-400/20 text-rose-200 rounded-full text-[11px] font-semibold transition-colors"
@@ -83,23 +77,12 @@ export function ChipBalanceCard({
 
         {hasChip ? (
           <div>
-            {isLoading ? (
-              <span className="inline-block w-40 h-12 bg-base-300/50 rounded-xl animate-pulse" />
-            ) : (
-              <motion.span
-                key={chipBalance}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.1 }}
-                className="text-3xl font-bold text-white tracking-tight"
-              >
-                ${formatCurrency(chipBalance)}
-              </motion.span>
-            )}
+            <span className="text-3xl font-bold text-white tracking-tight">${formatCurrency(chipBalance)}</span>
+            <p className="mt-1 text-xs text-white/50">Payments now come from your wallet. Move this balance over.</p>
           </div>
         ) : (
           <div>
-            <p className="text-sm font-medium text-white/50">No card linked</p>
+            <p className="text-sm font-medium text-white/50">Register a chip to pay with a tap</p>
           </div>
         )}
       </div>
