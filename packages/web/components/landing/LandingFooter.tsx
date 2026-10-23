@@ -4,7 +4,7 @@ import { ArrowRight } from "lucide-react";
 
 const footerLinks = [
   { label: "Stores", href: "/store" },
-  { label: "Venues", href: "/events" },
+  { label: "Venues", href: "/venues" },
   { label: "Splits", href: "/splits" },
 ];
 

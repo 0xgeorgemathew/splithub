@@ -7,7 +7,7 @@ const dir = join(import.meta.dir, "../../migrations");
 const files = readdirSync(dir).sort();
 const apply = (sqlite: Database, file: string) => sqlite.exec(readFileSync(join(dir, file), "utf8"));
 
-describe("0005_stores", () => {
+describe("0005_stores and 0006_venue_credits", () => {
   test("moves store stalls into stores and keeps items, stock and orders", () => {
     const sqlite = new Database(":memory:");
     sqlite.exec("PRAGMA foreign_keys = ON;");
@@ -73,5 +73,31 @@ describe("0005_stores", () => {
     // New stores continue after the moved ids.
     sqlite.exec("INSERT INTO stores (owner_wallet, store_name, store_slug) VALUES ('0xbuyer', 'New', 'new')");
     expect((sqlite.query("SELECT id FROM stores WHERE store_slug = 'new'").get() as { id: number }).id).toBe(10);
+
+    // 0006: the remaining events become closed-loop venues; stalls keep their ids, USDC stall payments go.
+    sqlite.exec(
+      "INSERT INTO stalls (id, event_id, stall_name, stall_slug, operator_twitter_handle, split_percentage, token_address) VALUES (14, 2, 'Top Up', 'topup', 'x', 10, '0xusdc')",
+    );
+    apply(sqlite, "0006_venue_credits.sql");
+    expect(
+      sqlite.query("SELECT id, venue_name, venue_slug, owner_wallet, status, chain_venue_id FROM venues").all(),
+    ).toEqual([
+      {
+        id: 2,
+        venue_name: "Fest",
+        venue_slug: "fest",
+        owner_wallet: "0xowner",
+        status: "active",
+        chain_venue_id: null,
+      },
+    ]);
+    expect(sqlite.query("SELECT id, venue_id, stall_slug, credit_price FROM venue_stalls ORDER BY id").all()).toEqual([
+      { id: 8, venue_id: 2, stall_slug: "food", credit_price: null },
+      { id: 14, venue_id: 2, stall_slug: "topup-stall", credit_price: null },
+    ]);
+    const tables = sqlite.query("SELECT name FROM sqlite_master WHERE type = 'table'").all() as { name: string }[];
+    expect(tables.map(t => t.name)).not.toContain("events");
+    expect(tables.map(t => t.name)).not.toContain("stall_payments");
+    expect(sqlite.query("PRAGMA foreign_key_check").all()).toEqual([]);
   });
 });

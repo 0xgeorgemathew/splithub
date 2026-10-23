@@ -154,7 +154,7 @@ async function updateApprovalStatusWithRetry(userId: string): Promise<void> {
  *
  * DEPENDENCIES:
  * - Requires wallet connection (Privy embedded wallet)
- * - Requires deployed contracts (SplitHubPayments, CreditToken)
+ * - Requires deployed contracts (SplitHubPayments, VenueCredits)
  * - Uses centralized error formatting from utils/errorFormatting
  */
 export function ApprovalFlow() {
@@ -176,7 +176,7 @@ export function ApprovalFlow() {
     | undefined;
 
   const paymentsAddress = chainContracts?.["SplitHubPayments"]?.address as `0x${string}` | undefined;
-  const creditsAddress = chainContracts?.["CreditToken"]?.address as `0x${string}` | undefined;
+  const creditsAddress = chainContracts?.["VenueCredits"]?.address as `0x${string}` | undefined;
 
   // Read token decimals with error handling
   const {
@@ -381,7 +381,7 @@ export function ApprovalFlow() {
     }
 
     if (!creditsAddress) {
-      setError("CreditToken contract not deployed on this network");
+      setError("VenueCredits contract not deployed on this network");
       return;
     }
 
@@ -503,7 +503,7 @@ export function ApprovalFlow() {
         <div className="flex items-center justify-between mb-3">
           <span className="text-sm font-semibold text-base-content">Step {currentStep} of 3</span>
           <span className="text-sm text-base-content/60">
-            {paymentsState === "pending" ? "Approve for Payments" : "Approve for Credits"}
+            {paymentsState === "pending" ? "Approve for Payments" : "Approve for Venue Credits"}
           </span>
         </div>
         <div className="relative w-full h-2.5 bg-base-200 rounded-full overflow-hidden">
@@ -576,8 +576,8 @@ export function ApprovalFlow() {
                   )}
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-base-content">Credits</h3>
-                  <p className="text-xs text-base-content/60">Required for activity purchases</p>
+                  <h3 className="text-lg font-bold text-base-content">Venue credits</h3>
+                  <p className="text-xs text-base-content/60">Lets you top up credits at venues with a tap</p>
                 </div>
               </div>
               {creditsState === "approved" && (

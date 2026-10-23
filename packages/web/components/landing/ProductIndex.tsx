@@ -12,10 +12,10 @@ const products = [
   },
   {
     name: "Venues",
-    href: "/events",
+    href: "/venues",
     description:
-      "Set up a venue or event, add stalls, and assign operators. Guests tap to pay at any stall and revenue splits between the venue and each operator.",
-    details: ["Stalls & operators", "Revenue splits", "Live dashboard"],
+      "Run a closed-loop venue: guests top up your venue's credits with USDC and tap to spend them at your stalls. Credits only work at your venue, and you withdraw what guests spend.",
+    details: ["Venue credits", "Stall terminals", "Refunds & withdrawals"],
   },
   {
     name: "Splits",

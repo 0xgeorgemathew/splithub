@@ -206,53 +206,49 @@ describe("embeds", () => {
   });
 
   test("alias:fk_column embed and one-to-many nested embeds", async () => {
-    const { data: event } = await from("events")
-      .insert({ event_name: "Fest", event_slug: "fest", owner_wallet: alice })
+    const { data: venue } = await from("venues")
+      .insert({ venue_name: "Arcade", venue_slug: "arcade", owner_wallet: alice, chain_venue_id: 1 })
       .select()
       .single();
-    await from("stalls").insert([
-      {
-        event_id: event.id,
-        stall_name: "Tacos",
-        stall_slug: "tacos",
-        operator_twitter_handle: "bobby",
-        operator_wallet: bob,
-        split_percentage: 80,
-        token_address: "0xusdc",
-      },
-      {
-        event_id: event.id,
-        stall_name: "Empty",
-        stall_slug: "empty",
-        operator_twitter_handle: "nobody",
-        split_percentage: 50,
-        token_address: "0xusdc",
-      },
+    const { data: stalls } = await from("venue_stalls")
+      .insert([
+        { venue_id: venue.id, stall_name: "Laser Tag", stall_slug: "laser-tag", credit_price: 50 },
+        { venue_id: venue.id, stall_name: "Snacks", stall_slug: "snacks" },
+      ])
+      .select();
+    const laserTag = stalls.find((s: any) => s.stall_slug === "laser-tag");
+    await from("venue_credit_activity").insert([
+      { venue_id: venue.id, guest_wallet: bob, kind: "topup", credits: 100, usdc_amount: 10, tx_hash: "0x1" },
+      { venue_id: venue.id, stall_id: laserTag.id, guest_wallet: bob, kind: "spend", credits: 50, tx_hash: "0x2" },
     ]);
 
-    const { data } = await from("events")
+    const { data } = await from("venues")
       .select(
         `
           *,
           owner_user:users!owner_wallet(name, twitter_handle, twitter_profile_url),
-          stalls(
-            *,
-            operator_user:users!operator_wallet(name, twitter_handle, twitter_profile_url)
-          )
+          venue_stalls(*)
         `,
       )
       .eq("owner_wallet", alice);
     expect(data[0].owner_user.name).toBe("Alice");
-    expect(data[0].stalls).toHaveLength(2);
-    const tacos = data[0].stalls.find((s: any) => s.stall_slug === "tacos");
-    expect(tacos.operator_user.name).toBe("Bob");
-    expect(data[0].stalls.find((s: any) => s.stall_slug === "empty").operator_user).toBeNull();
+    expect(data[0].venue_stalls).toHaveLength(2);
+    expect(data[0].venue_stalls.find((s: any) => s.stall_slug === "snacks").credit_price).toBeNull();
 
-    const { data: stalls } = await from("stalls")
-      .select("*, event:events!event_id(*)")
-      .eq("event.event_slug", "fest")
-      .eq("stall_slug", "tacos");
-    expect(stalls[0].event.event_slug).toBe("fest");
+    const { data: activity } = await from("venue_credit_activity")
+      .select("kind, credits, guest_user:users!guest_wallet(name), stall:venue_stalls!stall_id(stall_name)")
+      .eq("venue_id", venue.id)
+      .order("id", { ascending: true });
+    expect(activity).toEqual([
+      { kind: "topup", credits: 100, guest_user: { name: "Bob" }, stall: null },
+      { kind: "spend", credits: 50, guest_user: { name: "Bob" }, stall: { stall_name: "Laser Tag" } },
+    ]);
+
+    const { data: withVenue } = await from("venue_stalls")
+      .select("*, venue:venues!venue_id!inner(*)")
+      .eq("venue.venue_slug", "arcade")
+      .eq("stall_slug", "laser-tag");
+    expect(withVenue[0].venue.venue_slug).toBe("arcade");
 
     const { data: circle } = await from("circles").insert({ name: "Crew", creator_wallet: alice }).select().single();
     expect(circle.is_active).toBe(true);
@@ -266,18 +262,18 @@ describe("embeds", () => {
 
 describe("mutations", () => {
   test("update returns rows, bumps updated_at, emits changes", async () => {
-    const { data: event } = await from("events")
-      .insert({ event_name: "Fest", event_slug: "fest", owner_wallet: alice })
+    const { data: venue } = await from("venues")
+      .insert({ venue_name: "Fest", venue_slug: "fest", owner_wallet: alice })
       .select("*")
       .single();
     changes = [];
     await new Promise(resolve => setTimeout(resolve, 5));
-    const { data, error } = await from("events").update({ status: "paused" }).eq("id", event.id).select("*").single();
+    const { data, error } = await from("venues").update({ status: "paused" }).eq("id", venue.id).select("*").single();
     expect(error).toBeNull();
     expect(data.status).toBe("paused");
-    expect(data.updated_at > event.updated_at).toBe(true);
+    expect(data.updated_at > venue.updated_at).toBe(true);
     expect(changes).toMatchObject([
-      { table: "events", eventType: "UPDATE", new: { status: "paused" }, old: { id: event.id } },
+      { table: "venues", eventType: "UPDATE", new: { status: "paused" }, old: { id: venue.id } },
     ]);
   });
 

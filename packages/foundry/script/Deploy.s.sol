@@ -5,7 +5,7 @@ import "forge-std/console.sol";
 import "./DeployHelpers.s.sol";
 import "../contracts/SplitHubRegistry.sol";
 import "../contracts/SplitHubPayments.sol";
-import "../contracts/CreditToken.sol";
+import "../contracts/VenueCredits.sol";
 
 /**
  * @notice Main deployment script for all SplitHub contracts
@@ -30,13 +30,12 @@ contract DeployScript is ScaffoldETHDeploy {
         console.log("SplitHubPayments deployed at:", address(payments));
         deployments.push(Deployment({ name: "SplitHubPayments", addr: address(payments) }));
 
-        // Deploy CreditToken with token and registry addresses
+        // Deploy VenueCredits (closed-loop venue credits) with token and registry addresses
         address tokenAddress = getTokenAddress();
-        console.log("Deploying CreditToken with token:", tokenAddress);
-        CreditToken creditToken = new CreditToken(tokenAddress, address(registry));
-        console.log("CreditToken deployed at:", address(creditToken));
-        console.log("Credit rate: 1 token = 10 CREDIT");
-        deployments.push(Deployment({ name: "CreditToken", addr: address(creditToken) }));
+        console.log("Deploying VenueCredits with token:", tokenAddress);
+        VenueCredits venueCredits = new VenueCredits(tokenAddress, address(registry));
+        console.log("VenueCredits deployed at:", address(venueCredits));
+        deployments.push(Deployment({ name: "VenueCredits", addr: address(venueCredits) }));
 
         console.log("All contracts deployed successfully!");
     }

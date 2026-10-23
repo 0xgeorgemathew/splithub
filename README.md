@@ -3,7 +3,7 @@
 > Tap-to-pay onchain payments for stores, venues, and friends.
 
 SplitHub lets people pay in person by tapping an Arx Halo NFC chip. Merchants run stores with a catalog and
-inventory, venues run stalls with operators and revenue splits, and friends split expenses and settle up with
+inventory, venues run a closed loop of their own credits, and friends split expenses and settle up with
 the same tap.
 
 The idea behind it:
@@ -30,11 +30,14 @@ Routes: `/store`, `/store/$storeSlug`
 
 ### Venues
 
-- Set up venues and events, add stalls, assign operators, and choose each operator's share of revenue
-- A stall terminal page per stall (`/events/$eventSlug/$stallSlug`): guests tap their chip and pay the operator
-- Live owner and operator dashboards, public stall discovery, and venue credits (`CreditToken`)
+Closed-loop stored value for arcades, festivals and resorts. Each venue has its own credits on `VenueCredits`.
 
-Routes: `/events`, `/events/discover`, `/events/$eventSlug/$stallSlug`, `/credits`
+- Guests top up with a tap at the venue's top-up terminal: 1 USDC buys 10 credits, paid from their wallet
+- Stalls are priced in credits; guests tap at a stall terminal to spend them
+- Credits only work at their venue and cannot be transferred
+- The owner withdraws the USDC guests have spent; unspent credits stay backed and can be refunded
+
+Routes: `/venues`, `/venues/$venueSlug`, `/venues/$venueSlug/topup`, `/venues/$venueSlug/$stallSlug`
 
 ### Splits
 
@@ -49,15 +52,19 @@ Routes: `/splits`, `/expense/add`, `/settle`, `/settle/$requestId`, `/multi-sett
 
 ## How a tap payment works
 
-1. The app builds a `PaymentAuth { payer, recipient, token, amount, nonce, deadline }`. On a store or stall
+1. The app builds a `PaymentAuth { payer, recipient, token, amount, nonce, deadline }`. On a store
    terminal, a first tap reads the chip and looks up its owner in `SplitHubRegistry`.
 2. The chip signs the typed data.
 3. The wallet signed in on the device (the shopper's own phone, or the merchant's terminal) submits
    `SplitHubPayments.executePayment`, which pulls the USDC from the payer's wallet. Users approve the contract
    once during onboarding (`/approve`).
-4. For store orders and stall payments, the API verifies the `PaymentExecuted` event before recording anything.
+4. For store orders, the API verifies the `PaymentExecuted` event before recording anything.
 
 Code: `packages/web/lib/tapPayment.ts`, `packages/web/hooks/useTapPayment.ts`.
+
+Venue taps work the same way against `VenueCredits`: the chip signs a `CreditPurchase` (top-up) or `CreditSpend`,
+the terminal wallet submits it, and the API records the activity only from the mined event
+(`packages/web/lib/venueCredits.ts`, `packages/web/hooks/useVenueCredits.ts`).
 
 ---
 
@@ -76,14 +83,14 @@ Code: `packages/web/lib/tapPayment.ts`, `packages/web/hooks/useTapPayment.ts`.
 ```text
 packages/web/
   src/routes/               Pages and API routes (TanStack file routes)
-  components/               UI (store/, events/, stall/, splits/, settle/, credits/, ...)
+  components/               UI (store/, venues/, splits/, settle/, ...)
   hooks/                    Client hooks (tap payments, realtime, chip)
   lib/                      tapPayment, auth, db layer, contract ABIs
   services/                 Store, venue, split and settlement logic
   migrations/               D1 schema (mirrored by lib/db/schema.ts)
   worker/                   Worker entry and RealtimeHub Durable Object
 packages/foundry/
-  contracts/                SplitHubRegistry, SplitHubPayments, CreditToken
+  contracts/                SplitHubRegistry, SplitHubPayments, VenueCredits
 ```
 
 ---

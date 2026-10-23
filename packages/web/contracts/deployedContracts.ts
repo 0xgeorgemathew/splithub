@@ -848,8 +848,8 @@ const deployedContracts = {
       inheritedFunctions: {},
       deployedOnBlock: 34386417,
     },
-    CreditToken: {
-      address: "0x1d645c4c2fb7f3400ce43ac9b94a982d75c91df1",
+    VenueCredits: {
+      address: "0xee61cc3366b6fba6e49f4b2629bde1e3c2a4ac51",
       abi: [
         {
           type: "constructor",
@@ -869,6 +869,19 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "CREDITS_PER_USDC",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "CREDIT_PURCHASE_TYPEHASH",
           inputs: [],
           outputs: [
@@ -876,19 +889,6 @@ const deployedContracts = {
               name: "",
               type: "bytes32",
               internalType: "bytes32",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "CREDIT_RATE",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
             },
           ],
           stateMutability: "view",
@@ -908,83 +908,40 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "allowance",
-          inputs: [
-            {
-              name: "owner",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "spender",
-              type: "address",
-              internalType: "address",
-            },
-          ],
+          name: "createVenue",
+          inputs: [],
           outputs: [
             {
-              name: "",
+              name: "venueId",
               type: "uint256",
               internalType: "uint256",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "approve",
-          inputs: [
-            {
-              name: "spender",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "value",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          outputs: [
-            {
-              name: "",
-              type: "bool",
-              internalType: "bool",
             },
           ],
           stateMutability: "nonpayable",
         },
         {
           type: "function",
-          name: "balanceOf",
+          name: "creditsOf",
           inputs: [
             {
-              name: "account",
+              name: "venueId",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "guest",
               type: "address",
               internalType: "address",
             },
           ],
           outputs: [
             {
-              name: "",
+              name: "credits",
               type: "uint256",
               internalType: "uint256",
             },
           ],
           stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "decimals",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "uint8",
-              internalType: "uint8",
-            },
-          ],
-          stateMutability: "pure",
         },
         {
           type: "function",
@@ -1047,7 +1004,7 @@ const deployedContracts = {
           name: "getNonce",
           inputs: [
             {
-              name: "user",
+              name: "guest",
               type: "address",
               internalType: "address",
             },
@@ -1068,8 +1025,13 @@ const deployedContracts = {
             {
               name: "purchase",
               type: "tuple",
-              internalType: "struct CreditToken.CreditPurchase",
+              internalType: "struct VenueCredits.CreditPurchase",
               components: [
+                {
+                  name: "venueId",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
                 {
                   name: "buyer",
                   type: "address",
@@ -1109,8 +1071,13 @@ const deployedContracts = {
             {
               name: "spend",
               type: "tuple",
-              internalType: "struct CreditToken.CreditSpend",
+              internalType: "struct VenueCredits.CreditSpend",
               components: [
+                {
+                  name: "venueId",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
                 {
                   name: "spender",
                   type: "address",
@@ -1122,7 +1089,7 @@ const deployedContracts = {
                   internalType: "uint256",
                 },
                 {
-                  name: "activityId",
+                  name: "stallId",
                   type: "uint256",
                   internalType: "uint256",
                 },
@@ -1150,23 +1117,10 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "name",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "string",
-              internalType: "string",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
           name: "nonces",
           inputs: [
             {
-              name: "user",
+              name: "guest",
               type: "address",
               internalType: "address",
             },
@@ -1182,26 +1136,18 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "owner",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
           name: "purchaseCredits",
           inputs: [
             {
               name: "purchase",
               type: "tuple",
-              internalType: "struct CreditToken.CreditPurchase",
+              internalType: "struct VenueCredits.CreditPurchase",
               components: [
+                {
+                  name: "venueId",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
                 {
                   name: "buyer",
                   type: "address",
@@ -1235,6 +1181,24 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "refundCredits",
+          inputs: [
+            {
+              name: "venueId",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "guest",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
           name: "registry",
           inputs: [],
           outputs: [
@@ -1248,13 +1212,36 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "setVenueOpen",
+          inputs: [
+            {
+              name: "venueId",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "open",
+              type: "bool",
+              internalType: "bool",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
           name: "spendCredits",
           inputs: [
             {
               name: "spend",
               type: "tuple",
-              internalType: "struct CreditToken.CreditSpend",
+              internalType: "struct VenueCredits.CreditSpend",
               components: [
+                {
+                  name: "venueId",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
                 {
                   name: "spender",
                   type: "address",
@@ -1266,7 +1253,7 @@ const deployedContracts = {
                   internalType: "uint256",
                 },
                 {
-                  name: "activityId",
+                  name: "stallId",
                   type: "uint256",
                   internalType: "uint256",
                 },
@@ -1293,87 +1280,13 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "symbol",
-          inputs: [],
-          outputs: [
+          name: "transferVenueOwnership",
+          inputs: [
             {
-              name: "",
-              type: "string",
-              internalType: "string",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "totalSupply",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
+              name: "venueId",
               type: "uint256",
               internalType: "uint256",
             },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "transfer",
-          inputs: [
-            {
-              name: "to",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "value",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          outputs: [
-            {
-              name: "",
-              type: "bool",
-              internalType: "bool",
-            },
-          ],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "transferFrom",
-          inputs: [
-            {
-              name: "from",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "to",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "value",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          outputs: [
-            {
-              name: "",
-              type: "bool",
-              internalType: "bool",
-            },
-          ],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "transferOwnership",
-          inputs: [
             {
               name: "newOwner",
               type: "address",
@@ -1398,8 +1311,60 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "withdrawUSDC",
+          name: "venueCount",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "venues",
           inputs: [
+            {
+              name: "venueId",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [
+            {
+              name: "owner",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "open",
+              type: "bool",
+              internalType: "bool",
+            },
+            {
+              name: "usdcBalance",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "creditsOutstanding",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "withdraw",
+          inputs: [
+            {
+              name: "venueId",
+              type: "uint256",
+              internalType: "uint256",
+            },
             {
               name: "to",
               type: "address",
@@ -1410,34 +1375,34 @@ const deployedContracts = {
           stateMutability: "nonpayable",
         },
         {
-          type: "event",
-          name: "Approval",
+          type: "function",
+          name: "withdrawable",
           inputs: [
             {
-              name: "owner",
-              type: "address",
-              indexed: true,
-              internalType: "address",
-            },
-            {
-              name: "spender",
-              type: "address",
-              indexed: true,
-              internalType: "address",
-            },
-            {
-              name: "value",
+              name: "venueId",
               type: "uint256",
-              indexed: false,
               internalType: "uint256",
             },
           ],
-          anonymous: false,
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
         },
         {
           type: "event",
           name: "CreditsPurchased",
           inputs: [
+            {
+              name: "venueId",
+              type: "uint256",
+              indexed: true,
+              internalType: "uint256",
+            },
             {
               name: "buyer",
               type: "address",
@@ -1451,7 +1416,7 @@ const deployedContracts = {
               internalType: "uint256",
             },
             {
-              name: "creditAmount",
+              name: "credits",
               type: "uint256",
               indexed: false,
               internalType: "uint256",
@@ -1467,8 +1432,45 @@ const deployedContracts = {
         },
         {
           type: "event",
+          name: "CreditsRefunded",
+          inputs: [
+            {
+              name: "venueId",
+              type: "uint256",
+              indexed: true,
+              internalType: "uint256",
+            },
+            {
+              name: "guest",
+              type: "address",
+              indexed: true,
+              internalType: "address",
+            },
+            {
+              name: "credits",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+            {
+              name: "usdcAmount",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+          ],
+          anonymous: false,
+        },
+        {
+          type: "event",
           name: "CreditsSpent",
           inputs: [
+            {
+              name: "venueId",
+              type: "uint256",
+              indexed: true,
+              internalType: "uint256",
+            },
             {
               name: "spender",
               type: "address",
@@ -1482,9 +1484,9 @@ const deployedContracts = {
               internalType: "uint256",
             },
             {
-              name: "activityId",
+              name: "stallId",
               type: "uint256",
-              indexed: false,
+              indexed: true,
               internalType: "uint256",
             },
             {
@@ -1504,8 +1506,52 @@ const deployedContracts = {
         },
         {
           type: "event",
-          name: "OwnershipTransferred",
+          name: "VenueCreated",
           inputs: [
+            {
+              name: "venueId",
+              type: "uint256",
+              indexed: true,
+              internalType: "uint256",
+            },
+            {
+              name: "owner",
+              type: "address",
+              indexed: true,
+              internalType: "address",
+            },
+          ],
+          anonymous: false,
+        },
+        {
+          type: "event",
+          name: "VenueOpenChanged",
+          inputs: [
+            {
+              name: "venueId",
+              type: "uint256",
+              indexed: true,
+              internalType: "uint256",
+            },
+            {
+              name: "open",
+              type: "bool",
+              indexed: false,
+              internalType: "bool",
+            },
+          ],
+          anonymous: false,
+        },
+        {
+          type: "event",
+          name: "VenueOwnershipTransferred",
+          inputs: [
+            {
+              name: "venueId",
+              type: "uint256",
+              indexed: true,
+              internalType: "uint256",
+            },
             {
               name: "previousOwner",
               type: "address",
@@ -1523,13 +1569,13 @@ const deployedContracts = {
         },
         {
           type: "event",
-          name: "Transfer",
+          name: "Withdrawn",
           inputs: [
             {
-              name: "from",
-              type: "address",
+              name: "venueId",
+              type: "uint256",
               indexed: true,
-              internalType: "address",
+              internalType: "uint256",
             },
             {
               name: "to",
@@ -1538,7 +1584,7 @@ const deployedContracts = {
               internalType: "address",
             },
             {
-              name: "value",
+              name: "usdcAmount",
               type: "uint256",
               indexed: false,
               internalType: "uint256",
@@ -1575,98 +1621,12 @@ const deployedContracts = {
         },
         {
           type: "error",
-          name: "ERC20InsufficientAllowance",
-          inputs: [
-            {
-              name: "spender",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "allowance",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "needed",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-        },
-        {
-          type: "error",
-          name: "ERC20InsufficientBalance",
-          inputs: [
-            {
-              name: "sender",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "balance",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "needed",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-        },
-        {
-          type: "error",
-          name: "ERC20InvalidApprover",
-          inputs: [
-            {
-              name: "approver",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-        },
-        {
-          type: "error",
-          name: "ERC20InvalidReceiver",
-          inputs: [
-            {
-              name: "receiver",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-        },
-        {
-          type: "error",
-          name: "ERC20InvalidSender",
-          inputs: [
-            {
-              name: "sender",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-        },
-        {
-          type: "error",
-          name: "ERC20InvalidSpender",
-          inputs: [
-            {
-              name: "spender",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-        },
-        {
-          type: "error",
           name: "ExpiredSignature",
           inputs: [],
         },
         {
           type: "error",
-          name: "InsufficientBalance",
+          name: "InsufficientCredits",
           inputs: [],
         },
         {
@@ -1681,7 +1641,7 @@ const deployedContracts = {
         },
         {
           type: "error",
-          name: "NotOwner",
+          name: "NotVenueOwner",
           inputs: [],
         },
         {
@@ -1711,9 +1671,29 @@ const deployedContracts = {
           name: "UnauthorizedSigner",
           inputs: [],
         },
+        {
+          type: "error",
+          name: "UnknownVenue",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "VenueClosed",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "ZeroAddress",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "ZeroAmount",
+          inputs: [],
+        },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 34386417,
+      deployedOnBlock: 49204042,
     },
   },
 } as const;
