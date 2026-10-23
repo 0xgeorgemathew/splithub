@@ -9,7 +9,7 @@ const archivo = Archivo({
   subsets: ["latin"],
   variable: "--font-archivo",
   display: "swap",
-  weight: ["400", "500", "600", "700", "800", "900"],
+  axes: ["wdth"],
 });
 
 const outfit = Outfit({
@@ -33,9 +33,9 @@ const bricolage = Bricolage_Grotesque({
 });
 
 export const metadata = getMetadata({
-  title: "SplitHub | Split Bills Instantly with NFC Tap-to-Pay",
+  title: "SplitHub | Tap to pay. Keep earning until you do.",
   description:
-    "Split bills with friends using NFC tap-to-pay. No wallet popups, no gas fees, no crypto complexity. Just tap your chip and pay instantly.",
+    "Tap-to-pay with an NFC chip that authorizes payments while your USDC stays in Aave. Agent-funded just-in-time liquidity for stores, splits, and treasury.",
 });
 
 export const viewport = {

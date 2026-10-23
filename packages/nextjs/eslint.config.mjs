@@ -4,7 +4,7 @@ import tsEslint from "typescript-eslint";
 
 const eslintConfig = [
   {
-    ignores: ["**/public/sw.js", "**/public/workbox-*.js"],
+    ignores: ["**/public/sw.js", "**/public/workbox-*.js", "dist/**", ".cloudflare/**", ".vinext/**"],
   },
   ...eslintConfigNext,
   {

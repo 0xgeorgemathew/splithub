@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getEvidenceResponse } from "~~/services/store/evidenceStore";
 import { buildLatestFeedbackPayload } from "~~/services/storeService";
 
 export const dynamic = "force-dynamic";
@@ -7,6 +8,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   try {
     const { agentId } = await params;
     const runId = request.nextUrl.searchParams.get("runId");
+    // The exact document whose hash was committed onchain, when one was recorded.
+    const stored = await getEvidenceResponse("feedback", runId);
+    if (stored) return stored;
+
     const payload = await buildLatestFeedbackPayload(agentId, runId);
     return NextResponse.json(payload);
   } catch (error) {

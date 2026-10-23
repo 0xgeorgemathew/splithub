@@ -11,3 +11,6 @@ export { VenuesAnimation } from "./VenuesAnimation";
 export { UseCaseTabs } from "./UseCaseTabs";
 export { WristbandIcon } from "./WristbandIcon";
 export { PhoneMockup } from "./PhoneMockup";
+export { ProductIndex } from "./ProductIndex";
+export { JitSection } from "./JitSection";
+export { TapReceipt } from "./TapReceipt";

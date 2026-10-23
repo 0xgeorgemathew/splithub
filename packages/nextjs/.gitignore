@@ -43,3 +43,6 @@ ipfs-upload.config.json
 /public/workbox-*.js
 /public/workbox-*.js.map
 
+/dist/
+.vinext/
+.cloudflare/

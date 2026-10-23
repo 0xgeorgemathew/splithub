@@ -1,22 +1,10 @@
-import withSerwist from "@serwist/next";
 import type { NextConfig } from "next";
 
-const aesJsCompatPath = "./lib/shims/aes-js-compat.ts";
-
+// Read by vinext (vite.config.ts). Module aliases live in vite.config.ts.
 const nextConfig: NextConfig = {
-  output: "standalone",
   reactStrictMode: true,
   devIndicators: false,
-  turbopack: {
-    resolveAlias: {
-      "aes-js": aesJsCompatPath,
-    },
-  },
   allowedDevOrigins: ["dev.splithub.space", "*.dev.splithub.space", "splithub.space", "*.splithub.space"],
-  serverExternalPackages: ["ethers"],
-  typescript: {
-    ignoreBuildErrors: process.env.NEXT_PUBLIC_IGNORE_BUILD_ERROR === "true",
-  },
   images: {
     remotePatterns: [
       {
@@ -26,35 +14,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  webpack: config => {
-    config.resolve.fallback = { fs: false, net: false, tls: false };
-    config.externals.push("pino-pretty", "lokijs", "encoding");
-
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      "aes-js": aesJsCompatPath,
-      "@solana-program/system": false,
-      "@solana-program/memo": false,
-      "@solana-program/token": false,
-      "@solana/kit": false,
-    };
-
-    return config;
-  },
 };
 
-const isIpfs = process.env.NEXT_PUBLIC_IPFS_BUILD === "true";
-
-if (isIpfs) {
-  nextConfig.output = "export";
-  nextConfig.trailingSlash = true;
-  nextConfig.images = {
-    unoptimized: true,
-  };
-}
-
-module.exports = withSerwist({
-  swSrc: "app/sw.ts",
-  swDest: "public/sw.js",
-  disable: true, // Temporarily disabled to test OneSignal notifications
-})(nextConfig);
+export default nextConfig;

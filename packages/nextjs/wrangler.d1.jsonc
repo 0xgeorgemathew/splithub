@@ -1,0 +1,14 @@
+// D1 admin config for wrangler (remote migrations and ad-hoc SQL). The Worker itself is configured in
+// cloudflare.config.ts; this file only exists because `cf d1` needs a D1-scoped token.
+{
+  "name": "splithub-d1-admin",
+  "compatibility_date": "2026-10-23",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "splithub",
+      "database_id": "f23e1fee-64b4-4098-b14b-3ee354dc722c",
+      "migrations_dir": "migrations"
+    }
+  ]
+}

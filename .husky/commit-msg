@@ -1,0 +1,4 @@
+# Credit Liz Merin George (lizgeorge1) as co-author on every commit.
+# Uses the identity from her existing commits so GitHub links the credit to her account.
+git interpret-trailers --in-place --if-exists addIfDifferent \
+  --trailer "Co-Authored-By: Liz Merin George <lizmerin.george@gmail.com>" "$1"

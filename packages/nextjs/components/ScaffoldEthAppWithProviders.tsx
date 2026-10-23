@@ -3,11 +3,11 @@
 import { usePathname } from "next/navigation";
 import { OneSignalProvider } from "./OneSignalProvider";
 import { UserSyncWrapper } from "./UserSyncWrapper";
+import { ProgressProvider } from "@bprogress/next/app";
 import { PrivyProvider } from "@privy-io/react-auth";
 import { WagmiProvider } from "@privy-io/wagmi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MotionConfig } from "framer-motion";
-import { AppProgressBar as ProgressBar } from "next-nprogress-bar";
 import { useTheme } from "next-themes";
 import { Toaster } from "react-hot-toast";
 import { http } from "viem";
@@ -65,12 +65,13 @@ export const ScaffoldEthAppWithProviders = ({ children }: { children: React.Reac
     >
       <QueryClientProvider client={queryClient}>
         <WagmiProvider config={wagmiConfig}>
-          <ProgressBar height="3px" color="#2299dd" />
-          <OneSignalProvider>
-            <UserSyncWrapper>
-              <ScaffoldEthApp>{children}</ScaffoldEthApp>
-            </UserSyncWrapper>
-          </OneSignalProvider>
+          <ProgressProvider height="3px" color="#2299dd" options={{ showSpinner: false }} shallowRouting>
+            <OneSignalProvider>
+              <UserSyncWrapper>
+                <ScaffoldEthApp>{children}</ScaffoldEthApp>
+              </UserSyncWrapper>
+            </OneSignalProvider>
+          </ProgressProvider>
         </WagmiProvider>
       </QueryClientProvider>
     </PrivyProvider>

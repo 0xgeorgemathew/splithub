@@ -11,11 +11,12 @@ The physical tap experience is powered by Arx Halo NFC chips, but the chip is no
 
 ## Stack
 
-- **Frontend:** Next.js 16, React 19, Tailwind CSS 4, DaisyUI 5
+- **Frontend:** Next.js 16 App Router on vinext (Vite), React 19, Tailwind CSS 4, DaisyUI 5
+- **Hosting:** Cloudflare Workers (`splithub` Worker on `splithub.space`), configured in `packages/nextjs/cloudflare.config.ts`
 - **Wallet/Auth:** Privy, Wagmi, Viem
 - **NFC:** `@arx-research/libhalo`
-- **Backend/Data:** Supabase Postgres + realtime
-- **Agent Infra:** Vincent, OpenAI, Trigger.dev
+- **Backend/Data:** Cloudflare D1 (SQLite) behind a supabase-js compatible layer (`lib/db`), Durable Object realtime, R2
+- **Agent Infra:** Vincent, OpenAI, Cloudflare Workflows + Cron Triggers
 - **Contracts:** Foundry, Solidity 0.8.19, OpenZeppelin, Base Sepolia (`84532`)
 - **Runtime:** Bun workspaces
 
@@ -32,7 +33,7 @@ Merchant and venue commerce surface.
 - store analytics
 - manager agents with run history and validations
 - supplier restock integration
-- scheduled store health scans via Trigger.dev
+- scheduled store health scans via Cron Trigger, agent runs via Workflows
 
 Primary routes:
 
@@ -43,7 +44,7 @@ Primary code:
 
 - `packages/nextjs/app/api/stores`
 - `packages/nextjs/services/store`
-- `packages/nextjs/trigger`
+- `packages/nextjs/worker`
 
 ### 2. DeFi
 
@@ -137,9 +138,12 @@ packages/nextjs/
     jitPaymentService.ts    Agent Pay JIT top-up logic
     paymentReadinessService.ts
     vincentExecutionService.ts
-  trigger/
-    store-agent-run.ts
-    store-health-scan.ts
+  lib/db/                   D1 query layer (supabase-js compatible), realtime client, browser policy
+  migrations/               D1 schema migrations (source of truth; mirrored by lib/db/schema.ts)
+  worker/
+    index.ts                Worker entry: realtime upgrade, cron handler, exports
+    realtime-hub.ts         RealtimeHub Durable Object (postgres_changes replacement)
+    store-agent-workflow.ts StoreAgentRunWorkflow
 
 packages/foundry/
   contracts/
@@ -153,6 +157,17 @@ packages/foundry/
 - **SplitHubRegistry**: maps chip addresses to owners
 - **SplitHubPayments**: payment execution and auth checks
 - **CreditToken**: venue credits token
+
+## Data Layer
+
+- `supabase` from `~~/lib/supabase` is the D1 client (`lib/db`): same builder API (`from().select().eq()...`,
+  embeds like `users!payer_wallet(name)`, `!inner`, `or()`, `upsert`, `single`/`maybeSingle`, `PGRST116`).
+- Server code runs plans directly on D1; browser code POSTs plans to `/api/db`, gated by `lib/db/policy.ts`
+  (reads open, writes only for the tables/actions client code performs).
+- `supabase.channel().on("postgres_changes", ...)` is served by the `RealtimeHub` Durable Object; every write
+  through `lib/db` publishes changes.
+- Schema changes: add a file under `migrations/`, update `lib/db/schema.ts`, run `bun run test` (checks they match).
+- ERC-8004 evidence documents whose hashes go onchain are stored verbatim in R2 (`services/store/evidenceStore.ts`).
 
 ## Database Areas
 
@@ -208,8 +223,8 @@ Relevant files:
 Relevant files:
 
 - `packages/nextjs/services/store/storeAgentRuntime.ts`
-- `packages/nextjs/trigger/store-agent-run.ts`
-- `packages/nextjs/trigger/store-health-scan.ts`
+- `packages/nextjs/services/store/storeAgentQueue.ts`
+- `packages/nextjs/worker/store-agent-workflow.ts`
 - `packages/nextjs/services/store/supplierService.ts`
 
 ### DeFi deployment
@@ -265,8 +280,10 @@ Relevant files:
 - `packages/nextjs/services/paymentReadinessService.ts`
 - `packages/nextjs/services/jitPaymentService.ts`
 - `packages/nextjs/services/agentPlannerService.ts`
-- `packages/nextjs/trigger/store-agent-run.ts`
-- `packages/nextjs/trigger/store-health-scan.ts`
+- `packages/nextjs/services/store/storeAgentQueue.ts`
+- `packages/nextjs/worker/index.ts`
+- `packages/nextjs/lib/db/engine.ts`
+- `packages/nextjs/cloudflare.config.ts`
 
 ## Commands
 
@@ -278,14 +295,17 @@ bun run deploy:local
 bun run deploy:base
 bun run next:lint
 bun run next:check-types
+bun run next:test
+bun run next:deploy
 bun run test
 ```
 
-Trigger.dev local development:
+Cloudflare (from `packages/nextjs`):
 
 ```bash
-cd packages/nextjs
-bun run dev:trigger
+bun run db:migrate:local    # local D1 used by `bun run dev`
+bun run db:migrate:remote   # production D1
+bun run deploy              # vite build + cf deploy (do not run plain `cf deploy`: it runs `next build`)
 ```
 
 ## Routes Worth Checking

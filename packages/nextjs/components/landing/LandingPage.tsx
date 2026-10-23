@@ -1,28 +1,32 @@
 "use client";
 
 import { HeroSection } from "./HeroSection";
-import { HowItWorksEase } from "./HowItWorksEase";
+import { JitSection } from "./JitSection";
 import { LandingFooter } from "./LandingFooter";
+import { ProductIndex } from "./ProductIndex";
 import { SecuritySection } from "./SecuritySection";
-import { UseCaseCards } from "./UseCaseCards";
+import { MotionConfig } from "framer-motion";
 
 export function LandingPage() {
   return (
-    <div className="min-h-screen overflow-x-hidden">
-      {/* 1. Hero - Main value prop with phone mockup animation */}
-      <HeroSection />
+    <MotionConfig reducedMotion="user">
+      {/* Bleed over the app shell padding so the landing background runs edge to edge */}
+      <div className="-mt-20 -mb-24 min-h-screen overflow-x-hidden bg-base-100">
+        {/* 1. Hero - thesis plus a receipt printing one tap */}
+        <HeroSection />
 
-      {/* 2. Core Use Cases - Two distinct cards with hover interactions */}
-      <UseCaseCards />
+        {/* 2. Products - Stores, Agent Pay, DeFi, Splits */}
+        <ProductIndex />
 
-      {/* 3. How It Works (Ease) - Direct, Instant, USDC */}
-      <HowItWorksEase />
+        {/* 3. What happens at tap time (JIT liquidity) */}
+        <JitSection />
 
-      {/* 4. Security Deep Dive - HaLo Chip + Onboarding */}
-      <SecuritySection />
+        {/* 4. Chip as authorization device */}
+        <SecuritySection />
 
-      {/* 5. Footer/CTA */}
-      <LandingFooter />
-    </div>
+        {/* 5. CTA + footer */}
+        <LandingFooter />
+      </div>
+    </MotionConfig>
   );
 }

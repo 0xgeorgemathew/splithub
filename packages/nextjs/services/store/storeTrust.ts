@@ -1,4 +1,5 @@
 import { ensureUserExists } from "../userService";
+import { putEvidenceDocument } from "./evidenceStore";
 import { normalizeAddress } from "./shared";
 import { encodeFunctionData } from "viem";
 import {
@@ -611,7 +612,11 @@ export async function ensureTrustAgentsForManager(managerAgent: ManagerAgent) {
 }
 
 export async function getStoreTrustSnapshot(managerAgentId: string): Promise<StoreTrustSnapshot> {
-  const { data: managerAgentData } = await supabase.from("manager_agents").select("*").eq("id", managerAgentId).single();
+  const { data: managerAgentData } = await supabase
+    .from("manager_agents")
+    .select("*")
+    .eq("id", managerAgentId)
+    .single();
   const managerAgent = (managerAgentData as ManagerAgent | null) || null;
 
   const { managerTrustAgent, validatorAgent, reviewerAgent } = managerAgent
@@ -853,6 +858,7 @@ export async function submitValidationRequest(runId: string) {
     reviewerAgent,
   });
   const requestHash = hashJsonPayload(requestDocument);
+  await putEvidenceDocument("validation-request", validation.id, requestDocument, requestHash);
 
   const { data, error } = await supabase
     .from("agent_validations")
@@ -1121,11 +1127,9 @@ export async function submitValidationResponse(validationId: string, score?: num
   const review = evaluateValidation(run);
   const responseScore = typeof score === "number" ? Math.max(0, Math.min(100, score)) : review.score;
   const reviewedAt = new Date().toISOString();
-  const responseUri =
-    validation.request_uri ||
-    buildAbsoluteAppUrl(
-      `/api/erc8004/agents/${managerTrustAgent.id}/validation-request.json?validationId=${validation.id}`,
-    );
+  const responseUri = buildAbsoluteAppUrl(
+    `/api/erc8004/agents/${managerTrustAgent.id}/validation-response.json?validationId=${validation.id}`,
+  );
   const responseDocument = {
     type: "splithub-erc8004-validation-response/v1",
     validationId: validation.id,
@@ -1143,6 +1147,7 @@ export async function submitValidationResponse(validationId: string, score?: num
       : null,
   };
   const responseHash = hashJsonPayload(responseDocument);
+  await putEvidenceDocument("validation-response", validation.id, responseDocument, responseHash);
 
   let txHash: `0x${string}` | null = null;
   let submissionError: string | null = null;
@@ -1259,6 +1264,7 @@ export async function submitReputationFeedback(
     proofOfPayment,
   };
   const feedbackHash = hashJsonPayload(feedbackDocument);
+  await putEvidenceDocument("feedback", runId, feedbackDocument, feedbackHash);
 
   let reputationTxHash: string | null = null;
   let submissionError: string | null = null;

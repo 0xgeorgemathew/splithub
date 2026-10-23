@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { tasks } from "@trigger.dev/sdk";
+import { queueStoreAgentRun } from "~~/services/store/storeAgentQueue";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +9,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const body = await request.json().catch(() => ({}));
     const triggerSource = body.triggerSource || "manual";
 
-    const handle = await tasks.trigger("store-agent-run", {
+    const handle = await queueStoreAgentRun({
       storeId: Number(storeId),
       triggerSource,
     });
