@@ -1,0 +1,33 @@
+name: Mirror to TaraxioT
+
+# Keeps https://github.com/TaraxioT/splithub in sync with this repository.
+# MIRROR_DEPLOY_KEY is the private half of a write deploy key on TaraxioT/splithub.
+on:
+  push:
+    branches: ["**"]
+    tags: ["**"]
+  delete:
+  workflow_dispatch:
+
+concurrency:
+  group: mirror
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone bare
+        run: git clone --mirror "https://github.com/${{ github.repository }}.git" source.git
+      - name: Push mirror
+        env:
+          MIRROR_DEPLOY_KEY: ${{ secrets.MIRROR_DEPLOY_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$MIRROR_DEPLOY_KEY" > ~/.ssh/mirror_key
+          chmod 600 ~/.ssh/mirror_key
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+          cd source.git
+          # Pull request refs are read-only on GitHub; mirror branches and tags only.
+          GIT_SSH_COMMAND="ssh -i ~/.ssh/mirror_key -o IdentitiesOnly=yes" \
+            git push --prune git@github.com:TaraxioT/splithub.git '+refs/heads/*:refs/heads/*' '+refs/tags/*:refs/tags/*'

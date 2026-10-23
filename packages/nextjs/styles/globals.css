@@ -148,6 +148,12 @@ Trigger Build Compatibility Styles
   --venue-halo-hover: 0 0 40px -5px rgba(242, 169, 0, 0.5);
 }
 
+/* Landing display type: Archivo on its wide axis */
+.font-wide {
+  font-family: var(--font-archivo), system-ui, sans-serif;
+  font-stretch: 125%;
+}
+
 /* Venue typography utilities */
 .font-bricolage {
   font-family: var(--font-bricolage), system-ui, sans-serif;

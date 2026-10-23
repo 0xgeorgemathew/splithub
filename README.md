@@ -135,7 +135,7 @@ This gives SplitHub two important product qualities:
 
 ### Split bills
 
-Users log in with Privy, create expenses, add participants, and see live balances update through Supabase. When it is time to settle, a tap authorizes payment and debt is cleared onchain.
+Users log in with Privy, create expenses, add participants, and see live balances update in realtime. When it is time to settle, a tap authorizes payment and debt is cleared onchain.
 
 ### Pay merchants
 
@@ -234,13 +234,13 @@ That means SplitHub is not only enabling merchant payments, but also giving each
 
 ---
 
-## Trigger-Powered Automation
+## Background Automation
 
-The background jobs in `packages/nextjs/trigger` are a major part of the newer product direction.
+Store agents run on Cloudflare Workflows and Cron Triggers (`packages/nextjs/worker`, `services/store/storeAgentQueue.ts`).
 
 ### Autonomous store runs
 
-`store-agent-run.ts` executes an autonomous store run for a given store and records:
+`StoreAgentRunWorkflow` executes an autonomous store run for a given store as a durable, retried Workflow step and records:
 
 - which store ran
 - the run id and state
@@ -251,14 +251,14 @@ This is the execution path that turns store agents from a configuration object i
 
 ### Scheduled health scans
 
-`store-health-scan.ts` runs on a schedule and checks active store agents for operational issues such as:
+A Cron Trigger runs every 15 minutes and checks active store agents for operational issues such as:
 
 - low-stock items
 - failed orders
 
 When a store needs attention, the scan queues a background store-agent run automatically. If everything looks healthy, the store is skipped. In product terms, this means SplitHub now supports **merchant monitoring and intervention loops**, not just checkout.
 
-Together, the store API layer and Trigger jobs add a new product dimension:
+Together, the store API layer and these background jobs add a new product dimension:
 
 **SplitHub is becoming a commerce platform with autonomous operations, not just a tap-to-pay frontend.**
 
@@ -286,8 +286,10 @@ SplitHub is a full-stack monorepo.
 
 ### Backend and Data
 
-- Supabase Postgres
-- Supabase realtime subscriptions
+- Cloudflare Workers (vinext: the Next.js App Router on Vite)
+- Cloudflare D1 (SQLite) behind a supabase-js compatible query layer (`lib/db`)
+- Durable Objects with hibernatable WebSockets for realtime row changes
+- R2 for immutable ERC-8004 evidence documents
 - app API routes for payments, stores, events, and agent operations
 - store APIs for catalog management, analytics, checkout, and agent control
 - payment request, settlement, tap-limit, and Vincent treasury endpoints
@@ -304,7 +306,7 @@ SplitHub is a full-stack monorepo.
 - Vincent wallet infrastructure
 - Aave-backed capital deployment
 - OpenAI-powered planning and store agent workflows
-- Trigger.dev background jobs for store agents
+- Cloudflare Workflows for durable store agent runs
 - scheduled store health scans and autonomous run orchestration
 - just-in-time payment funding and readiness evaluation
 
@@ -319,8 +321,9 @@ packages/
     components/           Product UI for splits, credits, events, store, settle
     hooks/                Wallet, chip, settlement, and Vincent hooks
     services/             Product logic, store services, DeFi, treasury, notifications
-    lib/                  Shared blockchain, Supabase, and Vincent helpers
-    supabase/             Schema reference and migrations
+    lib/                  Shared blockchain, database (lib/db), and Vincent helpers
+    migrations/           D1 schema migrations
+    worker/               Worker entry, realtime Durable Object, store agent Workflow
 
   foundry/
     contracts/            SplitHub contracts
@@ -346,7 +349,7 @@ packages/
 
 - Bun `>= 1.3.8`
 - Foundry
-- A Supabase project
+- A Cloudflare account (for deploys; local dev runs D1, R2, Durable Objects and Workflows locally)
 - A Privy app
 - Optional Vincent + OpenAI credentials for Agent Pay and DeFi flows
 
@@ -367,15 +370,10 @@ cp packages/nextjs/.env.example packages/nextjs/.env.local
 Important variables:
 
 ```bash
-NEXT_PUBLIC_SUPABASE_URL=...
-NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 NEXT_PUBLIC_PRIVY_APP_ID=...
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 RELAYER_PRIVATE_KEY=0x...
-
-VINCENT_API_KEY=ssk_...
-VINCENT_API_BASE=https://heyvincent.ai
 
 OPENAI_API_KEY=sk_...
 OPENAI_STORE_AGENT_MODEL=gpt-5.4-mini
@@ -396,11 +394,12 @@ cp packages/foundry/.env.example packages/foundry/.env
 
 Fill in RPC, verification, and deployer configuration as needed.
 
-### 4. Start the app
-
-From the repo root:
+### 4. Create the local database and start the app
 
 ```bash
+cd packages/nextjs
+bun run db:migrate:local
+cd ../..
 bun run start
 ```
 
@@ -429,6 +428,8 @@ bun run start
 bun run next:lint
 bun run next:check-types
 bun run next:build
+bun run next:test      # D1 query engine tests (bun:sqlite)
+bun run next:deploy    # build and deploy the Worker to Cloudflare
 ```
 
 ### Contracts
@@ -441,12 +442,19 @@ bun run deploy:local
 bun run deploy:base
 ```
 
-### Trigger.dev store agents
+### Deployment (Cloudflare)
+
+Production runs as the `splithub` Worker on `splithub.space`. Bindings, cron and exports live in
+`packages/nextjs/cloudflare.config.ts`; public build-time values in `packages/nextjs/.env.production`.
 
 ```bash
 cd packages/nextjs
-bun run dev:trigger
+bun run db:migrate:remote   # apply D1 migrations
+bun run deploy              # vite build + cf deploy
 ```
+
+Secrets (`RELAYER_PRIVATE_KEY`, `OPENAI_API_KEY`, `ONESIGNAL_REST_API_KEY`, `STORE_SUPPLIER_SHARED_SECRET`,
+`ERC8004_TRUST_RPC_URL`) are set on the Worker with `cf workers secrets update` or `wrangler secret put --name splithub`.
 
 ---
 

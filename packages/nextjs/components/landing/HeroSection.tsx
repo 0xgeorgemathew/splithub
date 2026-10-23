@@ -1,119 +1,90 @@
 "use client";
 
 import Link from "next/link";
-import { PhoneMockup } from "./PhoneMockup";
+import { TapReceipt } from "./TapReceipt";
 import { type Variants, motion } from "framer-motion";
-import { ChevronDown } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 const staggerContainer: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: {
-      staggerChildren: 0.12,
-      delayChildren: 0.1,
-    },
+    transition: { staggerChildren: 0.1, delayChildren: 0.1 },
   },
 };
 
-const textReveal: Variants = {
-  hidden: { opacity: 0, y: 30, filter: "blur(10px)" },
-  visible: {
-    opacity: 1,
-    y: 0,
-    filter: "blur(0px)",
-    transition: {
-      duration: 0.6,
-      ease: [0.22, 1, 0.36, 1],
-    },
-  },
+const rise: Variants = {
+  hidden: { opacity: 0, y: 24 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] } },
 };
 
 export function HeroSection() {
-  const scrollToFeatures = () => {
-    document.getElementById("features")?.scrollIntoView({ behavior: "smooth" });
-  };
-
   return (
-    <section className="min-h-[calc(100vh-80px)] flex flex-col items-center justify-center px-4 py-8 sm:py-12 overflow-hidden">
-      {/* Staggered headline reveal */}
-      <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="text-center mb-8 sm:mb-10">
-        <motion.h1
-          variants={textReveal}
-          className="font-[family-name:var(--font-archivo)] text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight mb-4"
-        >
-          <span className="inline-block">Tap-to-Pay.</span> <span className="inline-block text-primary">On-Chain.</span>{" "}
-          <span className="inline-block">Instant.</span>
-        </motion.h1>
+    <section className="relative px-5 sm:px-8 pt-28 sm:pt-32 pb-8 sm:pb-20 lg:min-h-screen flex items-center">
+      {/* Faint grid, like the face of a card reader */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-[0.035] [mask-image:radial-gradient(ellipse_at_70%_40%,black,transparent_70%)]"
+        style={{
+          backgroundImage:
+            "linear-gradient(to right, white 1px, transparent 1px), linear-gradient(to bottom, white 1px, transparent 1px)",
+          backgroundSize: "48px 48px",
+        }}
+      />
 
-        <motion.p
-          variants={textReveal}
-          className="font-[family-name:var(--font-outfit)] text-base-content/60 text-base sm:text-lg md:text-xl max-w-2xl mx-auto leading-relaxed font-light"
-        >
-          Spend stablecoins in the real world
-          <br className="hidden sm:block" /> with the speed and secuity of a credit card.
-        </motion.p>
-      </motion.div>
-
-      {/* Phone Mockup Animation */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.8, delay: 0.4 }}
-        className="mb-8 sm:mb-10 w-full flex justify-center"
-      >
-        <PhoneMockup />
-      </motion.div>
-
-      {/* CTAs */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.6 }}
-        className="flex flex-col sm:flex-row items-center gap-4"
-      >
-        <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
-          <Link
-            href="/register"
-            className="font-[family-name:var(--font-archivo)] h-12 px-8 text-base font-bold bg-primary text-primary-content hover:bg-primary/90 rounded-full transition-all duration-200 flex items-center justify-center gap-2"
-            style={{
-              boxShadow: "0 4px 14px rgba(242, 169, 0, 0.4), inset 0 1px 1px rgba(255,255,255,0.2)",
-            }}
+      <div className="relative w-full max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[1.15fr_1fr] gap-14 lg:gap-10 items-center">
+        <motion.div variants={staggerContainer} initial="hidden" animate="visible">
+          <motion.p
+            variants={rise}
+            className="m-0 mb-6 font-jetbrains text-[11px] sm:text-xs uppercase tracking-[0.22em] text-base-content/50"
           >
-            Get Started in Seconds
-          </Link>
+            NFC tap-to-pay · USDC on Base
+          </motion.p>
+
+          <motion.h1
+            variants={rise}
+            className="font-wide text-[2.6rem] leading-[0.95] sm:text-6xl lg:text-[4.5rem] font-extrabold tracking-[-0.02em] uppercase"
+          >
+            Tap to pay.
+            <br />
+            <span className="text-primary">Earn until</span>
+            <br />
+            <span className="text-primary">you do.</span>
+          </motion.h1>
+
+          <motion.p
+            variants={rise}
+            className="font-[family-name:var(--font-outfit)] mt-7 mb-0 max-w-[30rem] text-base sm:text-lg leading-relaxed text-base-content/65 font-light"
+          >
+            Your USDC stays in Aave. When you tap, an agent moves exactly what the payment needs and your chip signs it.
+            Nothing sits idle waiting for checkout.
+          </motion.p>
+
+          <motion.div variants={rise} className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-4">
+            <Link
+              href="/register"
+              className="font-[family-name:var(--font-archivo)] h-12 px-7 inline-flex items-center gap-2 rounded-full bg-primary text-primary-content font-bold text-[15px] transition-[transform,background-color] duration-200 hover:bg-primary/90 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
+            >
+              Create account
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+            <Link
+              href="/store"
+              className="font-[family-name:var(--font-archivo)] h-12 inline-flex items-center gap-2 font-semibold text-[15px] text-base-content/70 hover:text-base-content underline decoration-base-content/25 underline-offset-[6px] hover:decoration-primary transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary rounded"
+            >
+              Browse stores
+            </Link>
+          </motion.div>
         </motion.div>
 
-        <button
-          onClick={scrollToFeatures}
-          className="flex items-center gap-2 text-base-content/60 hover:text-base-content transition-colors duration-200 group"
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.35, ease: [0.22, 1, 0.36, 1] }}
         >
-          <span>Learn More</span>
-          <ChevronDown className="w-4 h-4 animate-bounce group-hover:text-primary transition-colors" />
-        </button>
-      </motion.div>
-
-      {/* Trust badges */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1, duration: 0.5 }}
-        className="font-[family-name:var(--font-outfit)] mt-8 sm:mt-12 flex items-center gap-6 text-xs text-base-content/40"
-      >
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
-          <span>Direct Submission</span>
-        </div>
-        <div className="hidden sm:block w-px h-4 bg-base-content/20" />
-        <div className="flex items-center gap-2">
-          <span className="font-[family-name:var(--font-jetbrains)]">USDC</span>
-          <span>Powered</span>
-        </div>
-        <div className="hidden sm:block w-px h-4 bg-base-content/20" />
-        <div className="hidden sm:flex items-center gap-2">
-          <span>Base Network</span>
-        </div>
-      </motion.div>
+          <TapReceipt />
+        </motion.div>
+      </div>
     </section>
   );
 }

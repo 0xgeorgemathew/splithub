@@ -1,19 +1,11 @@
-import { RealtimeChannel, RealtimePostgresChangesPayload, createClient } from "@supabase/supabase-js";
+import { db } from "./db";
+import type { RealtimeChannel, RealtimePostgresChangesPayload } from "./db";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error("Missing Supabase environment variables");
-}
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  realtime: {
-    params: {
-      eventsPerSecond: 10,
-    },
-  },
-});
+/**
+ * Database client. Historically Supabase; now Cloudflare D1 behind a supabase-js compatible API
+ * (see lib/db). The export name is kept so existing call sites read the same.
+ */
+export const supabase = db;
 
 // User table type
 export type User = {
