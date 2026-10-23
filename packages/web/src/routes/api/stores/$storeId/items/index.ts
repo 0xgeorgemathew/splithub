@@ -1,13 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { isAddress } from "viem";
-import { TOKENS } from "~~/config/tokens";
 import { errorResponse } from "~~/lib/auth";
-import { createStoreItem, getStoreItems, requireStoreManager } from "~~/services/storeService";
+import { createStoreItem, getStoreItems, parseStoreItemFields, requireStoreOwner } from "~~/services/storeService";
 
 async function GET(_: Request, { params }: { params: { storeId: string } }) {
   try {
-    const { storeId } = params;
-    const items = await getStoreItems(Number(storeId));
+    const items = await getStoreItems(Number(params.storeId));
     return Response.json({ items });
   } catch (error) {
     console.error("Fetch store items error:", error);
@@ -18,34 +15,16 @@ async function GET(_: Request, { params }: { params: { storeId: string } }) {
   }
 }
 
+/** Adds a catalog item (owner only): name and price, optional description, image URL and starting stock. */
 async function POST(request: Request, { params }: { params: { storeId: string } }) {
   try {
-    const { storeId } = params;
-    const { store } = await requireStoreManager(request, Number(storeId));
-    const body = await request.json();
-    const { sku, name, description, price, tokenAddress, imageUrl, currentStock, reorderThreshold, targetStock } = body;
+    const storeId = Number(params.storeId);
+    await requireStoreOwner(request, storeId);
+    const parsed = parseStoreItemFields(await request.json(), true);
+    if ("error" in parsed) return Response.json({ error: parsed.error }, { status: 400 });
+    const { name, price, description, imageUrl, stock } = parsed.fields;
 
-    if (!sku || !name || price === undefined) {
-      return Response.json({ error: "sku, name, and price are required" }, { status: 400 });
-    }
-
-    if (tokenAddress && !isAddress(tokenAddress)) {
-      return Response.json({ error: "tokenAddress must be a valid address" }, { status: 400 });
-    }
-
-    const item = await createStoreItem({
-      stallId: Number(storeId),
-      sku,
-      name,
-      description,
-      price: Number(price),
-      tokenAddress: tokenAddress || store.token_address || TOKENS.USDC,
-      imageUrl,
-      currentStock: currentStock !== undefined ? Number(currentStock) : undefined,
-      reorderThreshold: reorderThreshold !== undefined ? Number(reorderThreshold) : undefined,
-      targetStock: targetStock !== undefined ? Number(targetStock) : undefined,
-    });
-
+    const item = await createStoreItem({ storeId, name: name!, price: price!, description, imageUrl, stock });
     return Response.json({ item }, { status: 201 });
   } catch (error) {
     return errorResponse(error, "Failed to create store item");

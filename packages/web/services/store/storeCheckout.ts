@@ -1,9 +1,10 @@
-import { DEFAULT_STORE_TOKEN, fromMicros, getStoreRecordById, toMicros } from "./shared";
+import { STORE_TOKEN, fromMicros, getStoreById, toMicros } from "./shared";
 import type { CartLineInput, CheckoutQuote } from "~~/lib/store.types";
-import type { StoreOrder, StoreOrderItem } from "~~/lib/supabase";
+import type { StoreItem, StoreOrder, StoreOrderItem } from "~~/lib/supabase";
 import { supabase } from "~~/lib/supabase";
 
-export async function buildCheckoutQuote(stallId: number, cart: CartLineInput[]): Promise<CheckoutQuote> {
+/** Prices the cart server-side. The buyer pays the whole subtotal to the store owner's wallet in one payment. */
+export async function buildCheckoutQuote(storeId: number, cart: CartLineInput[]): Promise<CheckoutQuote> {
   if (cart.length === 0) {
     throw new Error("Cart is empty");
   }
@@ -18,34 +19,28 @@ export async function buildCheckoutQuote(stallId: number, cart: CartLineInput[])
   }
   cart = [...quantities].map(([itemId, quantity]) => ({ itemId, quantity }));
 
-  const storeRecord = await getStoreRecordById(stallId);
-  if (storeRecord.status !== "active" || storeRecord.event?.status !== "active") {
+  const store = await getStoreById(storeId);
+  if (!store) {
+    throw new Error("Store not found");
+  }
+  if (store.status !== "active") {
     throw new Error("This store is not taking orders right now");
   }
-  if (!storeRecord.operator_wallet) {
-    throw new Error("Store manager wallet is not configured");
-  }
-  if (!storeRecord.event?.owner_wallet) {
-    throw new Error("Store admin wallet is not configured");
-  }
 
-  const itemIds = cart.map(line => line.itemId);
   const { data: items, error: itemsError } = await supabase
     .from("store_items")
-    .select(
-      `
-      *,
-      inventory:store_inventory(*)
-    `,
+    .select("*")
+    .in(
+      "id",
+      cart.map(line => line.itemId),
     )
-    .in("id", itemIds)
-    .eq("stall_id", stallId);
+    .eq("store_id", storeId);
 
   if (itemsError) {
     throw new Error(`Failed to fetch cart items: ${itemsError.message}`);
   }
 
-  const itemMap = new Map<number, any>((items || []).map(item => [item.id, item]));
+  const itemMap = new Map<number, StoreItem>(((items || []) as StoreItem[]).map(item => [item.id, item]));
   let subtotalMicros = 0;
 
   const normalizedCart = cart.map(line => {
@@ -56,13 +51,9 @@ export async function buildCheckoutQuote(stallId: number, cart: CartLineInput[])
     if (item.status !== "active") {
       throw new Error(`${item.name} is not available for checkout`);
     }
-    const inventory = Array.isArray(item.inventory) ? item.inventory[0] : item.inventory;
-    const currentStock = inventory?.current_stock ?? 0;
-    if (line.quantity <= 0) {
-      throw new Error(`Invalid quantity for ${item.name}`);
-    }
-    if (currentStock < line.quantity) {
-      throw new Error(`${item.name} only has ${currentStock} left`);
+    const stock = Number(item.stock ?? 0);
+    if (stock < line.quantity) {
+      throw new Error(stock > 0 ? `${item.name} only has ${stock} left` : `${item.name} is sold out`);
     }
 
     const unitPriceMicros = toMicros(item.price);
@@ -77,52 +68,41 @@ export async function buildCheckoutQuote(stallId: number, cart: CartLineInput[])
       unitPriceMicros: unitPriceMicros.toString(),
       lineTotal: fromMicros(lineTotalMicros),
       lineTotalMicros: lineTotalMicros.toString(),
-      currentStock,
-      tokenAddress: item.token_address,
+      stock,
     };
   });
 
-  const managerSharePct = Number(storeRecord.split_percentage);
-  const managerMicros = Math.floor((subtotalMicros * managerSharePct) / 100);
-  const adminMicros = subtotalMicros - managerMicros;
+  if (subtotalMicros <= 0) {
+    throw new Error("The cart total must be above zero");
+  }
 
   return {
-    storeId: stallId,
-    eventId: storeRecord.event_id,
-    tokenAddress: normalizedCart[0]?.tokenAddress || storeRecord.token_address || DEFAULT_STORE_TOKEN,
+    storeId,
+    tokenAddress: STORE_TOKEN,
     subtotal: fromMicros(subtotalMicros),
     subtotalMicros: subtotalMicros.toString(),
-    managerAmount: fromMicros(managerMicros),
-    managerAmountMicros: managerMicros.toString(),
-    adminAmount: fromMicros(adminMicros),
-    adminAmountMicros: adminMicros.toString(),
-    managerRecipient: storeRecord.operator_wallet.toLowerCase(),
-    adminRecipient: storeRecord.event.owner_wallet.toLowerCase(),
-    payoutRecipient: storeRecord.operator_wallet.toLowerCase(),
+    payoutRecipient: store.owner_wallet.toLowerCase() as `0x${string}`,
     payoutAmountMicros: subtotalMicros.toString(),
     cart: normalizedCart,
   };
 }
 
 export async function createStoreOrderRecord(params: {
-  stallId: number;
+  storeId: number;
   buyerWallet: string;
   quote: CheckoutQuote;
-  status?: StoreOrder["status"];
-  txHash?: string | null;
+  txHash: string;
 }): Promise<{ order: StoreOrder; orderItems: StoreOrderItem[] }> {
   const { data: order, error } = await supabase
     .from("store_orders")
     .insert({
-      stall_id: params.stallId,
+      store_id: params.storeId,
       buyer_wallet: params.buyerWallet.toLowerCase(),
       subtotal: parseFloat(params.quote.subtotal),
-      manager_amount: parseFloat(params.quote.managerAmount),
-      admin_amount: parseFloat(params.quote.adminAmount),
       token_address: params.quote.tokenAddress.toLowerCase(),
-      tx_hash: params.txHash || null,
-      status: params.status || "pending",
-      completed_at: params.status === "completed" ? new Date().toISOString() : null,
+      tx_hash: params.txHash,
+      status: "completed",
+      completed_at: new Date().toISOString(),
     })
     .select("*")
     .single();
@@ -154,40 +134,33 @@ export async function createStoreOrderRecord(params: {
   };
 }
 
-export async function decrementInventoryForQuote(quote: CheckoutQuote): Promise<void> {
+export async function decrementStockForQuote(quote: CheckoutQuote): Promise<void> {
   const shortfalls: string[] = [];
   for (const line of quote.cart) {
     // Compare-and-set on the current stock (retried on conflict) so concurrent checkouts both count.
     let decremented = false;
     for (let attempt = 0; attempt < 5 && !decremented; attempt++) {
-      const { data: inventory } = await supabase
-        .from("store_inventory")
-        .select("current_stock")
-        .eq("item_id", line.itemId)
-        .maybeSingle();
-      const currentStock = Number(inventory?.current_stock ?? 0);
-      const nextStock = Math.max(0, currentStock - line.quantity);
+      const { data: item } = await supabase.from("store_items").select("stock").eq("id", line.itemId).maybeSingle();
+      const stock = Number(item?.stock ?? 0);
+      const nextStock = Math.max(0, stock - line.quantity);
       const { data: updated, error } = await supabase
-        .from("store_inventory")
-        .update({ current_stock: nextStock })
-        .eq("item_id", line.itemId)
-        .eq("current_stock", currentStock)
-        .select("item_id");
+        .from("store_items")
+        .update({ stock: nextStock })
+        .eq("id", line.itemId)
+        .eq("stock", stock)
+        .select("id");
       if (error) {
-        throw new Error(`Failed to update inventory for item ${line.itemId}: ${error.message}`);
+        throw new Error(`Failed to update stock for item ${line.itemId}: ${error.message}`);
       }
       if (!updated?.length) continue;
 
       decremented = true;
-      if (currentStock < line.quantity) shortfalls.push(`${line.name} oversold by ${line.quantity - currentStock}`);
-      if (nextStock <= 0) {
-        await supabase.from("store_items").update({ status: "out_of_stock" }).eq("id", line.itemId);
-      }
+      if (stock < line.quantity) shortfalls.push(`${line.name} oversold by ${line.quantity - stock}`);
     }
     if (!decremented) shortfalls.push(`${line.name} stock could not be updated`);
   }
 
   if (shortfalls.length) {
-    throw new Error(`Inventory needs attention: ${shortfalls.join("; ")}`);
+    throw new Error(`Stock needs attention: ${shortfalls.join("; ")}`);
   }
 }

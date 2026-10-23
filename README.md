@@ -20,13 +20,13 @@ the chip, there is no relayer, and losing the chip does not lose funds.
 
 ### Stores
 
-- Set up a store in a store group you own, with a manager wallet that receives payments
-- Catalog, stock levels, restocking, and pausing items or the whole store
-- Tap checkout: the server prices the cart, the buyer's chip authorizes one payment to the store, and the order
-  is recorded only after the server verifies the payment onchain
-- Sales summary per store: revenue, orders, manager share, low stock, top sellers
+- Anyone signed in can set up a store with a name and an optional description; payments go to their wallet
+- Catalog items with a price, optional description and image, a stock count, and pausing items or the whole store
+- Tap checkout: the server prices the cart, the buyer's chip authorizes one payment to the store owner, and the
+  order is recorded only after the server verifies the payment onchain
+- Sales summary per store: revenue, orders, top sellers, recent orders, low stock
 
-Routes: `/store`, `/store/$networkSlug/$storeSlug`
+Routes: `/store`, `/store/$storeSlug`
 
 ### Venues
 

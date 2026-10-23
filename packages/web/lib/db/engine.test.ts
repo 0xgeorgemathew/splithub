@@ -282,34 +282,19 @@ describe("mutations", () => {
   });
 
   test("upsert onConflict", async () => {
-    const { data: event } = await from("events")
-      .insert({ event_name: "N", event_slug: "n", owner_wallet: alice })
-      .select()
-      .single();
-    const { data: stall } = await from("stalls")
-      .insert({
-        event_id: event.id,
-        stall_name: "S",
-        stall_slug: "s",
-        operator_twitter_handle: "x",
-        split_percentage: 10,
-        token_address: "0x",
-      })
-      .select()
-      .single();
-    const { data: item } = await from("store_items")
-      .insert({ stall_id: stall.id, sku: "a", name: "A", price: 1.5, token_address: "0x" })
-      .select()
-      .single();
-    const upsert = (current_stock: number) =>
-      from("store_inventory")
-        .upsert({ item_id: item.id, current_stock, reorder_threshold: 2, target_stock: 9 }, { onConflict: "item_id" })
+    const upsert = (store_name: string) =>
+      from("stores")
+        .upsert({ owner_wallet: alice, store_name, store_slug: "corner" }, { onConflict: "store_slug" })
         .select()
         .single();
-    expect((await upsert(4)).data.current_stock).toBe(4);
-    expect((await upsert(7)).data.current_stock).toBe(7);
-    const { data: inventory } = await from("store_items").select("*, store_inventory(*)").eq("id", item.id).single();
-    expect(inventory.store_inventory).toHaveLength(1);
+    const first = (await upsert("Corner")).data;
+    const second = (await upsert("Corner Shop")).data;
+    expect(second.id).toBe(first.id);
+    expect(second.store_name).toBe("Corner Shop");
+    await from("store_items").insert({ store_id: first.id, name: "A", price: 1.5, stock: 3 });
+    const { data: store } = await from("stores").select("*, store_items(*)").eq("id", first.id).single();
+    expect(store.store_items).toHaveLength(1);
+    expect(store.store_items[0].stock).toBe(3);
   });
 
   test("constraint errors map to Postgres codes", async () => {

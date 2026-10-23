@@ -6,8 +6,8 @@ import { DbError, schema } from "./schema";
  *
  * Reads are open (parity with the old Supabase anon key). Writes need a signed-in caller and are limited to
  * the tables and actions client components perform, each with an ownership rule below. Users, venues,
- * stalls and stores change through authenticated API routes, and stall payments, store orders and
- * settlements are recorded by the server after it verifies the onchain payment.
+ * stalls, stores and store items change through authenticated API routes, and stall payments, store orders
+ * and settlements are recorded by the server after it verifies the onchain payment.
  */
 const BROWSER_WRITES: Record<string, QueryAction[]> = {
   circles: ["insert", "update", "delete"],
