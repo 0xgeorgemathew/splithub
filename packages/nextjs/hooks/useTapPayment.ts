@@ -38,6 +38,11 @@ export function useTapPayment() {
 
   const pay = useCallback(
     async (request: TapPaymentRequest, onStep?: (step: TapPaymentStep) => void) => {
+      // Resolve the submitting wallet first so a signed-out terminal fails before anyone taps.
+      const walletClient = await getWalletClient(baseSepolia).catch(() => {
+        throw new Error("Sign in on this device to accept tap payments.");
+      });
+
       let payer = request.payer;
       if (!payer) {
         onStep?.("identifying");
@@ -56,7 +61,6 @@ export function useTapPayment() {
       const { signature } = await signTypedData({ ...PAYMENT_AUTH_TYPED_DATA, message: auth });
 
       onStep?.("submitting");
-      const walletClient = await getWalletClient(baseSepolia);
       const txHash: Hex = await walletClient.writeContract({
         account: walletClient.account!,
         chain: baseSepolia,
