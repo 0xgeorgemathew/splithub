@@ -1,13 +1,13 @@
 const path = require("path");
 
-const buildNextEslintCommand = (filenames) => {
+const buildWebEslintCommand = (filenames) => {
   const relativePaths = filenames
-    .map((f) => path.relative(path.join("packages", "nextjs"), f))
+    .map((f) => path.relative(path.join("packages", "web"), f))
     .join(" ");
-  return `cd packages/nextjs && bun run lint --fix ${relativePaths}`;
+  return `cd packages/web && bun run lint --fix ${relativePaths}`;
 };
 
-const checkTypesNextCommand = () => "bun run next:check-types";
+const checkTypesWebCommand = () => "bun run web:check-types";
 
 const buildFoundryFormatCommand = (filenames) => {
   const relativePaths = filenames.map((f) => path.relative(path.join("packages", "foundry"), f)).join(" ");
@@ -15,9 +15,9 @@ const buildFoundryFormatCommand = (filenames) => {
 };
 
 module.exports = {
-  "packages/nextjs/**/*.{ts,tsx}": [
-    buildNextEslintCommand,
-    checkTypesNextCommand,
+  "packages/web/**/*.{ts,tsx}": [
+    buildWebEslintCommand,
+    checkTypesWebCommand,
   ],
   "packages/foundry/**/*.sol": [buildFoundryFormatCommand],
 };
