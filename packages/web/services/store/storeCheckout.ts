@@ -8,7 +8,20 @@ export async function buildCheckoutQuote(stallId: number, cart: CartLineInput[])
     throw new Error("Cart is empty");
   }
 
+  // Merge repeated lines for the same item so stock is checked against the total quantity.
+  const quantities = new Map<number, number>();
+  for (const line of cart) {
+    if (!Number.isInteger(line.quantity) || line.quantity <= 0) {
+      throw new Error("Quantities must be whole numbers above zero");
+    }
+    quantities.set(line.itemId, (quantities.get(line.itemId) ?? 0) + line.quantity);
+  }
+  cart = [...quantities].map(([itemId, quantity]) => ({ itemId, quantity }));
+
   const storeRecord = await getStoreRecordById(stallId);
+  if (storeRecord.status !== "active" || storeRecord.event?.status !== "active") {
+    throw new Error("This store is not taking orders right now");
+  }
   if (!storeRecord.operator_wallet) {
     throw new Error("Store manager wallet is not configured");
   }
@@ -142,20 +155,39 @@ export async function createStoreOrderRecord(params: {
 }
 
 export async function decrementInventoryForQuote(quote: CheckoutQuote): Promise<void> {
+  const shortfalls: string[] = [];
   for (const line of quote.cart) {
-    const nextStock = line.currentStock - line.quantity;
-    const { error } = await supabase
-      .from("store_inventory")
-      .update({ current_stock: nextStock })
-      .eq("item_id", line.itemId)
-      .gte("current_stock", line.quantity);
+    // Compare-and-set on the current stock (retried on conflict) so concurrent checkouts both count.
+    let decremented = false;
+    for (let attempt = 0; attempt < 5 && !decremented; attempt++) {
+      const { data: inventory } = await supabase
+        .from("store_inventory")
+        .select("current_stock")
+        .eq("item_id", line.itemId)
+        .maybeSingle();
+      const currentStock = Number(inventory?.current_stock ?? 0);
+      const nextStock = Math.max(0, currentStock - line.quantity);
+      const { data: updated, error } = await supabase
+        .from("store_inventory")
+        .update({ current_stock: nextStock })
+        .eq("item_id", line.itemId)
+        .eq("current_stock", currentStock)
+        .select("item_id");
+      if (error) {
+        throw new Error(`Failed to update inventory for item ${line.itemId}: ${error.message}`);
+      }
+      if (!updated?.length) continue;
 
-    if (error) {
-      throw new Error(`Failed to update inventory for item ${line.itemId}: ${error.message}`);
+      decremented = true;
+      if (currentStock < line.quantity) shortfalls.push(`${line.name} oversold by ${line.quantity - currentStock}`);
+      if (nextStock <= 0) {
+        await supabase.from("store_items").update({ status: "out_of_stock" }).eq("id", line.itemId);
+      }
     }
+    if (!decremented) shortfalls.push(`${line.name} stock could not be updated`);
+  }
 
-    if (nextStock <= 0) {
-      await supabase.from("store_items").update({ status: "out_of_stock" }).eq("id", line.itemId);
-    }
+  if (shortfalls.length) {
+    throw new Error(`Inventory needs attention: ${shortfalls.join("; ")}`);
   }
 }

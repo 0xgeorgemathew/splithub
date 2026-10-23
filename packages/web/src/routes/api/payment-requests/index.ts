@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { isAddress } from "viem";
+import { errorResponse, requireUser, sameWallet } from "~~/lib/auth";
 import { supabase } from "~~/lib/supabase";
 import { sendPaymentRequestNotification } from "~~/services/notificationService";
 import { createPaymentRequest } from "~~/services/paymentRequestService";
@@ -85,8 +86,13 @@ async function GET(request: Request) {
 // POST /api/payment-requests - Create a new payment request
 async function POST(request: Request) {
   try {
+    const { wallet } = await requireUser(request);
     const body = await request.json();
     const { payer, recipient, token, amount, memo, payerTwitter, requesterTwitter } = body;
+    // The requester is the one being paid, so requests can only be created for yourself.
+    if (!sameWallet(recipient, wallet)) {
+      return Response.json({ error: "You can only request payments to your own wallet" }, { status: 403 });
+    }
 
     // Validate input using service
     const validation = validatePaymentRequestInput({ payer, recipient, token, amount });
@@ -134,8 +140,7 @@ async function POST(request: Request) {
       isExisting: false,
     });
   } catch (err) {
-    console.error("Payment request creation error:", err);
-    return Response.json({ error: "Internal server error" }, { status: 500 });
+    return errorResponse(err, "Payment request creation error");
   }
 }
 

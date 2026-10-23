@@ -92,8 +92,8 @@ async function POST(request: Request, { params }: { params: { id: string } }) {
 
     const data = await completePaymentRequest(id, txHash);
     return Response.json({ success: true, data });
-  } catch (_err) {
-    return Response.json({ error: "Internal server error" }, { status: 500 });
+  } catch (err) {
+    return Response.json({ error: err instanceof Error ? err.message : "Internal server error" }, { status: 500 });
   }
 }
 

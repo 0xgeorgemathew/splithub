@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { type Address, parseUnits } from "viem";
 import { TOKEN_DECIMALS } from "~~/config/tokens";
 import { useTapPayment } from "~~/hooks/useTapPayment";
+import { apiFetch } from "~~/lib/apiFetch";
 import type { Stall } from "~~/lib/events.types";
 import { parseContractError } from "~~/utils/contractErrors";
 
@@ -64,7 +65,7 @@ export function useStallPayment({ stall, onSuccess, onError }: UseStallPaymentOp
         paidTxHash = result.txHash;
         setTxHash(result.txHash);
 
-        const response = await fetch("/api/events/pay", {
+        const response = await apiFetch("/api/events/pay", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ stallId: stall.id, txHash: result.txHash }),

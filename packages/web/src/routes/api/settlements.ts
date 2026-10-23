@@ -1,30 +1,45 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { type Address, type Hex, isAddress, isHash, parseUnits } from "viem";
+import { createBaseSepoliaPublicClient } from "~~/lib/baseSepolia";
+import { ERC20_ABI } from "~~/lib/contractAbis";
 import { supabase } from "~~/lib/supabase";
+import { verifyPaymentTx } from "~~/lib/tapPayment";
 
 /**
  * POST /api/settlements
- * Records a completed settlement in the database
+ * Records a completed settlement once `txHash` is verified to contain the matching SplitHubPayments
+ * transfer (payer → payee, token, amount). Each (tx, payer, payee) is recorded once.
  */
 async function POST(request: Request) {
   try {
     const body = await request.json();
     const { payerWallet, payeeWallet, amount, tokenAddress, txHash } = body;
 
-    // Validate required fields
     if (!payerWallet || !payeeWallet || !amount || !tokenAddress || !txHash) {
       return Response.json({ error: "Missing required fields" }, { status: 400 });
     }
+    if (!isAddress(payerWallet) || !isAddress(payeeWallet) || !isAddress(tokenAddress) || !isHash(txHash)) {
+      return Response.json({ error: "Invalid addresses or transaction hash" }, { status: 400 });
+    }
 
-    // Normalize wallet addresses to lowercase
-    const normalizedPayerWallet = payerWallet.toLowerCase();
-    const normalizedPayeeWallet = payeeWallet.toLowerCase();
+    const publicClient = createBaseSepoliaPublicClient();
+    const decimals = (await publicClient.readContract({
+      address: tokenAddress,
+      abi: ERC20_ABI,
+      functionName: "decimals",
+    })) as number;
+    await verifyPaymentTx(publicClient, txHash as Hex, {
+      payer: payerWallet as Address,
+      recipient: payeeWallet as Address,
+      token: tokenAddress as Address,
+      amount: parseUnits(String(amount), decimals),
+    });
 
-    // Insert settlement record
     const { data, error } = await supabase
       .from("settlements")
       .insert({
-        payer_wallet: normalizedPayerWallet,
-        payee_wallet: normalizedPayeeWallet,
+        payer_wallet: payerWallet.toLowerCase(),
+        payee_wallet: payeeWallet.toLowerCase(),
         amount: parseFloat(amount),
         token_address: tokenAddress.toLowerCase(),
         tx_hash: txHash,
@@ -35,6 +50,9 @@ async function POST(request: Request) {
       .single();
 
     if (error) {
+      if (error.code === "23505") {
+        return Response.json({ error: "This settlement is already recorded" }, { status: 409 });
+      }
       throw new Error(`Failed to insert settlement: ${error.message}`);
     }
 

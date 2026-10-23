@@ -117,7 +117,7 @@ export function StoreCheckoutClient({ store }: { store: StoreWithCatalog }) {
       );
 
       pushLog("Payment confirmed. Recording the order.");
-      const confirmResponse = await fetch(`/api/stores/${store.id}/checkout`, {
+      const confirmResponse = await apiFetch(`/api/stores/${store.id}/checkout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ intent: "confirm", cart: cartLines, txHash }),

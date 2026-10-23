@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { apiFetch } from "~~/lib/apiFetch";
 import { type FriendBalance } from "~~/lib/supabase";
 import { formatPaymentRequestError } from "~~/utils/errorFormatting";
 
@@ -125,7 +126,7 @@ export function usePaymentRequestActions(refreshRequests: () => void): PaymentRe
           // Create the payment request
           let requestResponse: Response;
           try {
-            requestResponse = await fetch("/api/payment-requests", {
+            requestResponse = await apiFetch("/api/payment-requests", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({

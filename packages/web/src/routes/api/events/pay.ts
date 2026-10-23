@@ -1,19 +1,22 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { type Address, type Hex, formatUnits, isHash } from "viem";
 import { TOKEN_DECIMALS } from "~~/config/tokens";
+import { errorResponse, requireUser } from "~~/lib/auth";
 import { createBaseSepoliaPublicClient } from "~~/lib/baseSepolia";
 import { supabase } from "~~/lib/supabase";
-import { verifyPaymentTx } from "~~/lib/tapPayment";
+import { PAYMENT_MAX_AGE_SECONDS, verifyPaymentTx } from "~~/lib/tapPayment";
 import { safeProcessCircleAutoSplit } from "~~/services/circleAutoSplitService";
 import { createStallPayment } from "~~/services/eventsService";
 import { ensureUserExists } from "~~/services/userService";
 
 /**
  * Records a stall payment after the terminal submitted a chip-authorized SplitHubPayments transfer.
- * The payer, amount and split are taken from the verified on-chain payment, not from the client.
+ * The payer, amount and split are taken from the verified on-chain payment, not from the client, and the
+ * caller must be the wallet that submitted it (the signed-in terminal), within the last 30 minutes.
  */
 async function POST(request: Request) {
   try {
+    const { wallet } = await requireUser(request);
     const { stallId, txHash } = (await request.json()) as { stallId?: number; txHash?: string };
 
     if (!stallId || typeof txHash !== "string" || !isHash(txHash)) {
@@ -37,6 +40,8 @@ async function POST(request: Request) {
     const payment = await verifyPaymentTx(createBaseSepoliaPublicClient(), txHash as Hex, {
       recipient: stall.operator_wallet as Address,
       token: stall.token_address as Address,
+      submitter: wallet as Address,
+      maxAgeSeconds: PAYMENT_MAX_AGE_SECONDS,
     });
 
     const payerWallet = payment.payer.toLowerCase();
@@ -67,10 +72,15 @@ async function POST(request: Request) {
 
     return Response.json({ success: true, paymentId: recorded.id, txHash, circleSplit });
   } catch (error: unknown) {
-    console.error("Stall payment error:", error);
-    const message = error instanceof Error ? error.message : "Payment failed";
-    return Response.json({ error: message }, { status: 500 });
+    if (isUniqueViolation(error)) {
+      return Response.json({ error: "This payment has already been recorded" }, { status: 409 });
+    }
+    return errorResponse(error, "Payment failed");
   }
+}
+
+function isUniqueViolation(error: unknown) {
+  return error instanceof Error && /duplicate key value violates unique constraint/i.test(error.message);
 }
 
 export const Route = createFileRoute("/api/events/pay")({

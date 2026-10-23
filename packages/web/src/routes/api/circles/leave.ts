@@ -1,12 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { isAddress } from "viem";
+import { errorResponse, requireUser, sameWallet } from "~~/lib/auth";
 import { leaveCircle } from "~~/services/circleService";
 
 // POST /api/circles/leave - Leave a circle
 async function POST(request: Request) {
   try {
+    const { wallet } = await requireUser(request);
     const body = await request.json();
-    const { circleId, memberWallet } = body;
+    const { circleId, memberWallet = wallet } = body;
 
     // Validate required fields
     if (!circleId || !memberWallet) {
@@ -18,6 +20,10 @@ async function POST(request: Request) {
       return Response.json({ error: "Invalid wallet address" }, { status: 400 });
     }
 
+    if (!sameWallet(memberWallet, wallet)) {
+      return Response.json({ error: "You can only leave circles yourself" }, { status: 403 });
+    }
+
     // Leave the circle
     await leaveCircle(circleId, memberWallet);
 
@@ -26,8 +32,7 @@ async function POST(request: Request) {
       message: "Successfully left the circle",
     });
   } catch (err) {
-    console.error("Leave circle error:", err);
-    return Response.json({ error: err instanceof Error ? err.message : "Failed to leave circle" }, { status: 500 });
+    return errorResponse(err, "Failed to leave circle");
   }
 }
 

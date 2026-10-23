@@ -1,9 +1,14 @@
+import { type Address, type Hex, isHash, parseUnits } from "viem";
+import { createBaseSepoliaPublicClient } from "~~/lib/baseSepolia";
+import { ERC20_ABI } from "~~/lib/contractAbis";
+
 /**
  * Payment Request Service
  *
  * Database operations for payment requests.
  */
 import { supabase } from "~~/lib/supabase";
+import { verifyPaymentTx } from "~~/lib/tapPayment";
 
 export interface PaymentRequest {
   id: string;
@@ -70,6 +75,23 @@ export async function createPaymentRequest(params: CreatePaymentRequestParams): 
  * @returns Updated payment request
  */
 export async function completePaymentRequest(requestId: string, txHash: string): Promise<PaymentRequest> {
+  // Only mark the request paid if the transaction actually pays it.
+  const request = await getPaymentRequest(requestId);
+  if (!request) throw new Error("Payment request not found");
+  if (!isHash(txHash)) throw new Error("Invalid transaction hash");
+  const publicClient = createBaseSepoliaPublicClient();
+  const decimals = (await publicClient.readContract({
+    address: request.token as Address,
+    abi: ERC20_ABI,
+    functionName: "decimals",
+  })) as number;
+  await verifyPaymentTx(publicClient, txHash as Hex, {
+    payer: request.payer as Address,
+    recipient: request.recipient as Address,
+    token: request.token as Address,
+    amount: parseUnits(String(request.amount), decimals),
+  });
+
   const { data, error } = await supabase
     .from("payment_requests")
     .update({

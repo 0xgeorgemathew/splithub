@@ -85,7 +85,14 @@ export type VerifiedPayment = {
   token: Address;
   amount: bigint;
   signer: Address;
+  /** Wallet that submitted the transaction (the device wallet). */
+  submitter: Address;
+  /** Block time, in seconds. */
+  timestamp: bigint;
 };
+
+/** Payments older than this are not accepted for new orders or stall payments. */
+export const PAYMENT_MAX_AGE_SECONDS = 30 * 60;
 
 /**
  * Confirms that `txHash` executed a SplitHubPayments payment matching `expected`. Used by server routes
@@ -94,11 +101,33 @@ export type VerifiedPayment = {
 export async function verifyPaymentTx(
   publicClient: PublicClient,
   txHash: Hex,
-  expected: { recipient: Address; token: Address; amount?: bigint; payer?: Address },
+  expected: {
+    recipient: Address;
+    token: Address;
+    amount?: bigint;
+    payer?: Address;
+    /** Require the transaction to be submitted by this wallet. */
+    submitter?: Address;
+    /** Reject payments mined longer ago than this. */
+    maxAgeSeconds?: number;
+  },
 ): Promise<VerifiedPayment> {
-  const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+  // Clients call this after their own receipt confirms, so a short wait is enough; unknown hashes fail fast.
+  const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash, timeout: 20_000 }).catch(() => {
+    throw new Error("Payment transaction not found");
+  });
   if (receipt.status !== "success") {
     throw new Error("Payment transaction reverted");
+  }
+  if (expected.submitter && !isAddressEqual(receipt.from, expected.submitter)) {
+    throw new Error("This payment was submitted by a different wallet");
+  }
+  const block = await publicClient.getBlock({ blockNumber: receipt.blockNumber });
+  if (
+    expected.maxAgeSeconds &&
+    BigInt(Math.floor(Date.now() / 1000)) - block.timestamp > BigInt(expected.maxAgeSeconds)
+  ) {
+    throw new Error("This payment is too old to record");
   }
   for (const log of receipt.logs) {
     if (!isAddressEqual(log.address, PAYMENTS_ADDRESS)) continue;
@@ -111,7 +140,7 @@ export async function verifyPaymentTx(
         (expected.amount === undefined || args.amount === expected.amount) &&
         (!expected.payer || isAddressEqual(args.payer, expected.payer))
       ) {
-        return args;
+        return { ...args, submitter: receipt.from, timestamp: block.timestamp };
       }
     } catch {
       // Not a SplitHubPayments event.

@@ -17,6 +17,7 @@ import { useCurrentUser } from "~~/hooks/useCurrentUser";
 import { useFriendBalancesRealtime } from "~~/hooks/useFriendBalancesRealtime";
 import { usePaymentRequestsRealtime } from "~~/hooks/usePaymentRequestsRealtime";
 import { useUSDCBalance } from "~~/hooks/useUSDCBalance";
+import { apiFetch } from "~~/lib/apiFetch";
 import { createBaseSepoliaPublicClient } from "~~/lib/baseSepolia";
 import { broadcastRawChipTokenTransfer } from "~~/lib/chipTransactions";
 import { dispatchClientRefreshEvents } from "~~/lib/clientTransactionUtils";
@@ -117,7 +118,7 @@ function SplitsPage() {
           throw new Error(tokenData.error || "Failed to fetch token address");
         }
 
-        const requestResponse = await fetch("/api/payment-requests", {
+        const requestResponse = await apiFetch("/api/payment-requests", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
