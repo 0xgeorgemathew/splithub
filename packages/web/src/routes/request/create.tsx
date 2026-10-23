@@ -5,6 +5,7 @@ import { CheckCircle2, Loader2, Send } from "lucide-react";
 import { FriendSelector } from "~~/components/expense/FriendSelector";
 import { Friend } from "~~/components/expense/hooks/useExpenseForm";
 import { TOKENS } from "~~/config/tokens";
+import { apiFetch } from "~~/lib/apiFetch";
 
 function CreateRequestPage() {
   const navigate = useNavigate();
@@ -25,7 +26,7 @@ function CreateRequestPage() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch("/api/payment-requests", {
+      const response = await apiFetch("/api/payment-requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

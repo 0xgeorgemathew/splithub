@@ -10,9 +10,16 @@ import { createChannel, removeAllChannels, removeChannel } from "./realtime";
 
 const browserExecutor: QueryExecutor = async (plan: QueryPlan): Promise<QueryResult> => {
   try {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (plan.action !== "select") {
+      // Writes are checked against the signed-in user (lib/db/policy.ts).
+      const { getAccessToken } = await import("@privy-io/react-auth");
+      const token = await getAccessToken();
+      if (token) headers.Authorization = `Bearer ${token}`;
+    }
     const response = await fetch("/api/db", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(plan),
     });
     if (!response.ok) {

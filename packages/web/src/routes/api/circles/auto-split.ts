@@ -1,24 +1,26 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { errorResponse, requireUser } from "~~/lib/auth";
 import { safeProcessCircleAutoSplit } from "~~/services/circleAutoSplitService";
 
 interface AutoSplitRequest {
-  userWallet: string;
   amount: string;
   tokenAddress: string;
   decimals?: number;
   description?: string;
 }
 
+/** Splits the signed-in user's own purchase across their active circle. */
 async function POST(request: Request) {
   try {
+    const { wallet } = await requireUser(request);
     const body = (await request.json()) as AutoSplitRequest;
 
-    if (!body.userWallet || !body.amount || !body.tokenAddress) {
-      return Response.json({ error: "Missing required fields: userWallet, amount, tokenAddress" }, { status: 400 });
+    if (!body.amount || !body.tokenAddress) {
+      return Response.json({ error: "Missing required fields: amount, tokenAddress" }, { status: 400 });
     }
 
     const result = await safeProcessCircleAutoSplit({
-      userWallet: body.userWallet,
+      userWallet: wallet,
       amount: body.amount,
       tokenAddress: body.tokenAddress,
       decimals: body.decimals,
@@ -30,8 +32,7 @@ async function POST(request: Request) {
       circleSplit: result,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to process auto-split";
-    return Response.json({ error: message }, { status: 500 });
+    return errorResponse(error, "Failed to process auto-split");
   }
 }
 

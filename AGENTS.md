@@ -52,8 +52,12 @@ stall payment. Multi-settle collects several chip signatures and submits them in
 - Venues and stalls: only the venue owner can create, edit, pause or delete (`/api/events/*`).
 - Stores: `requireStoreManager` (`services/store/storeAccess.ts`) allows the store manager or the store
   group owner; only the owner changes the manager share.
-- Browser writes through `/api/db` are limited by `lib/db/policy.ts` and exclude venues, stalls, stores and
-  payments.
+- Browser writes through `/api/db` need a signed-in caller and pass the ownership rules in `lib/db/policy.ts`
+  (rows matched by an update/delete are checked first); users, venues, stalls, stores and payments are not
+  browser-writable.
+- Recording a payment (store order, stall payment) requires the caller to be the wallet that submitted the
+  transaction, mined in the last 30 minutes; settlements and payment-request completion verify the matching
+  `PaymentExecuted`. Each payment tx is recorded once (unique indexes, migration 0004).
 
 ## Product Surfaces
 

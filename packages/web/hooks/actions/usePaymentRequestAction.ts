@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import { ANIMATION_DELAYS } from "~~/constants/ui";
+import { apiFetch } from "~~/lib/apiFetch";
 import { type FriendBalance, type PaymentRequest } from "~~/lib/supabase";
 import { formatAmount } from "~~/utils/format";
 
@@ -83,7 +84,7 @@ export function usePaymentRequestAction({
             throw new Error(tokenData.error || "Failed to fetch token address");
           }
 
-          const requestResponse = await fetch("/api/payment-requests", {
+          const requestResponse = await apiFetch("/api/payment-requests", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({

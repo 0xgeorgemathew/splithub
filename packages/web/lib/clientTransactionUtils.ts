@@ -1,3 +1,5 @@
+import { apiFetch } from "~~/lib/apiFetch";
+
 type CircleAutoSplitPayload = {
   userWallet: `0x${string}`;
   amount: string;
@@ -8,7 +10,7 @@ type CircleAutoSplitPayload = {
 
 export async function triggerCircleAutoSplit(payload: CircleAutoSplitPayload) {
   try {
-    const response = await fetch("/api/circles/auto-split", {
+    const response = await apiFetch("/api/circles/auto-split", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
