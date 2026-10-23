@@ -1,36 +1,49 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { isAddress } from "viem";
+import { TOKENS } from "~~/config/tokens";
+import { errorResponse, requireUser, sameWallet } from "~~/lib/auth";
 import type { CreateStallData } from "~~/lib/events.types";
-import { createStall } from "~~/services/eventsService";
+import { createStall, getEventById } from "~~/services/eventsService";
 
+/** Adds a stall to one of the signed-in user's venues. */
 async function POST(request: Request) {
   try {
-    const body: CreateStallData = await request.json();
+    const { wallet } = await requireUser(request);
+    const body: Partial<CreateStallData> = await request.json();
 
-    // Validation
-    if (
-      !body.event_id ||
-      !body.stall_name ||
-      !body.stall_slug ||
-      !body.operator_twitter_handle ||
-      !body.token_address
-    ) {
+    if (!body.event_id || !body.stall_name?.trim() || !body.stall_slug?.trim() || !body.operator_wallet) {
       return Response.json({ error: "Missing required fields" }, { status: 400 });
     }
+    if (!isAddress(body.operator_wallet)) {
+      return Response.json({ error: "Invalid operator wallet" }, { status: 400 });
+    }
 
-    // Default split_percentage to 100 (operator gets all)
-    const stallData: CreateStallData = {
-      ...body,
-      split_percentage: 100,
-    };
+    const event = await getEventById(body.event_id);
+    if (!event || event.kind !== "venue") {
+      return Response.json({ error: "Venue not found" }, { status: 404 });
+    }
+    if (!sameWallet(event.owner_wallet, wallet)) {
+      return Response.json({ error: "Only the venue owner can add stalls" }, { status: 403 });
+    }
 
-    // Create stall
-    const stall = await createStall(stallData);
+    const split = Number(body.split_percentage ?? 100);
+    if (!Number.isFinite(split) || split < 0 || split > 100) {
+      return Response.json({ error: "Operator share must be between 0 and 100" }, { status: 400 });
+    }
+
+    const stall = await createStall({
+      event_id: event.id,
+      stall_name: body.stall_name.trim(),
+      stall_slug: body.stall_slug.trim(),
+      stall_description: body.stall_description,
+      operator_wallet: body.operator_wallet,
+      split_percentage: split,
+      token_address: TOKENS.USDC,
+    });
 
     return Response.json({ stall }, { status: 201 });
   } catch (error: unknown) {
-    console.error("Create stall error:", error);
-    const message = error instanceof Error ? error.message : "Failed to create stall";
-    return Response.json({ error: message }, { status: 500 });
+    return errorResponse(error, "Failed to create stall");
   }
 }
 

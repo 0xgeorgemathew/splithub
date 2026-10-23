@@ -1,5 +1,5 @@
-import { usePrivy } from "@privy-io/react-auth";
 import { Navigate, createFileRoute } from "@tanstack/react-router";
+import { usePrivy } from "@privy-io/react-auth";
 import { Loader2 } from "lucide-react";
 import { clientOnly } from "~~/utils/clientOnly";
 
@@ -73,7 +73,6 @@ function RegisterPage() {
           ) : (
             <div className="bg-base-200/50 backdrop-blur-sm rounded-2xl p-6 border border-base-300/50 shadow-lg">
               <RegisterChipForm
-                userId={user.id}
                 embeddedWallet={embeddedWallet}
                 twitterHandle={twitterHandle}
                 twitterName={twitterName}

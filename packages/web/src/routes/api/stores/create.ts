@@ -1,13 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { isAddress } from "viem";
 import { TOKENS } from "~~/config/tokens";
+import { errorResponse, requireUser } from "~~/lib/auth";
 import { createStore } from "~~/services/storeService";
 
+/**
+ * Creates a store owned by the signed-in user. The store joins their store network (created on first use)
+ * and checkout pays the manager wallet, which defaults to the owner.
+ */
 async function POST(request: Request) {
   try {
+    const { wallet } = await requireUser(request);
     const body = await request.json();
     const {
-      adminWallet,
       networkName,
       networkSlug,
       storeName,
@@ -16,42 +21,35 @@ async function POST(request: Request) {
       managerWallet,
       managerTwitterHandle,
       splitPercentage,
-      tokenAddress,
     } = body;
 
-    if (!adminWallet || !isAddress(adminWallet)) {
-      return Response.json({ error: "Valid adminWallet is required" }, { status: 400 });
+    if (!storeName?.trim()) {
+      return Response.json({ error: "Store name is required" }, { status: 400 });
     }
-
-    if (!storeName || !networkName) {
-      return Response.json({ error: "networkName and storeName are required" }, { status: 400 });
-    }
-
     if (managerWallet && !isAddress(managerWallet)) {
-      return Response.json({ error: "managerWallet must be a valid address" }, { status: 400 });
+      return Response.json({ error: "Manager wallet must be a valid address" }, { status: 400 });
     }
-
     if (splitPercentage !== undefined && (splitPercentage < 0 || splitPercentage > 100)) {
-      return Response.json({ error: "splitPercentage must be between 0 and 100" }, { status: 400 });
+      return Response.json({ error: "Manager share must be between 0 and 100" }, { status: 400 });
     }
 
+    const name = networkName?.trim() || "My Stores";
     const result = await createStore({
-      adminWallet,
-      networkName,
-      networkSlug: networkSlug || networkName,
+      adminWallet: wallet,
+      networkName: name,
+      networkSlug: networkSlug || `${name}-${wallet.slice(2, 8)}`,
       storeName,
       storeSlug: storeSlug || storeName,
       storeDescription,
-      managerWallet,
+      managerWallet: managerWallet || wallet,
       managerTwitterHandle,
       splitPercentage,
-      tokenAddress: tokenAddress || TOKENS.USDC,
+      tokenAddress: TOKENS.USDC,
     });
 
     return Response.json(result, { status: 201 });
   } catch (error) {
-    console.error("Create store error:", error);
-    return Response.json({ error: error instanceof Error ? error.message : "Failed to create store" }, { status: 500 });
+    return errorResponse(error, "Failed to create store");
   }
 }
 

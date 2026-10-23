@@ -1,11 +1,11 @@
 /// <reference types="vite/client" />
 import type { ReactNode } from "react";
+import { HeadContent, Link, Outlet, Scripts, createRootRoute } from "@tanstack/react-router";
 import archivoCss from "@fontsource-variable/archivo/wdth.css?url";
 import bricolageCss from "@fontsource-variable/bricolage-grotesque/index.css?url";
 import jetbrainsMonoCss from "@fontsource-variable/jetbrains-mono/index.css?url";
 import outfitCss from "@fontsource-variable/outfit/index.css?url";
 import scaffoldUiCss from "@scaffold-ui/components/styles.css?url";
-import { HeadContent, Link, Outlet, Scripts, createRootRoute } from "@tanstack/react-router";
 import { ScaffoldEthAppWithProviders } from "~~/components/ScaffoldEthAppWithProviders";
 import { ThemeProvider } from "~~/components/ThemeProvider";
 import globalsCss from "~~/styles/globals.css?url";

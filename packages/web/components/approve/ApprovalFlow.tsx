@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { useNavigate } from "@tanstack/react-router";
+import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { AlertCircle, Check, Coins, Loader2, Shield } from "lucide-react";
 import { createWalletClient, custom, parseUnits } from "viem";
 import { baseSepolia } from "viem/chains";
@@ -16,7 +16,7 @@ import {
 import deployedContracts from "~~/contracts/deployedContracts";
 import { useTargetNetwork } from "~~/hooks/scaffold-eth";
 import { useWalletAddress } from "~~/hooks/useWalletAddress";
-import { supabase } from "~~/lib/supabase";
+import { apiFetch } from "~~/lib/apiFetch";
 import { formatWalletError } from "~~/utils/errorFormatting";
 
 // Token address from centralized config
@@ -110,12 +110,11 @@ async function updateApprovalStatusWithRetry(userId: string): Promise<void> {
   // Retry DB update with exponential backoff
   for (let attempt = 1; attempt <= DB_UPDATE_MAX_RETRIES; attempt++) {
     try {
-      const { error } = await supabase
-        .from("users")
-        .update({ approval_status: "completed" })
-        .eq("privy_user_id", userId);
-
-      if (error) throw error;
+      const response = await apiFetch("/api/user/approval", { method: "POST" });
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result.error || `Approval update failed (${response.status})`);
+      }
 
       console.log(`Approval status updated successfully (attempt ${attempt})`);
       return;

@@ -4,8 +4,8 @@
  * - fetch: realtime WebSocket upgrades go to the RealtimeHub Durable Object; everything else is TanStack Start.
  * - exports: Durable Object classes bound in cloudflare.config.ts.
  */
-import type { ExportedHandler } from "@cloudflare/workers-types";
 import handler from "@tanstack/react-start/server-entry";
+import type { ExportedHandler } from "@cloudflare/workers-types";
 
 export { RealtimeHub } from "./realtime-hub";
 

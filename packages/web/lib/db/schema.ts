@@ -130,6 +130,7 @@ const defs: Record<string, TableDef> = {
       status: "text",
       start_date: T,
       end_date: T,
+      kind: "text",
     },
     references: { owner_wallet: "users.wallet_address" },
   },

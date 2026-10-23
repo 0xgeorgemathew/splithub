@@ -1,23 +1,38 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Modal } from "~~/components/ui/Modal";
+import { apiFetch } from "~~/lib/apiFetch";
+import type { Event } from "~~/lib/events.types";
 
 interface CreateStoreModalProps {
   isOpen: boolean;
   onClose: () => void;
   adminWallet: string;
+  /** The user's existing store groups; a new store can join one of them. */
+  networks: Event[];
   onCreated: () => void;
 }
 
-export function CreateStoreModal({ isOpen, onClose, adminWallet, onCreated }: CreateStoreModalProps) {
+const NEW_GROUP = "__new__";
+
+export function CreateStoreModal({ isOpen, onClose, adminWallet, networks, onCreated }: CreateStoreModalProps) {
   const navigate = useNavigate();
-  const [networkName, setNetworkName] = useState("SplitHub Store Network");
+  const [networkSlug, setNetworkSlug] = useState(networks[0]?.event_slug ?? NEW_GROUP);
+  const [networkName, setNetworkName] = useState("My Stores");
   const [storeName, setStoreName] = useState("");
   const [storeDescription, setStoreDescription] = useState("");
   const [managerWallet, setManagerWallet] = useState(adminWallet);
   const [splitPercentage, setSplitPercentage] = useState("80");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Default to the first existing store group each time the modal opens (networks load after mount).
+  useEffect(() => {
+    if (isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setNetworkSlug(networks[0]?.event_slug ?? NEW_GROUP);
+    }
+  }, [isOpen, networks]);
 
   const reset = () => {
     setStoreName("");
@@ -38,13 +53,12 @@ export function CreateStoreModal({ isOpen, onClose, adminWallet, onCreated }: Cr
     setError(null);
 
     try {
-      const response = await fetch("/api/stores/create", {
+      const existing = networks.find(network => network.event_slug === networkSlug);
+      const response = await apiFetch("/api/stores/create", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          adminWallet,
-          networkName,
-          networkSlug: networkName,
+          networkName: existing?.event_name ?? networkName,
+          networkSlug: existing?.event_slug,
           storeName,
           storeSlug: storeName,
           storeDescription,
@@ -76,50 +90,67 @@ export function CreateStoreModal({ isOpen, onClose, adminWallet, onCreated }: Cr
     <Modal isOpen={isOpen} onClose={handleClose} size="lg">
       <Modal.Header>Create Store</Modal.Header>
       <Modal.Body className="space-y-4">
-        <div className="grid gap-4 md:grid-cols-2">
-          <label className="flex flex-col gap-2">
-            <span className="text-sm font-medium text-base-content/70">Network Name</span>
-            <input
-              value={networkName}
-              onChange={e => setNetworkName(e.target.value)}
-              className="input input-bordered w-full"
-              placeholder="Retail network"
-            />
-          </label>
-          <label className="flex flex-col gap-2">
-            <span className="text-sm font-medium text-base-content/70">Store Name</span>
-            <input
-              value={storeName}
-              onChange={e => setStoreName(e.target.value)}
-              className="input input-bordered w-full"
-              placeholder="Coffee Counter"
-            />
-          </label>
-        </div>
+        <label className="flex flex-col gap-2">
+          <span className="text-sm font-medium text-base-content/70">Store Name</span>
+          <input
+            value={storeName}
+            onChange={e => setStoreName(e.target.value)}
+            className="input input-bordered w-full"
+            placeholder="Coffee Counter"
+          />
+        </label>
 
         <label className="flex flex-col gap-2">
           <span className="text-sm font-medium text-base-content/70">Description</span>
           <textarea
             value={storeDescription}
             onChange={e => setStoreDescription(e.target.value)}
-            className="textarea textarea-bordered min-h-24"
-            placeholder="What this store sells and how the agent should manage it. You can add catalog items on the next screen."
+            className="textarea textarea-bordered min-h-20"
+            placeholder="What this store sells. You add catalog items and stock on the store page."
           />
         </label>
 
         <div className="grid gap-4 md:grid-cols-2">
           <label className="flex flex-col gap-2">
-            <span className="text-sm font-medium text-base-content/70">Manager Wallet</span>
+            <span className="text-sm font-medium text-base-content/70">Store group</span>
+            <select
+              value={networkSlug}
+              onChange={e => setNetworkSlug(e.target.value)}
+              className="select select-bordered w-full"
+            >
+              {networks.map(network => (
+                <option key={network.id} value={network.event_slug}>
+                  {network.event_name}
+                </option>
+              ))}
+              <option value={NEW_GROUP}>New group…</option>
+            </select>
+          </label>
+          {networkSlug === NEW_GROUP && (
+            <label className="flex flex-col gap-2">
+              <span className="text-sm font-medium text-base-content/70">Group name</span>
+              <input
+                value={networkName}
+                onChange={e => setNetworkName(e.target.value)}
+                className="input input-bordered w-full"
+                placeholder="My Stores"
+              />
+            </label>
+          )}
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-[1fr_10rem]">
+          <label className="flex flex-col gap-2">
+            <span className="text-sm font-medium text-base-content/70">Manager wallet (receives payments)</span>
             <input
               value={managerWallet}
-              onChange={e => setManagerWallet(e.target.value)}
-              className="input input-bordered w-full"
-              readOnly
+              onChange={e => setManagerWallet(e.target.value.trim())}
+              className="input input-bordered w-full font-mono text-sm"
               placeholder="0x..."
             />
           </label>
           <label className="flex flex-col gap-2">
-            <span className="text-sm font-medium text-base-content/70">Manager Split %</span>
+            <span className="text-sm font-medium text-base-content/70">Manager share %</span>
             <input
               value={splitPercentage}
               onChange={e => setSplitPercentage(e.target.value)}
@@ -132,8 +163,8 @@ export function CreateStoreModal({ isOpen, onClose, adminWallet, onCreated }: Cr
         </div>
 
         <div className="rounded-xl border border-white/10 bg-base-200/50 px-4 py-3 text-sm text-base-content/65">
-          Create the store shell here, then add catalog items inside the store page using the manager controls. That
-          keeps store setup and inventory management in one place.
+          Shoppers pay the manager wallet directly with a chip tap. The manager share splits each sale between the
+          manager and you in the store&apos;s books. Leave the wallet as yours to run the store yourself.
         </div>
 
         {error && (
@@ -147,7 +178,7 @@ export function CreateStoreModal({ isOpen, onClose, adminWallet, onCreated }: Cr
         <button
           className="btn btn-primary"
           onClick={handleSubmit}
-          disabled={isSubmitting || !storeName || !networkName}
+          disabled={isSubmitting || !storeName.trim() || (networkSlug === NEW_GROUP && !networkName.trim())}
         >
           {isSubmitting ? "Creating..." : "Create Store"}
         </button>

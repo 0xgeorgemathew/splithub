@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { usePrivy } from "@privy-io/react-auth";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { usePrivy } from "@privy-io/react-auth";
 import { AlertCircle, ArrowDown, ArrowUp, Clock, Loader2 } from "lucide-react";
 import { usePaymentRequestsRealtime } from "~~/hooks/usePaymentRequestsRealtime";
 import { type PaymentRequest as PaymentRequestType } from "~~/lib/supabase";

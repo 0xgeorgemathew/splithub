@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { AnimatePresence, type Variants, motion } from "framer-motion";
 import { Calendar, Check, Link as LinkIcon, Sparkles, X } from "lucide-react";
+import { apiFetch } from "~~/lib/apiFetch";
 import type { CreateEventData, Event } from "~~/lib/events.types";
 
 interface EventModalProps {
@@ -109,7 +110,7 @@ export const EventModal = ({ isOpen, onClose, onSuccess, editingEvent }: EventMo
 
   const handleSubmit = async () => {
     if (!walletAddress || !eventName.trim() || !eventSlug.trim()) {
-      setError("Please enter an event name");
+      setError("Please enter a venue name");
       return;
     }
 
@@ -127,18 +128,17 @@ export const EventModal = ({ isOpen, onClose, onSuccess, editingEvent }: EventMo
       };
 
       const endpoint = editingEvent ? `/api/events/${editingEvent.id}` : "/api/events/create";
-      const method = editingEvent ? "PUT" : "POST";
+      const method = editingEvent ? "PATCH" : "POST";
 
-      const response = await fetch(endpoint, {
+      const response = await apiFetch(endpoint, {
         method,
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(eventData),
       });
 
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || "Failed to save event");
+        throw new Error(result.error || "Failed to save venue");
       }
 
       setIsSuccess(true);
@@ -151,7 +151,7 @@ export const EventModal = ({ isOpen, onClose, onSuccess, editingEvent }: EventMo
       }, 1200);
     } catch (err) {
       console.error("Error saving event:", err);
-      setError(err instanceof Error ? err.message : "Failed to save event");
+      setError(err instanceof Error ? err.message : "Failed to save venue");
       setIsSubmitting(false);
     }
   };
@@ -242,7 +242,7 @@ export const EventModal = ({ isOpen, onClose, onSuccess, editingEvent }: EventMo
                     <div className="flex items-center gap-2">
                       <Calendar className="w-5 h-5 text-primary" />
                       <h2 className="text-lg font-semibold text-base-content">
-                        {editingEvent ? "Edit Event" : "New Event"}
+                        {editingEvent ? "Edit Venue" : "New Venue"}
                       </h2>
                     </div>
                     <motion.button
@@ -324,7 +324,7 @@ export const EventModal = ({ isOpen, onClose, onSuccess, editingEvent }: EventMo
                         onChange={e => setDescription(e.target.value)}
                         onFocus={() => setDescFocused(true)}
                         onBlur={() => setDescFocused(false)}
-                        placeholder="What's this event about?"
+                        placeholder="What's happening at this venue?"
                         rows={2}
                         className="w-full px-4 py-3 bg-base-100 text-sm text-base-content placeholder:text-base-content/40 focus:outline-none transition-all resize-none"
                       />
@@ -391,7 +391,7 @@ export const EventModal = ({ isOpen, onClose, onSuccess, editingEvent }: EventMo
                       className="flex-1 h-11 bg-primary hover:bg-primary/90 disabled:bg-base-300 disabled:text-base-content/40 text-primary-content font-semibold text-sm rounded-xl transition-all flex items-center justify-center gap-2"
                     >
                       <Calendar className="w-4 h-4" />
-                      {editingEvent ? "Save Changes" : "Create Event"}
+                      {editingEvent ? "Save Changes" : "Create Venue"}
                     </motion.button>
                   </motion.div>
                 </motion.div>

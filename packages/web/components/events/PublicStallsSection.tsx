@@ -109,11 +109,13 @@ export const PublicStallsSection = () => {
           .select(
             `
             *,
-            event:events!event_id(*),
+            event:events!event_id!inner(*),
             operator_user:users!operator_wallet(name, twitter_handle, twitter_profile_url)
           `,
           )
           .eq("status", "active")
+          .eq("event.kind", "venue")
+          .eq("event.status", "active")
           .order("updated_at", { ascending: false })
           .limit(10);
 

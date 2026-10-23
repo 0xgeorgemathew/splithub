@@ -1,9 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { updateStoreItem } from "~~/services/storeService";
+import { errorResponse } from "~~/lib/auth";
+import { supabase } from "~~/lib/supabase";
+import { requireStoreManager, updateStoreItem } from "~~/services/storeService";
 
 async function PATCH(request: Request, { params }: { params: { storeId: string; itemId: string } }) {
   try {
-    const { itemId } = params;
+    const { storeId, itemId } = params;
+    await requireStoreManager(request, Number(storeId));
+    const { data: owned } = await supabase
+      .from("store_items")
+      .select("id")
+      .eq("id", Number(itemId))
+      .eq("stall_id", Number(storeId))
+      .maybeSingle();
+    if (!owned) return Response.json({ error: "Item not found in this store" }, { status: 404 });
     const body = await request.json();
 
     const item = await updateStoreItem(Number(itemId), {
@@ -19,11 +29,7 @@ async function PATCH(request: Request, { params }: { params: { storeId: string; 
 
     return Response.json({ item });
   } catch (error) {
-    console.error("Update store item error:", error);
-    return Response.json(
-      { error: error instanceof Error ? error.message : "Failed to update store item" },
-      { status: 500 },
-    );
+    return errorResponse(error, "Failed to update store item");
   }
 }
 

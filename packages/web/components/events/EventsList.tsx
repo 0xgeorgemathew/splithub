@@ -168,7 +168,7 @@ export const EventsList = () => {
             <div className="flex items-center gap-1.5">
               <CalendarDays className="w-4 h-4 text-primary" />
               <span className="text-sm font-medium text-base-content/70">
-                {events.length} {events.length === 1 ? "event" : "events"}
+                {events.length} {events.length === 1 ? "venue" : "venues"}
               </span>
               {activeEvents > 0 && <span className="text-xs text-emerald-400 ml-1">({activeEvents} active)</span>}
             </div>
@@ -196,7 +196,7 @@ export const EventsList = () => {
           className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-full text-xs font-semibold transition-colors"
         >
           <Plus className="w-3.5 h-3.5" />
-          Create Event
+          Create Venue
         </motion.button>
       </div>
 

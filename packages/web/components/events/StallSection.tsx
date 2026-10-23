@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { useStallPaymentsRealtime } from "~~/hooks/useEventsRealtime";
 import type { Event, Stall } from "~~/lib/events.types";
-import { deleteStall, updateStall } from "~~/services/eventsService";
+import { venueApi } from "~~/lib/venueApi";
 
 interface StallSectionProps {
   event: Event & { stalls?: Stall[]; totalRevenue: number };
@@ -53,7 +53,7 @@ const StallCard = ({
   const handleToggleStatus = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      await updateStall(stall.id, {
+      await venueApi.updateStall(stall.id, {
         status: stall.status === "active" ? "paused" : "active",
       });
       onRefresh();
@@ -301,7 +301,7 @@ export const StallSection = ({ event, onEditEvent, onRefresh }: StallSectionProp
   const confirmDeleteStall = async () => {
     if (!deletingStall) return;
     try {
-      await deleteStall(deletingStall.id);
+      await venueApi.deleteStall(deletingStall.id);
       setDeletingStall(null);
       onRefresh();
     } catch (error) {

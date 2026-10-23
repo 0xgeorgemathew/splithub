@@ -10,6 +10,8 @@ export type Event = {
   status: "active" | "paused" | "ended";
   start_date: string | null;
   end_date: string | null;
+  /** "venue" for events with stalls; "store_network" groups a store owner's stores. */
+  kind: "venue" | "store_network";
   // Joined data
   owner_user?: {
     name: string;
@@ -78,7 +80,9 @@ export type CreateStallData = {
   stall_name: string;
   stall_slug: string;
   stall_description?: string;
-  operator_twitter_handle: string;
+  /** Wallet that receives the stall's payments (a SplitHub user picked by the venue owner). */
+  operator_wallet: string;
+  operator_twitter_handle?: string;
   split_percentage: number;
   token_address: string;
 };

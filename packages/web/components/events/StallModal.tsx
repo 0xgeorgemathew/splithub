@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, type Variants, motion } from "framer-motion";
 import { Check, Link as LinkIcon, Search, Sparkles, Store, User, X } from "lucide-react";
 import { TOKENS } from "~~/config/tokens";
+import { apiFetch } from "~~/lib/apiFetch";
 import type { CreateStallData, Stall } from "~~/lib/events.types";
 import { type User as UserType, supabase } from "~~/lib/supabase";
 
@@ -49,6 +50,7 @@ export const StallModal = ({ isOpen, onClose, onSuccess, eventId, eventSlug, edi
   const [stallName, setStallName] = useState("");
   const [stallSlug, setStallSlug] = useState("");
   const [description, setDescription] = useState("");
+  const [operatorShare, setOperatorShare] = useState("100");
   const [searchQuery, setSearchQuery] = useState("");
   const [users, setUsers] = useState<UserType[]>([]);
   const [selectedOperator, setSelectedOperator] = useState<UserType | null>(null);
@@ -71,6 +73,7 @@ export const StallModal = ({ isOpen, onClose, onSuccess, eventId, eventSlug, edi
       setStallName(editingStall.stall_name);
       setStallSlug(editingStall.stall_slug);
       setDescription(editingStall.stall_description || "");
+      setOperatorShare(String(editingStall.split_percentage));
       setSlugManuallyEdited(true);
       // Find operator user if they exist
       if (editingStall.operator_user) {
@@ -85,6 +88,7 @@ export const StallModal = ({ isOpen, onClose, onSuccess, eventId, eventSlug, edi
       setStallName("");
       setStallSlug("");
       setDescription("");
+      setOperatorShare("100");
       setSelectedOperator(null);
       setSlugManuallyEdited(false);
     }
@@ -175,17 +179,16 @@ export const StallModal = ({ isOpen, onClose, onSuccess, eventId, eventSlug, edi
         stall_name: stallName.trim(),
         stall_slug: stallSlug.trim(),
         stall_description: description.trim() || undefined,
-        operator_twitter_handle: selectedOperator.twitter_handle || selectedOperator.name,
-        split_percentage: 100, // Default to 100% for operator
+        operator_wallet: selectedOperator.wallet_address,
+        split_percentage: Number(operatorShare),
         token_address: TOKENS.USDC,
       };
 
       const endpoint = editingStall ? `/api/events/stalls/${editingStall.id}` : "/api/events/stalls/create";
-      const method = editingStall ? "PUT" : "POST";
+      const method = editingStall ? "PATCH" : "POST";
 
-      const response = await fetch(endpoint, {
+      const response = await apiFetch(endpoint, {
         method,
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(stallData),
       });
 
@@ -499,6 +502,28 @@ export const StallModal = ({ isOpen, onClose, onSuccess, eventId, eventSlug, edi
                         </div>
                       </>
                     )}
+                  </motion.div>
+
+                  {/* Revenue split: the operator receives every payment on-chain; the split is the venue's books */}
+                  <motion.div variants={staggerItem} className="px-4 py-3 border-b border-base-300/50">
+                    <label className="text-xs text-base-content/50 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                      <span>Operator share</span>
+                      <span className="text-base-content/70 normal-case tracking-normal">
+                        Venue keeps {Math.max(0, 100 - (Number(operatorShare) || 0))}%
+                      </span>
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="range"
+                        min={0}
+                        max={100}
+                        step={5}
+                        value={operatorShare}
+                        onChange={e => setOperatorShare(e.target.value)}
+                        className="range range-primary range-xs flex-1"
+                      />
+                      <span className="w-12 text-right text-sm font-semibold tabular-nums">{operatorShare}%</span>
+                    </div>
                   </motion.div>
 
                   {/* Error */}

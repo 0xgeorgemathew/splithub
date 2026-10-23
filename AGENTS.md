@@ -44,11 +44,23 @@ stall payment. Multi-settle collects several chip signatures and submits them in
 - Browser-only modules (libhalo NFC, heavy wallet UI) load lazily: `utils/clientOnly.tsx`, dynamic `import()`.
 - Public env vars are `VITE_*` (`import.meta.env`); server secrets are Worker bindings read via `process.env`.
 
+## Auth and Ownership
+
+- Client calls that change data use `apiFetch` (`lib/apiFetch.ts`), which sends the Privy access token.
+- API routes call `requireUser(request)` (`lib/auth.ts`): it verifies the token against Privy's JWKS and maps
+  the Privy user to `users.wallet_address`. Never trust a wallet sent in the request body.
+- Venues and stalls: only the venue owner can create, edit, pause or delete (`/api/events/*`).
+- Stores: `requireStoreManager` (`services/store/storeAccess.ts`) allows the store manager or the store
+  group owner; only the owner changes the manager share.
+- Browser writes through `/api/db` are limited by `lib/db/policy.ts` and exclude venues, stalls, stores and
+  payments.
+
 ## Product Surfaces
 
 ### 1. Stores
 
-- store creation and management by the store's admin and manager wallets
+- store setup by any signed-in user (store groups, manager payout wallet, manager share)
+- store settings, inventory and restocking from the store page (manager or owner)
 - public store browsing
 - catalog and inventory management
 - tap checkout: one onchain payment to the store's payout wallet, with the manager/admin split recorded on the order
@@ -67,8 +79,8 @@ Primary code:
 
 ### 2. Venues
 
-- events and venues owned by a wallet
-- stalls with operators and revenue split percentages
+- venue setup by any signed-in user; edit, pause and delete are owner-only
+- stalls with operators and an operator revenue share chosen by the owner
 - stall payment terminal
 - venue credits (`CreditToken`)
 
@@ -169,7 +181,9 @@ packages/foundry/
 
 ### Venues and stores
 
-Stores and venue stalls share the `events`/`stalls` tables: a store is a stall inside its admin's network event.
+Stores and venue stalls share the `events`/`stalls` tables. `events.kind` tells them apart: `venue` (an event
+with stalls) or `store_network` (a store owner's group of stores, each store being a stall with a catalog).
+Venue queries filter `kind = 'venue'`; store queries join `events!inner` and filter `event.kind = 'store_network'`.
 
 - `events`
 - `stalls`

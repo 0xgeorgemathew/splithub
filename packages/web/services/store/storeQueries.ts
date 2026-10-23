@@ -34,13 +34,14 @@ export async function getStoreBySlugs(networkSlug: string, storeSlug: string): P
     .select(
       `
       *,
-      event:events!event_id(*),
+      event:events!event_id!inner(*),
       operator_user:users!operator_wallet(*)
     `,
     )
     .eq("stall_slug", storeSlug)
     .eq("event.event_slug", networkSlug)
-    .single();
+    .eq("event.kind", "store_network")
+    .maybeSingle();
 
   if (error || !store) {
     return null;
@@ -63,11 +64,13 @@ export async function getPublicStores(limit = 24): Promise<StoreWithCatalog[]> {
     .select(
       `
       *,
-      event:events!event_id(*),
+      event:events!event_id!inner(*),
       operator_user:users!operator_wallet(*)
     `,
     )
     .eq("status", "active")
+    .eq("event.kind", "store_network")
+    .eq("event.status", "active")
     .order("updated_at", { ascending: false })
     .limit(limit);
 

@@ -45,6 +45,7 @@ export async function getEventsByOwner(ownerWallet: string): Promise<Event[]> {
     `,
     )
     .eq("owner_wallet", ownerWallet.toLowerCase())
+    .eq("kind", "venue")
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(`Failed to fetch events: ${error.message}`);
@@ -75,6 +76,22 @@ export async function getEventBySlug(slug: string): Promise<Event | null> {
 }
 
 /**
+ * Get a venue by id (owner checks in API routes)
+ */
+export async function getEventById(eventId: number): Promise<Event | null> {
+  const { data } = await supabase.from("events").select("*").eq("id", eventId).maybeSingle();
+  return (data as Event) || null;
+}
+
+/**
+ * Get a stall with its event (owner checks in API routes)
+ */
+export async function getStallWithEvent(stallId: number): Promise<(Stall & { event: Event }) | null> {
+  const { data } = await supabase.from("stalls").select("*, event:events!event_id(*)").eq("id", stallId).maybeSingle();
+  return (data as Stall & { event: Event }) || null;
+}
+
+/**
  * Update event
  */
 export async function updateEvent(eventId: number, updates: Partial<Event>): Promise<Event> {
@@ -98,19 +115,29 @@ export async function deleteEvent(eventId: number): Promise<void> {
 // ============================================================================
 
 /**
+ * Look up a stall operator by wallet. Payments go to this wallet, so operators are chosen by wallet,
+ * never by Twitter handle (handles are self-reported and not unique).
+ */
+export async function getOperatorByWallet(wallet: string) {
+  const { data } = await supabase
+    .from("users")
+    .select("wallet_address, twitter_handle, name")
+    .eq("wallet_address", wallet.toLowerCase())
+    .maybeSingle();
+  return (data as { wallet_address: string; twitter_handle: string | null; name: string } | null) ?? null;
+}
+
+/**
  * Create a new stall
  */
 export async function createStall(data: CreateStallData): Promise<Stall> {
-  // Look up operator wallet by Twitter handle
-  const { data: user } = await supabase
-    .from("users")
-    .select("wallet_address")
-    .eq("twitter_handle", data.operator_twitter_handle)
-    .single();
+  const operator = await getOperatorByWallet(data.operator_wallet);
+  if (!operator) throw new Error("Stall operator must be a SplitHub user");
 
   const stallData = {
     ...data,
-    operator_wallet: user?.wallet_address || null,
+    operator_wallet: operator.wallet_address,
+    operator_twitter_handle: operator.twitter_handle || operator.name,
   };
 
   const { data: stall, error } = await supabase.from("stalls").insert(stallData).select("*").single();
@@ -147,12 +174,13 @@ export async function getStallBySlug(eventSlug: string, stallSlug: string): Prom
     .select(
       `
       *,
-      event:events!event_id(*),
+      event:events!event_id!inner(*),
       operator_user:users!operator_wallet(name, twitter_handle, twitter_profile_url)
     `,
     )
     .eq("stall_slug", stallSlug)
     .eq("event.event_slug", eventSlug)
+    .eq("event.kind", "venue")
     .single();
 
   if (error) return null;
@@ -187,11 +215,12 @@ export async function getStallsByOperator(operatorWallet: string): Promise<Stall
     .select(
       `
       *,
-      event:events!event_id(id, event_name, event_slug, owner_wallet, status),
+      event:events!event_id!inner(id, event_name, event_slug, owner_wallet, status, kind),
       operator_user:users!operator_wallet(name, twitter_handle, twitter_profile_url)
     `,
     )
     .eq("operator_wallet", operatorWallet.toLowerCase())
+    .eq("event.kind", "venue")
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(`Failed to fetch operator stalls: ${error.message}`);

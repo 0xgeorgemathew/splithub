@@ -45,7 +45,8 @@ export async function findOrCreateNetwork(
     .select("*")
     .eq("owner_wallet", ownerWallet)
     .eq("event_slug", slug)
-    .single();
+    .eq("kind", "store_network")
+    .maybeSingle();
 
   if (existing) {
     return existing as Event;
@@ -59,6 +60,7 @@ export async function findOrCreateNetwork(
       event_slug: slug,
       event_description: `${name} retail network`,
       status: "active",
+      kind: "store_network",
     })
     .select("*")
     .single();
