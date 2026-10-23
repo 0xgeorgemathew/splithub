@@ -6,10 +6,8 @@ import { ArrowRight } from "lucide-react";
 
 const footerLinks = [
   { label: "Stores", href: "/store" },
-  { label: "Agent Pay", href: "/agents-pay" },
-  { label: "DeFi", href: "/defi" },
+  { label: "Venues", href: "/events" },
   { label: "Splits", href: "/splits" },
-  { label: "Events", href: "/events" },
 ];
 
 export function LandingFooter() {
@@ -61,7 +59,7 @@ export function LandingFooter() {
           </nav>
 
           <p className="m-0 font-jetbrains text-[11px] uppercase tracking-[0.14em] text-base-content/35">
-            Base · Privy · Arx · Vincent
+            Base · Privy · Arx
           </p>
         </div>
       </div>

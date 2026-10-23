@@ -19,7 +19,6 @@ export async function POST(request: NextRequest) {
       managerTwitterHandle,
       splitPercentage,
       tokenAddress,
-      agentName,
     } = body;
 
     if (!adminWallet || !isAddress(adminWallet)) {
@@ -49,7 +48,6 @@ export async function POST(request: NextRequest) {
       managerTwitterHandle,
       splitPercentage,
       tokenAddress: tokenAddress || TOKENS.USDC,
-      agentName,
     });
 
     return NextResponse.json(result, { status: 201 });

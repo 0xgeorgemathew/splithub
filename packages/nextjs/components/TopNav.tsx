@@ -5,9 +5,8 @@ import Image from "next/image";
 import { NotificationToggle } from "./NotificationToggle";
 import { usePrivy } from "@privy-io/react-auth";
 import { AnimatePresence, type Variants, motion } from "framer-motion";
-import { Check, ChevronDown, Copy, LogIn, LogOut, Nfc, Radio, Wallet } from "lucide-react";
+import { Check, ChevronDown, Copy, LogIn, LogOut, Nfc, Wallet } from "lucide-react";
 import { useCurrentUser } from "~~/hooks/useCurrentUser";
-import { useVincentSession } from "~~/hooks/useVincentSession";
 import { copyToClipboard as copyText, truncateAddress } from "~~/utils/addressHelpers";
 
 const dropdownItemVariants: Variants = {
@@ -26,7 +25,6 @@ const dropdownItemVariants: Variants = {
 export const TopNav = () => {
   const { ready, authenticated, login, logout } = usePrivy();
   const { walletAddress, chipAddress, twitterHandle, profilePic } = useCurrentUser();
-  const { agentAddress } = useVincentSession();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -218,27 +216,6 @@ export const TopNav = () => {
                             </span>
                             {chipAddress &&
                               (copiedField === "chip" ? (
-                                <Check className="w-3.5 h-3.5 text-success" />
-                              ) : (
-                                <Copy className="w-3.5 h-3.5 text-base-content/30 group-hover:text-base-content/60" />
-                              ))}
-                          </motion.button>
-
-                          {/* Vincent Agent Address */}
-                          <motion.button
-                            custom={2}
-                            variants={dropdownItemVariants}
-                            initial="hidden"
-                            animate="visible"
-                            onClick={() => agentAddress && handleCopy(agentAddress, "agent")}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-white/[0.04] transition-colors group"
-                          >
-                            <Radio className="w-4 h-4 text-sky-400/80" />
-                            <span className="flex-1 text-xs text-base-content/70 font-mono text-left">
-                              {agentAddress ? truncateAddress(agentAddress) : "No agent"}
-                            </span>
-                            {agentAddress &&
-                              (copiedField === "agent" ? (
                                 <Check className="w-3.5 h-3.5 text-success" />
                               ) : (
                                 <Copy className="w-3.5 h-3.5 text-base-content/30 group-hover:text-base-content/60" />

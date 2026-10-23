@@ -1,52 +1,19 @@
-import type { AgentFeedback, ItemFormState } from "./checkout/shared";
+import type { ItemFormState } from "./checkout/shared";
 import { ShieldCheck } from "lucide-react";
-import type { StoreWithCatalog } from "~~/lib/store.types";
 
 export function StoreManagerControls({
-  store,
   itemForm,
   onItemFormChange,
   managerBusy,
   managerError,
-  agentFeedback,
-  canSignTrust,
-  managerTrustAutomationEnabled,
-  needsManagerTrustRegistration,
-  needsValidationSignature,
   onAddItem,
-  onCreateAgent,
-  onAgentRun,
-  onAgentPause,
-  onRegisterManagerTrust,
-  onSubmitValidationRequest,
 }: {
-  store: StoreWithCatalog;
   itemForm: ItemFormState;
   onItemFormChange: (next: ItemFormState) => void;
   managerBusy: boolean;
   managerError: string | null;
-  agentFeedback: AgentFeedback | null;
-  canSignTrust: boolean;
-  managerTrustAutomationEnabled: boolean;
-  needsManagerTrustRegistration: boolean;
-  needsValidationSignature: boolean;
   onAddItem: () => void;
-  onCreateAgent: () => void;
-  onAgentRun: () => void;
-  onAgentPause: (status: "active" | "paused") => void;
-  onRegisterManagerTrust: () => void;
-  onSubmitValidationRequest: () => void;
 }) {
-  const trustHelpText = managerTrustAutomationEnabled
-    ? "Manager trust actions are signed automatically by the demo operator wallet. Validator and reviewer steps stay automatic."
-    : !canSignTrust
-    ? "Manual trust actions require the manager operator wallet. Validator and reviewer steps stay automatic."
-    : needsManagerTrustRegistration
-      ? "First step: register the manager's ERC-8004 identity on Ethereum Sepolia."
-      : needsValidationSignature
-        ? "Manager run finished. Submit the validation request onchain to continue the trust pipeline."
-        : "Validator and reviewer steps complete automatically after the manager submits the required onchain step.";
-
   return (
     <div className="mt-8 rounded-3xl border border-white/10 bg-base-200/50 p-5">
       <div className="flex items-center gap-2">
@@ -102,73 +69,8 @@ export function StoreManagerControls({
             </button>
           </div>
         </div>
-
-        <div className="rounded-2xl border border-primary/15 bg-primary/5 p-4">
-          <div className="text-sm font-semibold">Agent & Trust Actions</div>
-          <div className="mt-1 text-xs text-base-content/60">{trustHelpText}</div>
-          <div className="mt-4 flex flex-wrap gap-3">
-            {!store.manager_agent ? (
-              <button className="btn btn-outline" onClick={onCreateAgent} disabled={managerBusy}>
-                Add Agent
-              </button>
-            ) : (
-              <>
-                {!managerTrustAutomationEnabled && canSignTrust && needsManagerTrustRegistration && (
-                  <button className="btn btn-outline" onClick={onRegisterManagerTrust} disabled={managerBusy}>
-                    Register Manager Identity
-                  </button>
-                )}
-                <button className="btn btn-outline" onClick={onAgentRun} disabled={managerBusy}>
-                  Run Manager Agent
-                </button>
-                {!managerTrustAutomationEnabled && canSignTrust && !needsManagerTrustRegistration && needsValidationSignature && (
-                  <button className="btn btn-outline" onClick={onSubmitValidationRequest} disabled={managerBusy}>
-                    Submit Validation Onchain
-                  </button>
-                )}
-                {store.manager_agent.status === "paused" ? (
-                  <button className="btn btn-outline" onClick={() => onAgentPause("active")} disabled={managerBusy}>
-                    Resume Agent
-                  </button>
-                ) : (
-                  <button className="btn btn-outline" onClick={() => onAgentPause("paused")} disabled={managerBusy}>
-                    Pause Agent
-                  </button>
-                )}
-              </>
-            )}
-          </div>
-        </div>
       </div>
       {managerError && <div className="mt-3 text-sm text-error">{managerError}</div>}
-      {agentFeedback && (
-        <div className="mt-4 rounded-2xl border border-success/25 bg-success/10 px-4 py-4 text-sm">
-          <div className="font-semibold text-success">
-            {agentFeedback.queued
-              ? agentFeedback.state === "queued"
-                ? "Agent run queued"
-                : "Agent run in progress"
-              : "Agent run completed"}
-          </div>
-          <div className="mt-2 capitalize text-base-content/70">State: {agentFeedback.state}</div>
-          <div className="mt-1 text-base-content/70">{agentFeedback.summary}</div>
-          {agentFeedback.currentStepLabel && (
-            <div className="mt-2 text-base-content/60">Current step: {agentFeedback.currentStepLabel}</div>
-          )}
-          {agentFeedback.nextStepLabel && (
-            <div className="mt-1 text-base-content/55">
-              Next: {agentFeedback.nextStepLabel}
-              {agentFeedback.nextStepAutomatic ? " (automatic)" : agentFeedback.requiresManualAction ? " (manual)" : ""}
-            </div>
-          )}
-          {!agentFeedback.queued && (
-            <div className="mt-2 text-base-content/60">Actions executed: {agentFeedback.actionCount}</div>
-          )}
-          {agentFeedback.validationStatus && (
-            <div className="mt-1 text-base-content/50">Validation record: {agentFeedback.validationStatus}</div>
-          )}
-        </div>
-      )}
     </div>
   );
 }

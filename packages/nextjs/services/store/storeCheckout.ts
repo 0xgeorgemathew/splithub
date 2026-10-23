@@ -85,6 +85,8 @@ export async function buildCheckoutQuote(stallId: number, cart: CartLineInput[])
     adminAmountMicros: adminMicros.toString(),
     managerRecipient: storeRecord.operator_wallet.toLowerCase(),
     adminRecipient: storeRecord.event.owner_wallet.toLowerCase(),
+    payoutRecipient: storeRecord.operator_wallet.toLowerCase(),
+    payoutAmountMicros: subtotalMicros.toString(),
     cart: normalizedCart,
   };
 }
@@ -137,29 +139,6 @@ export async function createStoreOrderRecord(params: {
     order: order as StoreOrder,
     orderItems: orderItems as StoreOrderItem[],
   };
-}
-
-export async function completeStoreOrder(orderId: number, txHash: string): Promise<StoreOrder> {
-  const { data, error } = await supabase
-    .from("store_orders")
-    .update({
-      status: "completed",
-      tx_hash: txHash,
-      completed_at: new Date().toISOString(),
-    })
-    .eq("id", orderId)
-    .select("*")
-    .single();
-
-  if (error || !data) {
-    throw new Error(`Failed to complete order: ${error?.message}`);
-  }
-
-  return data as StoreOrder;
-}
-
-export async function failStoreOrder(orderId: number): Promise<void> {
-  await supabase.from("store_orders").update({ status: "failed" }).eq("id", orderId);
 }
 
 export async function decrementInventoryForQuote(quote: CheckoutQuote): Promise<void> {

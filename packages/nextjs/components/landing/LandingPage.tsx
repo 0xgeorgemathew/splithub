@@ -1,7 +1,6 @@
 "use client";
 
 import { HeroSection } from "./HeroSection";
-import { JitSection } from "./JitSection";
 import { LandingFooter } from "./LandingFooter";
 import { ProductIndex } from "./ProductIndex";
 import { SecuritySection } from "./SecuritySection";
@@ -15,16 +14,13 @@ export function LandingPage() {
         {/* 1. Hero - thesis plus a receipt printing one tap */}
         <HeroSection />
 
-        {/* 2. Products - Stores, Agent Pay, DeFi, Splits */}
+        {/* 2. Products - Stores, Venues, Splits */}
         <ProductIndex />
 
-        {/* 3. What happens at tap time (JIT liquidity) */}
-        <JitSection />
-
-        {/* 4. Chip as authorization device */}
+        {/* 3. Chip as authorization device */}
         <SecuritySection />
 
-        {/* 5. CTA + footer */}
+        {/* 4. CTA + footer */}
         <LandingFooter />
       </div>
     </MotionConfig>

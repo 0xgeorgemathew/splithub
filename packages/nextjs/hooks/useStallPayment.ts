@@ -1,13 +1,11 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
-import { parseUnits } from "viem";
-import deployedContracts from "~~/contracts/deployedContracts";
-import { useHaloChip } from "~~/hooks/halochip-arx/useHaloChip";
-import { createBaseSepoliaPublicClient } from "~~/lib/baseSepolia";
-import { broadcastRawChipTokenTransfer } from "~~/lib/chipTransactions";
-import { ERC20_ABI, SPLIT_HUB_REGISTRY_ABI } from "~~/lib/contractAbis";
+import { useCallback, useState } from "react";
+import { type Address, parseUnits } from "viem";
+import { TOKEN_DECIMALS } from "~~/config/tokens";
+import { useTapPayment } from "~~/hooks/useTapPayment";
 import type { Stall } from "~~/lib/events.types";
+import { parseContractError } from "~~/utils/contractErrors";
 
 export type StallPaymentFlowState =
   | "idle"
@@ -32,28 +30,19 @@ interface UseStallPaymentReturn {
   reset: () => void;
 }
 
-const CHAIN_ID = 84532;
-
+/**
+ * Stall terminal payment. The guest taps their chip on the terminal: the first tap identifies the chip
+ * owner, the second signs the PaymentAuth, and the wallet signed in on the terminal submits it. Funds
+ * go from the guest's wallet to the stall operator; the server verifies the transfer before recording it.
+ */
 export function useStallPayment({ stall, onSuccess, onError }: UseStallPaymentOptions): UseStallPaymentReturn {
-  const { getChipAddress, signDigest } = useHaloChip();
-
+  const { pay } = useTapPayment();
   const [flowState, setFlowState] = useState<StallPaymentFlowState>("idle");
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
 
-  const chainContracts = deployedContracts[CHAIN_ID] as Record<string, { address: string }> | undefined;
-  const registryAddress = chainContracts?.SplitHubRegistry?.address as `0x${string}` | undefined;
-
-  const publicClient = useMemo(() => createBaseSepoliaPublicClient(), []);
-
   const initiatePayment = useCallback(
     async (amount: number) => {
-      if (!registryAddress) {
-        setError("Registry contract not deployed");
-        setFlowState("error");
-        return;
-      }
-
       if (!stall.operator_wallet) {
         setError("Stall operator has not registered their wallet");
         setFlowState("error");
@@ -64,149 +53,42 @@ export function useStallPayment({ stall, onSuccess, onError }: UseStallPaymentOp
       setTxHash(null);
       setFlowState("tapping");
 
-      let paymentId: number | null = null;
-      let confirmedOnChain = false;
-      let confirmedTxHash: `0x${string}` | null = null;
-
+      let paidTxHash: string | null = null;
       try {
-        const recipient = stall.operator_wallet.toLowerCase() as `0x${string}`;
-        const tokenAddress = stall.token_address.toLowerCase() as `0x${string}`;
-
-        const chip = await getChipAddress();
-        const chipAddress = chip.address.toLowerCase() as `0x${string}`;
-
-        const payerWallet = (await publicClient.readContract({
-          address: registryAddress,
-          abi: SPLIT_HUB_REGISTRY_ABI,
-          functionName: "ownerOf",
-          args: [chipAddress],
-        })) as `0x${string}`;
-
-        if (!payerWallet || payerWallet === "0x0000000000000000000000000000000000000000") {
-          throw new Error("Chip not registered. Please register your card first at splithub.xyz.");
-        }
-
-        const tokenDecimals = (await publicClient.readContract({
-          address: tokenAddress,
-          abi: ERC20_ABI,
-          functionName: "decimals",
-        })) as number;
-
-        setFlowState("preparing");
-
-        const prepareRes = await fetch("/api/vincent/prepare-payment", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            payerWallet,
-            limitWallet: payerWallet,
-            fundingTargetWallet: chipAddress,
-            tokenAddress,
-            amount: amount.toString(),
-            decimals: tokenDecimals,
-          }),
-        });
-
-        if (!prepareRes.ok) {
-          const data = await prepareRes.json().catch(() => null);
-          throw new Error(data?.error || "Failed to prepare wallet for tap");
-        }
-
-        setFlowState("tapping");
-
-        const amountInWei = parseUnits(amount.toString(), tokenDecimals);
-
-        const createResponse = await fetch("/api/events/pay", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "create",
-            stallId: stall.id,
-            eventId: stall.event_id,
-            payerWallet,
-            tokenAddress,
-            splitPercentage: stall.split_percentage,
-            amount: amount.toString(),
-          }),
-        });
-
-        const createResult = await createResponse.json();
-        if (!createResponse.ok) {
-          throw new Error(createResult.error || "Failed to create stall payment");
-        }
-
-        paymentId = createResult.paymentId;
-
-        setFlowState("submitting");
-
-        const result = await broadcastRawChipTokenTransfer({
-          publicClient,
-          chipAddress,
-          tokenAddress,
-          recipient,
-          amount: amount.toString(),
-          decimals: tokenDecimals,
-          signDigest,
-        });
-
-        confirmedOnChain = true;
-        confirmedTxHash = result.txHash;
+        const result = await pay(
+          {
+            recipient: stall.operator_wallet as Address,
+            token: stall.token_address as Address,
+            amount: parseUnits(amount.toString(), TOKEN_DECIMALS.USDC),
+          },
+          step => setFlowState(step === "identifying" ? "tapping" : step),
+        );
+        paidTxHash = result.txHash;
         setTxHash(result.txHash);
-        setFlowState("confirming");
 
-        const completeResponse = await fetch("/api/events/pay", {
+        const response = await fetch("/api/events/pay", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "complete",
-            paymentId,
-            txHash: result.txHash,
-            authAmountWei: amountInWei.toString(),
-            tokenDecimals,
-          }),
+          body: JSON.stringify({ stallId: stall.id, txHash: result.txHash }),
         });
-
-        const completeResult = await completeResponse.json();
-        if (!completeResponse.ok) {
-          throw new Error(completeResult.error || "Payment confirmed on-chain, but event recording failed.");
+        const recorded = await response.json();
+        if (!response.ok) {
+          throw new Error(recorded.error || "Payment confirmed on-chain, but the stall record could not be saved.");
         }
 
         setFlowState("success");
         onSuccess?.(result.txHash);
       } catch (err) {
         console.error("Stall payment error:", err);
-
-        if (paymentId && !confirmedOnChain) {
-          try {
-            await fetch("/api/events/pay", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                action: "fail",
-                paymentId,
-              }),
-            });
-          } catch (failError) {
-            console.error("Failed to mark stall payment as failed:", failError);
-          }
-        }
-
-        const message =
-          confirmedOnChain && confirmedTxHash
-            ? `Payment confirmed on-chain (${confirmedTxHash.slice(
-                0,
-                10,
-              )}...), but the stall record could not be finalized.`
-            : err instanceof Error
-              ? err.message
-              : "Payment failed";
-
+        const message = paidTxHash
+          ? `Payment confirmed on-chain (${paidTxHash.slice(0, 10)}...), but the stall record could not be finalized.`
+          : parseContractError(err) || (err instanceof Error ? err.message : "Payment failed");
         setError(message);
         setFlowState("error");
         onError?.(err instanceof Error ? err : new Error(message));
       }
     },
-    [registryAddress, stall, publicClient, getChipAddress, signDigest, onSuccess, onError],
+    [onError, onSuccess, pay, stall],
   );
 
   const reset = useCallback(() => {
@@ -215,11 +97,5 @@ export function useStallPayment({ stall, onSuccess, onError }: UseStallPaymentOp
     setTxHash(null);
   }, []);
 
-  return {
-    flowState,
-    error,
-    txHash,
-    initiatePayment,
-    reset,
-  };
+  return { flowState, error, txHash, initiatePayment, reset };
 }

@@ -93,9 +93,6 @@ export async function prepareRawChipTokenTransfer({
     to: tokenAddress,
     value: 0n,
     data,
-    // Keep the tap flow independent of the current token balance.
-    // The chip signs an optimistic ERC-20 transfer first, then Vincent can
-    // top up the token balance before this transaction is broadcast.
     gas: DEFAULT_ERC20_TRANSFER_GAS_LIMIT,
     maxFeePerGas: feeData.maxFeePerGas ?? 1_000_000_000n,
     maxPriorityFeePerGas: feeData.maxPriorityFeePerGas ?? 1_000_000n,

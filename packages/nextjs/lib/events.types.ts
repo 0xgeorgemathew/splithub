@@ -91,5 +91,8 @@ export type CreateStallPaymentData = {
   token_address: string;
   operator_amount: number;
   owner_amount: number;
+  tx_hash?: string;
+  status?: "pending" | "completed" | "failed";
+  completed_at?: string;
   memo?: string;
 };

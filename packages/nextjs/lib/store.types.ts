@@ -1,16 +1,5 @@
 import type { Event, Stall } from "~~/lib/events.types";
-import type {
-  AgentRun,
-  AgentValidation,
-  Erc8004AgentRecord,
-  ManagerAgent,
-  ReputationEventRecord,
-  StoreInventory,
-  StoreItem,
-  StoreOrder,
-  StoreOrderItem,
-  User,
-} from "~~/lib/supabase";
+import type { StoreInventory, StoreItem, StoreOrder, StoreOrderItem, User } from "~~/lib/supabase";
 
 export type Store = Stall & {
   network?: Event;
@@ -21,7 +10,6 @@ export type StoreWithCatalog = Store & {
   items: (StoreItem & {
     inventory?: StoreInventory | null;
   })[];
-  manager_agent?: ManagerAgent | null;
 };
 
 export type CartLineInput = {
@@ -39,8 +27,12 @@ export type CheckoutQuote = {
   managerAmountMicros: string;
   adminAmount: string;
   adminAmountMicros: string;
+  /** Accounting split: the manager share of the subtotal (the rest is the network admin's). */
   managerRecipient: `0x${string}`;
   adminRecipient: `0x${string}`;
+  /** The single on-chain payment the buyer authorizes with their chip. */
+  payoutRecipient: `0x${string}`;
+  payoutAmountMicros: string;
   cart: Array<{
     itemId: number;
     name: string;
@@ -76,18 +68,6 @@ export type StoreDashboardData = {
   publicStores: StoreWithCatalog[];
   recentOrders: StoreOrder[];
   recentOrderItems: StoreOrderItem[];
-  agentRuns: AgentRun[];
-  validations: AgentValidation[];
-};
-
-export type StoreTrustSnapshot = {
-  managerTrustAgent: Erc8004AgentRecord | null;
-  validatorAgent: Erc8004AgentRecord | null;
-  reviewerAgent: Erc8004AgentRecord | null;
-  managerAutomationEnabled: boolean;
-  latestValidation: AgentValidation | null;
-  latestReputation: ReputationEventRecord | null;
-  reputationEvents: ReputationEventRecord[];
 };
 
 export type CreateStoreInput = {
@@ -101,7 +81,6 @@ export type CreateStoreInput = {
   managerTwitterHandle?: string;
   splitPercentage?: number;
   tokenAddress: string;
-  agentName?: string;
 };
 
 export type CreateStoreItemInput = {

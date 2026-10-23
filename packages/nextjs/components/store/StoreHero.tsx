@@ -12,7 +12,7 @@ export function StoreHero({ store }: { store: StoreWithCatalog }) {
           </div>
           <h1 className="mt-4 text-4xl font-black text-white">{store.stall_name}</h1>
           <p className="mt-3 max-w-2xl text-white/70">
-            {store.stall_description || "Split checkout between store manager and admin."}
+            {store.stall_description || "Tap your chip to pay. Funds move straight from your wallet to the store."}
           </p>
         </div>
 
@@ -26,10 +26,8 @@ export function StoreHero({ store }: { store: StoreWithCatalog }) {
             <div className="mt-2 text-2xl font-black text-white">{store.items.length}</div>
           </div>
           <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
-            <div className="text-xs uppercase tracking-[0.2em] text-white/50">Agent</div>
-            <div className="mt-2 text-xl font-black capitalize text-white">
-              {store.manager_agent?.status || "missing"}
-            </div>
+            <div className="text-xs uppercase tracking-[0.2em] text-white/50">Status</div>
+            <div className="mt-2 text-xl font-black capitalize text-white">{store.status}</div>
           </div>
         </div>
       </div>

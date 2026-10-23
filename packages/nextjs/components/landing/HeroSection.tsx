@@ -47,17 +47,17 @@ export function HeroSection() {
           >
             Tap to pay.
             <br />
-            <span className="text-primary">Earn until</span>
+            <span className="text-primary">Straight from</span>
             <br />
-            <span className="text-primary">you do.</span>
+            <span className="text-primary">your wallet.</span>
           </motion.h1>
 
           <motion.p
             variants={rise}
             className="font-[family-name:var(--font-outfit)] mt-7 mb-0 max-w-[30rem] text-base sm:text-lg leading-relaxed text-base-content/65 font-light"
           >
-            Your USDC stays in Aave. When you tap, an agent moves exactly what the payment needs and your chip signs it.
-            Nothing sits idle waiting for checkout.
+            Your chip signs the payment and the USDC moves directly from your wallet to the store, stall, or friend. No
+            balance parked on the card, no relayer in between.
           </motion.p>
 
           <motion.div variants={rise} className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-4">

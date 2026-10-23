@@ -222,28 +222,6 @@ export async function createStallPayment(data: CreateStallPaymentData): Promise<
 }
 
 /**
- * Update payment status
- */
-export async function updatePaymentStatus(
-  paymentId: number,
-  status: "completed" | "failed",
-  txHash?: string,
-): Promise<StallPayment> {
-  const updates: Partial<StallPayment> = { status };
-  if (status === "completed") {
-    updates.completed_at = new Date().toISOString();
-  }
-  if (txHash) {
-    updates.tx_hash = txHash;
-  }
-
-  const { data, error } = await supabase.from("stall_payments").update(updates).eq("id", paymentId).select().single();
-
-  if (error) throw new Error(`Failed to update payment: ${error.message}`);
-  return data as StallPayment;
-}
-
-/**
  * Get payments for a stall
  */
 export async function getStallPayments(stallId: number, limit = 50): Promise<StallPayment[]> {
