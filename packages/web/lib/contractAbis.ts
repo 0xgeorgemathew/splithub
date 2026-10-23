@@ -116,62 +116,6 @@ export const SPLIT_HUB_PAYMENTS_ABI = [
   },
 ] as const;
 
-export const CREDIT_TOKEN_ABI = [
-  {
-    type: "function",
-    name: "nonces",
-    inputs: [{ name: "user", type: "address" }],
-    outputs: [{ name: "", type: "uint256" }],
-    stateMutability: "view",
-  },
-  {
-    type: "function",
-    name: "balanceOf",
-    inputs: [{ name: "account", type: "address" }],
-    outputs: [{ name: "", type: "uint256" }],
-    stateMutability: "view",
-  },
-  {
-    type: "function",
-    name: "purchaseCredits",
-    inputs: [
-      {
-        name: "purchase",
-        type: "tuple",
-        components: [
-          { name: "buyer", type: "address" },
-          { name: "usdcAmount", type: "uint256" },
-          { name: "nonce", type: "uint256" },
-          { name: "deadline", type: "uint256" },
-        ],
-      },
-      { name: "signature", type: "bytes" },
-    ],
-    outputs: [],
-    stateMutability: "nonpayable",
-  },
-  {
-    type: "function",
-    name: "spendCredits",
-    inputs: [
-      {
-        name: "spend",
-        type: "tuple",
-        components: [
-          { name: "spender", type: "address" },
-          { name: "amount", type: "uint256" },
-          { name: "activityId", type: "uint256" },
-          { name: "nonce", type: "uint256" },
-          { name: "deadline", type: "uint256" },
-        ],
-      },
-      { name: "signature", type: "bytes" },
-    ],
-    outputs: [],
-    stateMutability: "nonpayable",
-  },
-] as const;
-
 export const MULTICALL3_ABI = [
   {
     type: "function",

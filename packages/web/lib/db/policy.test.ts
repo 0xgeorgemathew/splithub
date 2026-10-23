@@ -30,8 +30,8 @@ const load: RowLoader = async (table, column, values) => (db[table] ?? []).filte
 describe("browser write policy", () => {
   test("blocks tables browsers may not write", () => {
     expect(() => assertBrowserPlanAllowed(plan("users", "update", { name: "x" }))).toThrow("permission denied");
-    expect(() => assertBrowserPlanAllowed(plan("events", "delete"))).toThrow("permission denied");
-    expect(() => assertBrowserPlanAllowed(plan("stall_payments", "insert", {}))).toThrow("permission denied");
+    expect(() => assertBrowserPlanAllowed(plan("venues", "delete"))).toThrow("permission denied");
+    expect(() => assertBrowserPlanAllowed(plan("venue_credit_activity", "insert", {}))).toThrow("permission denied");
     for (const table of ["stores", "store_items", "store_orders", "store_order_items"]) {
       expect(() => assertBrowserPlanAllowed(plan(table, "insert", {}))).toThrow("permission denied");
       expect(() => assertBrowserPlanAllowed(plan(table, "update", {}))).toThrow("permission denied");

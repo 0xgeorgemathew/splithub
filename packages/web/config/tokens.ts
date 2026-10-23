@@ -10,7 +10,7 @@ export const TOKENS = {
    * USDC Token Address on Base Sepolia
    * Used for:
    * - Payments between users (tap-to-pay)
-   * - Credit token purchases (USDC → Credits)
+   * - Venue credit top-ups (USDC → venue credits)
    * - Expense splitting
    * - Settlement flows
    */
@@ -27,15 +27,6 @@ export const TOKENS = {
  */
 export const TOKEN_DECIMALS = {
   USDC: 6,
-  CREDIT: 18,
-} as const;
-
-/**
- * Credit token conversion rates
- */
-export const CREDIT_CONVERSION = {
-  /** 1 USDC = 10 credits */
-  USDC_TO_CREDITS_RATIO: 10,
 } as const;
 
 /**

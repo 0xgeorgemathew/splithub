@@ -9,7 +9,7 @@ const mainNavItems = [
   { label: "Home", href: "/", icon: Home },
   { label: "Splits", href: "/splits", icon: Split },
   { label: "Stores", href: "/store", icon: Store },
-  { label: "Venues", href: "/events", icon: MapPin },
+  { label: "Venues", href: "/venues", icon: MapPin },
   { label: "Requests", href: "/requests", icon: Bell },
 ] as const;
 

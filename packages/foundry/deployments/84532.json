@@ -1,6 +1,6 @@
 {
-  "0x1d645C4c2fb7F3400ce43ac9b94A982d75c91DF1": "CreditToken",
   "0x948856F736B97aceAf5c1377C29808BD0aD08dAB": "SplitHubPayments",
   "0xEABdE4D7b969bdAF524C9E7A55082A51c5Eee513": "SplitHubRegistry",
+  "0xeE61CC3366B6fBa6e49F4b2629BdE1E3c2A4AC51": "VenueCredits",
   "networkName": "base-sepolia"
 }

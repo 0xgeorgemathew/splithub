@@ -16,8 +16,8 @@ import { privyConfig } from "~~/lib/privy";
 
 const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {
   const pathname = useLocation({ select: location => location.pathname });
-  // Hide nav on stall terminal pages: /events/{eventSlug}/{stallSlug}
-  const isStallPage = /^\/events\/[^/]+\/[^/]+$/.test(pathname);
+  // Hide nav on venue terminals: /venues/{venueSlug}/topup and /venues/{venueSlug}/{stallSlug}
+  const isStallPage = /^\/venues\/[^/]+\/[^/]+$/.test(pathname);
 
   return (
     <MotionConfig reducedMotion="never">
